@@ -272,3 +272,41 @@ No standalone erase or eFuse changes were performed. Factory backup unchanged.
 Post-test backup SHA-256 still matches the preserved original. Documentation
 verification and git diff --check passed. Diagnostic source/configuration and
 receipts are retained in local Git; private images and logs stay ignored.
+
+## Expanded source discovery — 2026-09-23
+
+Owner requested autonomous follow-through on supplied vendor links. Rechecked
+English and Chinese Waveshare resource pages; both explicitly mark exact-board
+hardware resources and examples as still being prepared. Storefront HTML now
+retrieved successfully; its development-resource link leads to the same docs.
+Inspected embedded C5-3.5-Interfaces image: external connector/control locations,
+not a schematic or complete internal peripheral GPIO assignment.
+
+GitHub API repository search for ESP32-C5 under waveshareteam returns seven
+repositories (Zero, Pico, MINI-KIT, LCD-1.47, LCD-2.73, Touch-LCD-1.69 and
+Touch-LCD-2.8); none for 3.5. All-public repository-name/description search for
+ESP32-C5 plus 3.5 returned zero. The 2.8 repository recursive tree contained no
+C5 3.5 path. These bounded searches do not prove no source exists anywhere.
+
+Owner also supplied Espressif DevKitC-1 hardware reference, esp-idf repository,
+and C5 technical reference manual. DevKitC-1 is a different carrier PCB; its
+header assignments cannot establish Waveshare display/audio wiring. ESP-IDF
+is the installed SDK. The chip reference manual documents internal peripheral
+operation; it cannot by itself establish the custom PCB's connected nets.
+The web reader rejected the manual PDF because it exceeds its size limit; no
+claim to have read the entire manual is made.
+
+Checked sources:
+- https://docs.waveshare.com/ESP32-C5-Touch-LCD-3.5/Resources-And-Documents
+- https://docs.waveshare.net/ESP32-C5-Touch-LCD-3.5/Resources-And-Documents/
+- https://www.waveshare.com/esp32-c5-touch-lcd-3.5.htm?sku=35419
+- https://github.com/waveshareteam
+- https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32c5/esp32-c5-devkitc-1/user_guide.html
+- https://github.com/espressif/esp-idf
+- https://documentation.espressif.com/esp32-c5_technical_reference_manual_en.pdf
+
+No firmware changes during this research. Exact-board GPIO routing remains
+unresolved. Vendor support request remains drafted and unsent; contacting others
+requires explicit user instruction. Board-independent clock/alarm logic can be
+developed without this hardware information; screen/audio bring-up requires
+verified wiring or a separately scoped hardware/firmware reconstruction effort.
