@@ -1,1 +1,1 @@
-idf_component_register(SRCS "main.c" "board.c" "clock_service.c" "rtc_codec.c" "audio.c" INCLUDE_DIRS "." REQUIRES esp_codec_dev esp_driver_i2s esp_system esp_timer esp_driver_i2c esp_driver_spi esp_driver_usb_serial_jtag esp_lcd st7796 lvgl)
+idf_component_register(SRCS "main.c" "board.c" "clock_service.c" "rtc_codec.c" "audio.c" "alarm_engine.c" "settings_codec.c" "settings_store.c" INCLUDE_DIRS "." REQUIRES nvs_flash esp_codec_dev esp_driver_i2s esp_system esp_timer esp_driver_i2c esp_driver_spi esp_driver_usb_serial_jtag esp_lcd st7796 lvgl)

@@ -508,3 +508,58 @@ Factory audio playback/resume calls at0x4201b948/0x4201b9ca set expander
 mask0x20 high; our startup output0x23 already does so. Default volume25 maps
 to -37.5dB before hardware-gain adjustment; quietness remains another possible
 reason for silence. Do not claim working audio or assume speaker is installed.
+
+## Active goal: offline alarm clock
+
+Previous work made progress: clock deployed/verified; audio diagnostic deployed,
+with transmission proven and audible output unresolved. Goal remains active.
+Continue independent scheduler/settings work while physical speaker check is pending.
+
+Alarm-core acceptance/interfaces before implementation: up to8 alarms, local
+hour/minute plus weekday mask or explicit once-only date; one independent engine
+owns scheduling, active/snoozed/dismissed state. Repeated fall-back hour rings
+once per local calendar date. A nonexistent spring-forward time is skipped.
+A trigger may be caught up within120 seconds; larger forward jumps do not ring
+old alarms. Backward corrections do not re-ring a consumed date. Snooze is five
+minutes of monotonic time (wall-clock correction cannot shorten it). Maximum
+ring duration10 minutes; dismiss consumes that occurrence. Simultaneous alarms
+remain independently represented. Invalid time cannot trigger a scheduled alarm.
+Persist occurrence consumption before audible start in the integration layer;
+failed persistence must surface rather than falsely report durable settings.
+
+Pure C engine/date validation gets host tests for normal/once/weekday triggers,
+DST transitions, time jumps, duplicates, simultaneous alarms and snooze/dismiss.
+UI, persistence adapter, and independent firmware task follow these interfaces.
+New project-owned NVS must occupy verified unused flash, preserving all factory
+partitions/backup; do not initialize factory NVS or erase on generic init errors.
+
+Owner cannot inspect inside sealed enclosure. No dismantling requested.
+Next audio test raises codec volume25 to55 (-37.5dB to-22.5dB in default
+curve), keeping PCM amplitude5000/32768 and two-second duration. Read-only
+codec ID/clock/mute/volume dump added. Expander playback helper0x4201b6fc
+clears bit5 before transitions; playback/resume then sets it high, consistent
+with our high bit5 during playback. Hardware speaker remains unconfirmed.
+
+Alarm-engine host tests passed for invalid time, daily/weekday/once schedules,
+120-second grace boundary, spring gap, fall repeated hour, duplicate suppression,
+monotonic snooze despite wall-time jumps, dismiss, ten-minute timeout, simultaneous
+alarms and invalid dates. Engine not yet wired to firmware task/UI.
+
+Versioned settings codec tests passed for disabled defaults, once/consumed dates,
+every-byte single-bit corruption and every truncated length. Proposed dedicated
+clockcfg NVS region0xa00000/0x6000 is all0xff in preserved factory backup and
+beyond every factory partition. Still need live confirmation before table update.
+NVS adapter uses explicit partition/namespace, atomic blob commit, no automatic
+erase-on-error. Not yet called or installed; current board retains tone-test app.
+
+Adjusted audio runtime: ID fd=83/fe=11/revisionff=01, reset00=80,
+clock01=bf, interface09=0c, system12=00, DAC31=00, volume32=99;
+all reads success. AUDIO_READY volume55, RTC and clock continue. This confirms
+ES8311 identity and configured unmuted DAC, not actual speaker output.
+Owner louder-tone observation pending; no need to open sealed case.
+
+IDF6.1 build including alarm engine/settings codec/NVS adapter passed;
+bootstrap documentation and whitespace checks passed. Current source adds tested
+foundations; alarm task/editor and NVS partition deployment remain next work.
+Goal not complete: audible output, editable deployed alarms, persistence and
+power-loss acceptance still outstanding.

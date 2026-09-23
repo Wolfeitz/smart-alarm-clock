@@ -62,11 +62,16 @@ void audio_init(i2c_master_bus_handle_t bus)
     if(!device){printf("AUDIO_INIT failed=device\n");return;}
     esp_codec_dev_sample_info_t sample={.sample_rate=22050,.channel=2,.bits_per_sample=16};
     int rc=esp_codec_dev_open(device,&sample);
-    if(rc==0)rc=esp_codec_dev_set_out_vol(device,25);
+    if(rc==0)rc=esp_codec_dev_set_out_vol(device,55);
     if(rc!=0){printf("AUDIO_INIT failed=codec rc=%d\n",rc);return;}
+    const uint8_t regs[]={0x00,0x01,0x09,0x12,0x31,0x32,0xfd,0xfe,0xff};
+    for(unsigned i=0;i<sizeof(regs);i++){
+        uint8_t value=0;int status=control->read_reg(control,regs[i],1,&value,1);
+        printf("AUDIO_REG reg=%02x value=%02x status=%d\n",regs[i],value,status);
+    }
     requests=xQueueCreate(1,sizeof(uint8_t));
     if(!requests || xTaskCreate(play_task,"local_audio",4096,NULL,4,NULL)!=pdPASS)abort();
-    printf("AUDIO_READY rate=22050 bits=16 codec=ES8311 volume=25\n");
+    printf("AUDIO_READY rate=22050 bits=16 codec=ES8311 volume=55\n");
 }
 bool audio_test(void)
 {
