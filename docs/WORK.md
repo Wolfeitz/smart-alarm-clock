@@ -693,3 +693,12 @@ Audible output, new screen/buttons and complete power loss remain unproven.
 Requested10-second USB unplug/replug with battery left disconnected; no firmware
 reset or automatic TIME provisioning will substitute for that physical test.
 No test process was left running by the previous turn. Goal is not complete.
+
+Pending-acceptance recheck: serial device accessible and CLOCK_READY/RTC valid,
+ringing0/snoozed0, brightness160, storageESP_OK. Log acceptance-pending-runtime.log
+includes a USB_UART_HPSYS reset (rst0x15), not power-on proof. Opening serial with
+DTR/RTS preset false did not establish a reset-free observation; avoid further
+serial reconnections while waiting for the owner's physical check. No deliberate
+esptool reset or TIME command was sent. This does not pass full-power-loss or
+audible output gates. Remaining progress now depends on the requested physical
+observations; no test process remains live.
