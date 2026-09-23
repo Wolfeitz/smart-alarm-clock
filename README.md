@@ -10,6 +10,8 @@ identity and toolchain compatibility still require verification.
 - [Project guidance](AGENTS.md): Codex entry point and working boundaries.
 - [Requirements and architecture](docs/PROJECT.md): scope, acceptance and open decisions.
 - [Work and evidence](docs/WORK.md): current task, completion receipts and next steps.
+- [Hardware findings](docs/HARDWARE.md): measured identity, preserved factory image and missing vendor resources.
+- [Connection and recovery](docs/SETUP.md): USB access, diagnostic tooling and backup procedure.
 - [Verification](docs/TESTING.md): runnable checks and their limits.
 - [Bootstrap proof](docs/bootstrap/PROOF.md): fresh-session discovery and executed verification evidence.
 - [Approved bootstrap proposal](docs/bootstrap/PROPOSAL.md): source locations/hashes and approved scope; historical reference, not a routine startup read.

@@ -1,6 +1,6 @@
 # Work, decisions and evidence
 
-Owner: Rob. Updated: 2026-09-23. Approved bootstrap complete. Hardware readiness: receipt identification recorded; technical discovery pending.
+Owner: Rob. Updated: 2026-09-23. Approved bootstrap complete. Hardware readiness active: USB connected; silicon/flash identified; factory backup verified; exact-board source/schematic needed.
 Approval: user replied “Approved” to docs/bootstrap/PROPOSAL.md in this task.
 
 ## Bootstrap checklist
@@ -30,7 +30,7 @@ Discovery evidence and input SHA-256 values are in the approved proposal. Curren
 shell sandbox previously failed to launch with `mountinfo path is not absolute`;
 reviewed escalation worked. Do not disable global sandbox controls to fix this task.
 
-## Next bounded task: hardware readiness (receipt identification recorded)
+## Active bounded task: hardware readiness
 
 2026-09-23: Rob supplied the precise purchased-board description from the receipt;
 recorded verbatim in PROJECT. It identifies the ESP32-C5 rounded-corner 3.5-inch IPS
@@ -135,3 +135,30 @@ not an interactive command interface or correct RTC time; the reported date is
 exited successfully on its own. No application commands, reset or flash operation
 was sent. Next: identify firmware/version and supported provisioning or diagnostic
 interfaces before attempting Wi-Fi configuration.
+
+2026-09-23: continued hardware readiness after owner requested active progress.
+Esptool 5.4.0, obtained through a temporary uv environment (no system package or
+SDK installation), identifies ESP32-C5 silicon v1.2, 48MHz crystal and 32MB flash.
+An exact-board vendor source/recovery gap was confirmed on the public Resources,
+ESP-IDF and Firmware-Flashing pages; the expected exact GitHub repository returns
+404. A private full-flash read is underway before any replacement firmware.
+Draft vendor request: hardware/VENDOR-REQUEST.md (not sent).
+
+2026-09-23: full 32MB factory read and esptool verify-flash digest comparison
+completed successfully. Application checksum/hash and partition MD5 validate.
+Factory metadata establishes ESP-IDF v5.5.4 (upstream commit resolved), project
+blink/version 1, compiled Sep 11 2026; image header is 16MB despite 32MB chip.
+ROM security query reports Secure Boot and flash encryption disabled. Device reset
+back to existing firmware; no flash writes/erases/eFuse changes. See HARDWARE.md
+and SETUP.md for evidence and procedures. The raw image is private and Git-ignored.
+
+Readiness remains incomplete: missing vendor BSP/example, schematic/pin map, PCB
+revision and LVGL/component versions prevent a responsible board-specific build.
+The source availability assumption in the broad plan needs revision. Vendor request
+is drafted, not sent; owner was asked for any seller-provided download/QR URL.
+Continue immediately if matching resources arrive; do not manufacture pin mappings.
+
+Post-diagnostic runtime check: bounded pyserial capture received 6,313 bytes of
+factory startup output, including app_main() and AXP2101 `Init PMU SUCCESS!`.
+Documentation verification and whitespace checks passed. Hardware GUI/peripheral
+acceptance remains incomplete; no replacement firmware has been installed.
