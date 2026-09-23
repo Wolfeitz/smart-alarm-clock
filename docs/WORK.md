@@ -599,3 +599,52 @@ All relevant host tests and IDF build pass; documentation/whitespace pass.
 Next: persist/recover ringing and snooze across restart (currently runtime-only),
 verify brightness persistence and physical editor, resolve speaker silence, then
 power-loss checks. Do not call goal complete on current partial acceptance.
+
+## Ring/snooze restart recovery
+
+Previous goal turn made verified progress: deployed editor, NVS save/reset proof,
+real scheduled trigger and owner-task snooze/dismiss transitions. Recovery acceptance:
+save active phase and UTC deadline atomically with consumed occurrence; restore
+unexpired ringing or snooze using valid RTC. If snooze expired <=120 seconds ago,
+ring on recovery; older stale events do not ring. Do not restore active events
+until time is valid. Runtime snooze remains monotonic; clock corrections rebase the
+persisted UTC deadline without changing the remaining duration. Dismiss clears the
+saved active event; migration from settings schema1 preserves existing alarms.
+Host tests cover schema migration and recovery timing; hardware resets will test
+ringing, snooze, dismiss, and brightness. Actual USB power loss remains a separate
+physical check, especially with the disconnected battery.
+
+Repeated reset tests proved ringing restoration and saved brightness, but snooze
+checks timed out twice with delayed USB output. Treat this as unresolved runtime
+behavior, not merely a harness issue. SDK source confirms default stdout uses
+direct FIFO polling while our receive path installs the interrupt driver.
+Correction acceptance: one driver owns USB, runtime diagnostic producers enqueue
+without waiting; a separate low-priority task drains bounded records with finite
+write timeout. Disconnected/slow USB may lose diagnostics, never block scheduler
+or UI. Repeat ringing/snooze/dismiss reset proof after installation.
+
+Driver-backed queued diagnostics alone did not resolve the repeat timeout.
+Audio generation was also doing two seconds of per-sample software floating-point
+sine at priority4, above the UI task. Replace runtime synthesis with an integer
+lookup waveform and explicitly yield each DMA block. Verify command responsiveness
+while looping and repeat the same recovery test; do not claim the cause resolved
+before that evidence.
+
+Recovery/audio-yield build and app-only flash passed; image SHA256 a7c00983f9cdc63960c6da9b58a9e0b8b78a0ea0479b0044d0f7871edec6f21c.
+Fourth hardware test passed ringing reset, brightness reset, snooze reset, and
+dismissal reset. SNOOZE now produces accepted/checkpoint/phase transition without
+the earlier timeout. Evidence: local-config/clock/recovery-fourth-summary.log and
+recovery-runtime-fourth.log. Earlier attempts failed and remain preserved.
+All four host suites (alarm engine, settings codec, recovery, RTC) pass with
+-Wall -Wextra -Werror. Test alarm2 restored disabled07:00daily, brightness160;
+STATE confirms every slot disabled and ringing/snoozed zero. Schema2 migration
+preserved prior disabled slot7 06:43 weekdays62.
+
+Updated audio uses a256-sample lookup table and one-tick yield per256-frame
+block; preserves660Hz,22050Hz stereo, four pulses and PCM peak5000. A bounded
+32-record diagnostic queue drops when full; USB drain task uses20ms timeout.
+The runtime alarm/UI producers never wait for a serial reader. This is scheduler
+and recovery proof, not audible speaker or physical UI proof. Owner has been
+asked to tap Test sound with the sealed case intact; feedback pending.
+Remaining: actual sound, physical editor and ringing controls, full power loss
+with disconnected battery, and end-to-end five-minute snooze expiry. Goal active.

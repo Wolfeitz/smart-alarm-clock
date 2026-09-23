@@ -15,5 +15,9 @@ int main(void)
     }
     for(unsigned n=0;n<sizeof(data);n++)assert(!settings_decode(data,n,&read));
     s.alarms[0].hour=24;assert(!settings_encode(&s,data));
+    const uint8_t legacy[]={69,83,80,67,1,8,25,0,0,0,0,0,0,0,0,0,1,6,43,62,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,127,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,127,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,127,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,127,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,127,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,127,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,127,0,0,0,0,0,0,0,0,0,0,0,0,97,25,116,121};
+    assert(settings_decode(legacy,sizeof(legacy),&read));
+    assert(read.brightness==25 && read.alarms[0].enabled && read.alarms[0].minute==43 && read.phase[0]==0);
+    assert(settings_encode(&read,data) && data[4]==2);
     puts("PASS settings defaults, durable alarm fields, corruption and truncation rejection");
 }

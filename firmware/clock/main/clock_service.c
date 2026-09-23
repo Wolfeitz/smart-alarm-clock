@@ -1,3 +1,4 @@
+#include "diagnostics.h"
 #include "clock_service.h"
 #include "rtc_codec.h"
 #include <stdlib.h>
@@ -25,7 +26,7 @@ void clock_init(i2c_master_bus_handle_t bus)
     ESP_ERROR_CHECK(i2c_master_bus_add_device(bus,&cfg,&rtc));
     time_t epoch;esp_err_t e=clock_rtc_epoch(&epoch);
     if(e==ESP_OK){struct timeval tv={.tv_sec=epoch};settimeofday(&tv,NULL);synchronized=true;source="RTC / offline";}
-    printf("CLOCK_INIT rtc=%s source=%s\n",esp_err_to_name(e),source);
+    diagnostics_printf("CLOCK_INIT rtc=%s source=%s\n",esp_err_to_name(e),source);
 }
 bool clock_valid(void){return synchronized;}
 const char *clock_source(void){return source;}

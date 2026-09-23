@@ -1,3 +1,4 @@
+#include "diagnostics.h"
 #include "board.h"
 #include <stdio.h>
 #include <string.h>
@@ -45,7 +46,7 @@ void board_init(void)
         if(i==3 || i==4) vTaskDelay(pdMS_TO_TICKS(500));
     }
     vTaskDelay(pdMS_TO_TICKS(200));
-    printf("BOARD_RESET_DONE touch_probe=%s\n",esp_err_to_name(i2c_master_probe(bus,0x38,100)));
+    diagnostics_printf("BOARD_RESET_DONE touch_probe=%s\n",esp_err_to_name(i2c_master_probe(bus,0x38,100)));
     spi_bus_config_t spi={.mosi_io_num=7,.miso_io_num=2,.sclk_io_num=6,
         .quadwp_io_num=-1,.quadhd_io_num=-1,.max_transfer_sz=W*20*2};
     ESP_ERROR_CHECK(spi_bus_initialize(SPI2_HOST,&spi,SPI_DMA_CH_AUTO));

@@ -1,3 +1,4 @@
+#include "diagnostics.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,9 +41,9 @@ static void serial_poll(void)
                 esp_err_t err=ESP_ERR_INVALID_ARG;
                 if(end!=line+5 && *end==0 && !errno && value>=946684800LL && value<4102444800LL)
                     err=clock_set((time_t)value);
-                printf("TIME_SET status=%s epoch=%lld\n",esp_err_to_name(err),value);clock_ui_update();
+                diagnostics_printf("TIME_SET status=%s epoch=%lld\n",esp_err_to_name(err),value);clock_ui_update();
             }
-            if(!overflow && strcmp(line,"SOUND")==0)printf("AUDIO_TEST_REQUEST accepted=%d\n",audio_test());
+            if(!overflow && strcmp(line,"SOUND")==0)diagnostics_printf("AUDIO_TEST_REQUEST accepted=%d\n",audio_test());
             if(!overflow && strncmp(line,"ALARM ",6)==0){
                 unsigned i,h,m,days,date,on;char extra;
                 bool ok=sscanf(line+6,"%u %u %u %u %u %u %c",&i,&h,&m,&days,&date,&on,&extra)==6;
@@ -50,16 +51,21 @@ static void serial_poll(void)
                     alarm_config_t a={.enabled=on,.hour=h,.minute=m,.weekdays=days,.once_date=date};
                     ok=alarm_service_save(i,&a);
                 }else ok=false;
-                printf("ALARM_EDIT accepted=%d\n",ok);
+                diagnostics_printf("ALARM_EDIT accepted=%d\n",ok);
             }
-            if(!overflow && strcmp(line,"SNOOZE")==0)printf("ALARM_SNOOZE accepted=%d\n",alarm_service_snooze());
-            if(!overflow && strcmp(line,"DISMISS")==0)printf("ALARM_DISMISS accepted=%d\n",alarm_service_dismiss());
+            if(!overflow && strcmp(line,"SNOOZE")==0)diagnostics_printf("ALARM_SNOOZE accepted=%d\n",alarm_service_snooze());
+            if(!overflow && strcmp(line,"DISMISS")==0)diagnostics_printf("ALARM_DISMISS accepted=%d\n",alarm_service_dismiss());
+            if(!overflow && strncmp(line,"BRIGHT ",7)==0){
+                unsigned value;char extra;
+                bool ok=sscanf(line+7,"%u %c",&value,&extra)==1 && value>0 && value<=255;
+                diagnostics_printf("BRIGHT_SET accepted=%d\n",ok && alarm_service_brightness(value));
+            }
             if(!overflow && strcmp(line,"STATE")==0){
                 alarm_snapshot_t a;alarm_service_snapshot(&a);
-                printf("ALARM_STATE ringing=%u snoozed=%u brightness=%u storage=%s revision=%u\n",a.ringing,a.snoozed,a.settings.brightness,esp_err_to_name(a.storage_status),a.revision);
+                diagnostics_printf("ALARM_STATE ringing=%u snoozed=%u brightness=%u storage=%s revision=%u\n",a.ringing,a.snoozed,a.settings.brightness,esp_err_to_name(a.storage_status),a.revision);
                 for(unsigned j=0;j<ALARM_COUNT;j++){
                     alarm_config_t *c=&a.settings.alarms[j];
-                    printf("ALARM_SLOT index=%u enabled=%u hour=%u minute=%u days=%u date=%lu consumed=%lu\n",j,c->enabled,c->hour,c->minute,c->weekdays,(unsigned long)c->once_date,(unsigned long)c->consumed_date);
+                    diagnostics_printf("ALARM_SLOT index=%u enabled=%u hour=%u minute=%u days=%u date=%lu consumed=%lu\n",j,c->enabled,c->hour,c->minute,c->weekdays,(unsigned long)c->once_date,(unsigned long)c->consumed_date);
                 }
             }
             n=0;overflow=false;
@@ -68,22 +74,21 @@ static void serial_poll(void)
 }
 void app_main(void)
 {
+    diagnostics_init();
     board_init();clock_init(board_bus());audio_init(board_bus());alarm_service_init();
-    usb_serial_jtag_driver_config_t usb=USB_SERIAL_JTAG_DRIVER_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(usb_serial_jtag_driver_install(&usb));
     lv_init();lv_tick_set_cb(tick);
     lv_display_t *d=lv_display_create(480,320);lv_display_set_color_format(d,LV_COLOR_FORMAT_RGB565);
     void *buf=heap_caps_malloc(480*20*2,MALLOC_CAP_DMA);if(!buf)abort();
     lv_display_set_buffers(d,buf,NULL,480*20*2,LV_DISPLAY_RENDER_MODE_PARTIAL);lv_display_set_flush_cb(d,flush);
     lv_indev_t *input=lv_indev_create();lv_indev_set_type(input,LV_INDEV_TYPE_POINTER);lv_indev_set_read_cb(input,touch_read);
-    clock_ui_init();clock_ui_update();printf("CLOCK_READY lvgl=%d.%d.%d timezone=America/New_York\n",LVGL_VERSION_MAJOR,LVGL_VERSION_MINOR,LVGL_VERSION_PATCH);
+    clock_ui_init();clock_ui_update();diagnostics_printf("CLOCK_READY lvgl=%d.%d.%d timezone=America/New_York\n",LVGL_VERSION_MAJOR,LVGL_VERSION_MINOR,LVGL_VERSION_PATCH);
     uint32_t last=0,report=0;
     for(;;){
         serial_poll();uint32_t now=tick();
         if(now-last>=1000){last=now;clock_ui_update();}
         if(now-report>=10000){
             report=now;time_t rtc_epoch=0;esp_err_t err=clock_rtc_epoch(&rtc_epoch);
-            printf("CLOCK_ALIVE valid=%d epoch=%lld rtc=%lld rtc_status=%s heap=%lu\n",clock_valid(),(long long)time(NULL),(long long)rtc_epoch,esp_err_to_name(err),(unsigned long)esp_get_free_heap_size());
+            diagnostics_printf("CLOCK_ALIVE valid=%d epoch=%lld rtc=%lld rtc_status=%s heap=%lu\n",clock_valid(),(long long)time(NULL),(long long)rtc_epoch,esp_err_to_name(err),(unsigned long)esp_get_free_heap_size());
         }
         lv_timer_handler();vTaskDelay(pdMS_TO_TICKS(10));
     }

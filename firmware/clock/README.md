@@ -78,9 +78,15 @@ and Dismiss controls. A once alarm disables after consuming its occurrence.
 
 Scheduling skips nonexistent spring-DST times, consumes at most one occurrence
 per local date, allows120-second catch-up and caps ringing at10 minutes. Snooze
-uses monotonic time so wall-clock changes do not shorten it. Ringing/snooze restart
-recovery remains under development; this build is not yet a qualified wake-up alarm.
+uses monotonic time so wall-clock changes do not shorten it. Ringing/snooze state and UTC deadlines persist in schema2; both resume after
+MCU reset with valid RTC. Dismissal also survives reset. Expired snooze catches
+up within120 seconds; stale events are discarded. Full power-loss and audible
+speaker checks remain incomplete; this build is not yet a qualified wake-up alarm.
 
 Hardware tests prove settings survive reset and owner-task ring/snooze/dismiss
 transitions. Audible sound and physical editor acceptance remain unverified.
 Test scripts/logs are under local-config/clock; serial STATE reports current slots.
+
+Runtime diagnostics use a bounded best-effort queue; slow/disconnected USB can
+lose logs without blocking UI or alarm tasks. Tone synthesis uses an integer
+waveform and explicitly yields each DMA block.

@@ -96,3 +96,15 @@ Three ten-second reports showed advancing system/RTC time within one second,
 rtc_status=ESP_OK, stable free heap224652. Serial recorded both brightness
 events, and owner confirmed readable clock/date, advancing seconds and both
 buttons work. This is not battery-retention, alarm or audio acceptance.
+
+## Alarm recovery (2026-09-23)
+
+Host suites in firmware/clock/tests cover engine recurrence/DST/grace/monotonic
+snooze, settings corruption/truncation/schema1 migration, active-phase recovery,
+and RTC encoding. Compile each with its matching main modules, C11,
+-D_POSIX_C_SOURCE=200809L, -Wall -Wextra -Werror.
+Hardware reset proof: ringing resumes, snooze resumes, dismissal persists,
+brightness persists; serial snapshots confirm restored disabled test slots.
+See WORK for private logs, failed intermediate attempts and installed hash.
+Audible sound, physical alarm editor/controls and battery/full-power-loss behavior
+remain unverified. No build or serial success establishes those physical results.
