@@ -13,7 +13,8 @@
 #include "board.h"
 #include "clock_service.h"
 #include "audio.h"
-static lv_obj_t *time_label,*date_label,*seconds_label,*source_label,*dim_label;
+#include "alarm_service.h"
+#include "clock_ui.h"
 static uint32_t tick(void){return (uint32_t)(esp_timer_get_time()/1000);}
 static void flush(lv_display_t *d,const lv_area_t *a,uint8_t *data)
 {
@@ -25,30 +26,6 @@ static void touch_read(lv_indev_t *i,lv_indev_data_t *d)
     (void)i;int x,y;bool pressed=board_touch(&x,&y);
     d->state=pressed?LV_INDEV_STATE_PRESSED:LV_INDEV_STATE_RELEASED;
     if(pressed){d->point.x=x;d->point.y=y;}
-}
-static void sound_clicked(lv_event_t *e)
-{
-    (void)e;printf("AUDIO_TEST_REQUEST accepted=%d\n",audio_test());
-}
-static void dim_clicked(lv_event_t *e)
-{
-    (void)e;static bool dim;dim=!dim;board_brightness(dim);
-    lv_label_set_text(dim_label,dim?"Brighten":"Dim screen");printf("CLOCK_BRIGHTNESS dim=%d\n",dim);
-}
-static lv_obj_t *label(const char *text,const lv_font_t *font,int y,uint32_t color)
-{
-    lv_obj_t *o=lv_label_create(lv_screen_active());lv_label_set_text(o,text);
-    lv_obj_set_style_text_font(o,font,0);lv_obj_set_style_text_color(o,lv_color_hex(color),0);
-    lv_obj_align(o,LV_ALIGN_TOP_MID,0,y);return o;
-}
-static void update(void)
-{
-    if(!clock_valid())return;
-    time_t now=time(NULL);struct tm local;localtime_r(&now,&local);char b[64];
-    strftime(b,sizeof(b),"%I:%M",&local);lv_label_set_text(time_label,b[0]=='0'?b+1:b);
-    strftime(b,sizeof(b),"%A, %B %d",&local);lv_label_set_text(date_label,b);
-    strftime(b,sizeof(b),"%p   :%S   %Z",&local);lv_label_set_text(seconds_label,b);
-    lv_label_set_text(source_label,clock_source());
 }
 static void serial_poll(void)
 {
@@ -63,16 +40,35 @@ static void serial_poll(void)
                 esp_err_t err=ESP_ERR_INVALID_ARG;
                 if(end!=line+5 && *end==0 && !errno && value>=946684800LL && value<4102444800LL)
                     err=clock_set((time_t)value);
-                printf("TIME_SET status=%s epoch=%lld\n",esp_err_to_name(err),value);update();
+                printf("TIME_SET status=%s epoch=%lld\n",esp_err_to_name(err),value);clock_ui_update();
             }
             if(!overflow && strcmp(line,"SOUND")==0)printf("AUDIO_TEST_REQUEST accepted=%d\n",audio_test());
+            if(!overflow && strncmp(line,"ALARM ",6)==0){
+                unsigned i,h,m,days,date,on;char extra;
+                bool ok=sscanf(line+6,"%u %u %u %u %u %u %c",&i,&h,&m,&days,&date,&on,&extra)==6;
+                if(ok && i<ALARM_COUNT && h<24 && m<60 && days<128 && on<2){
+                    alarm_config_t a={.enabled=on,.hour=h,.minute=m,.weekdays=days,.once_date=date};
+                    ok=alarm_service_save(i,&a);
+                }else ok=false;
+                printf("ALARM_EDIT accepted=%d\n",ok);
+            }
+            if(!overflow && strcmp(line,"SNOOZE")==0)printf("ALARM_SNOOZE accepted=%d\n",alarm_service_snooze());
+            if(!overflow && strcmp(line,"DISMISS")==0)printf("ALARM_DISMISS accepted=%d\n",alarm_service_dismiss());
+            if(!overflow && strcmp(line,"STATE")==0){
+                alarm_snapshot_t a;alarm_service_snapshot(&a);
+                printf("ALARM_STATE ringing=%u snoozed=%u brightness=%u storage=%s revision=%u\n",a.ringing,a.snoozed,a.settings.brightness,esp_err_to_name(a.storage_status),a.revision);
+                for(unsigned j=0;j<ALARM_COUNT;j++){
+                    alarm_config_t *c=&a.settings.alarms[j];
+                    printf("ALARM_SLOT index=%u enabled=%u hour=%u minute=%u days=%u date=%lu consumed=%lu\n",j,c->enabled,c->hour,c->minute,c->weekdays,(unsigned long)c->once_date,(unsigned long)c->consumed_date);
+                }
+            }
             n=0;overflow=false;
         }else if(n<sizeof(line)-1)line[n++]=b[i];else overflow=true;
     }
 }
 void app_main(void)
 {
-    board_init();clock_init(board_bus());audio_init(board_bus());
+    board_init();clock_init(board_bus());audio_init(board_bus());alarm_service_init();
     usb_serial_jtag_driver_config_t usb=USB_SERIAL_JTAG_DRIVER_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(usb_serial_jtag_driver_install(&usb));
     lv_init();lv_tick_set_cb(tick);
@@ -80,28 +76,11 @@ void app_main(void)
     void *buf=heap_caps_malloc(480*20*2,MALLOC_CAP_DMA);if(!buf)abort();
     lv_display_set_buffers(d,buf,NULL,480*20*2,LV_DISPLAY_RENDER_MODE_PARTIAL);lv_display_set_flush_cb(d,flush);
     lv_indev_t *input=lv_indev_create();lv_indev_set_type(input,LV_INDEV_TYPE_POINTER);lv_indev_set_read_cb(input,touch_read);
-    lv_obj_set_style_bg_color(lv_screen_active(),lv_color_hex(0x0b1119),0);
-    date_label=label("Clock",&lv_font_montserrat_20,30,0xa6b5c8);
-    time_label=label("--:--",&lv_font_montserrat_48,103,0xf6eddc);
-    lv_obj_set_style_transform_pivot_x(time_label,LV_PCT(50),0);
-    lv_obj_set_style_transform_pivot_y(time_label,LV_PCT(50),0);
-    lv_obj_set_style_transform_scale(time_label,384,0);
-    seconds_label=label("Waiting for time",&lv_font_montserrat_20,186,0xa6b5c8);
-    source_label=label("Set time via USB",&lv_font_montserrat_16,225,0x7c9eaa);
-    lv_obj_t *button=lv_button_create(lv_screen_active());lv_obj_set_size(button,164,46);
-    lv_obj_align(button,LV_ALIGN_BOTTOM_LEFT,52,-16);lv_obj_set_style_bg_color(button,lv_color_hex(0x203347),0);
-    lv_obj_add_event_cb(button,dim_clicked,LV_EVENT_CLICKED,NULL);
-    dim_label=lv_label_create(button);lv_label_set_text(dim_label,"Dim screen");lv_obj_center(dim_label);
-    lv_obj_t *sound=lv_button_create(lv_screen_active());lv_obj_set_size(sound,164,46);
-    lv_obj_align(sound,LV_ALIGN_BOTTOM_RIGHT,-52,-16);
-    lv_obj_set_style_bg_color(sound,lv_color_hex(0x203347),0);
-    lv_obj_add_event_cb(sound,sound_clicked,LV_EVENT_CLICKED,NULL);
-    lv_obj_t *sound_label=lv_label_create(sound);lv_label_set_text(sound_label,"Test sound");lv_obj_center(sound_label);
-    update();printf("CLOCK_READY lvgl=%d.%d.%d timezone=America/New_York\n",LVGL_VERSION_MAJOR,LVGL_VERSION_MINOR,LVGL_VERSION_PATCH);
+    clock_ui_init();clock_ui_update();printf("CLOCK_READY lvgl=%d.%d.%d timezone=America/New_York\n",LVGL_VERSION_MAJOR,LVGL_VERSION_MINOR,LVGL_VERSION_PATCH);
     uint32_t last=0,report=0;
     for(;;){
         serial_poll();uint32_t now=tick();
-        if(now-last>=1000){last=now;update();}
+        if(now-last>=1000){last=now;clock_ui_update();}
         if(now-report>=10000){
             report=now;time_t rtc_epoch=0;esp_err_t err=clock_rtc_epoch(&rtc_epoch);
             printf("CLOCK_ALIVE valid=%d epoch=%lld rtc=%lld rtc_status=%s heap=%lu\n",clock_valid(),(long long)time(NULL),(long long)rtc_epoch,esp_err_to_name(err),(unsigned long)esp_get_free_heap_size());

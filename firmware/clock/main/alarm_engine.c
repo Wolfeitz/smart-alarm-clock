@@ -59,3 +59,27 @@ void alarm_dismiss(alarm_engine_t *e)
 { for(unsigned i=0;i<ALARM_COUNT;i++)e->runtime[i].phase=ALARM_IDLE; }
 void alarm_cancel(alarm_engine_t *e,unsigned i)
 { if(i<ALARM_COUNT)e->runtime[i].phase=ALARM_IDLE; }
+time_t alarm_next(const alarm_config_t alarms[ALARM_COUNT],time_t now)
+{
+    struct tm today;if(!localtime_r(&now,&today))return 0;
+    time_t best=0;
+    for(unsigned i=0;i<ALARM_COUNT;i++){
+        const alarm_config_t *a=&alarms[i];if(!a->enabled || !alarm_config_valid(a))continue;
+        for(unsigned offset=0;offset<(a->weekdays?8u:1u);offset++){
+            struct tm date=today;date.tm_hour=12;date.tm_min=0;date.tm_sec=0;date.tm_isdst=-1;
+            if(a->weekdays)date.tm_mday+=offset;
+            else{date.tm_year=a->once_date/10000-1900;date.tm_mon=a->once_date/100%100-1;date.tm_mday=a->once_date%100;}
+            if(mktime(&date)==(time_t)-1)continue;
+            uint32_t key=alarm_date(&date);
+            if(key<=a->consumed_date || (a->weekdays && !(a->weekdays&(1u<<date.tm_wday))))continue;
+            for(int dst=0;dst<=1;dst++){
+                struct tm wanted=date;wanted.tm_hour=a->hour;wanted.tm_min=a->minute;wanted.tm_isdst=dst;
+                time_t candidate=mktime(&wanted);struct tm actual;
+                if(candidate<now || !localtime_r(&candidate,&actual))continue;
+                if(alarm_date(&actual)!=key || actual.tm_hour!=a->hour || actual.tm_min!=a->minute)continue;
+                if(!best || candidate<best)best=candidate;
+            }
+        }
+    }
+    return best;
+}

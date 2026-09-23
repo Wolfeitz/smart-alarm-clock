@@ -37,5 +37,10 @@ int main(void)
     e=daily(7,30);e.alarms[1]=e.alarms[0];assert(alarm_tick(&e,now,true,0)==3);
     alarm_cancel(&e,0);assert(alarm_ringing(&e)==2);
     e.alarms[0].weekdays=0;e.alarms[0].once_date=20260229;assert(!alarm_config_valid(&e.alarms[0]));
+    e=daily(2,30);time_t spring=at(2026,3,8,0,0,0,-1);
+    assert(alarm_next(e.alarms,spring)==at(2026,3,9,2,30,0,-1));
+    e=daily(1,30);time_t first=at(2026,11,1,1,30,0,1),second=at(2026,11,1,1,30,0,0);
+    assert(alarm_next(e.alarms,first-1)==first);assert(alarm_next(e.alarms,first+1)==second);
+    e.alarms[0].consumed_date=20261101;assert(alarm_next(e.alarms,first+1)==at(2026,11,2,1,30,0,-1));
     puts("PASS alarm triggers, invalid time, weekdays/once, grace window, DST, duplicates, snooze, dismiss, timeout, simultaneous alarms");
 }

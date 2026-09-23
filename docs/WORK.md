@@ -563,3 +563,39 @@ bootstrap documentation and whitespace checks passed. Current source adds tested
 foundations; alarm task/editor and NVS partition deployment remain next work.
 Goal not complete: audible output, editable deployed alarms, persistence and
 power-loss acceptance still outstanding.
+
+## Alarm runtime/editor integration
+
+Previous goal turn was progress: tested scheduling/settings modules committed.
+This turn connects an independent100ms alarm-owner task, bounded UI command queue,
+mutex-protected snapshots, persistent saves and looping/stoppable local tone.
+UI commands change a candidate setting and commit it before activation; failed
+save retains prior config and exposes error. Occurrence consumption is committed
+before sound, with persistence failure visibly reported while local ringing still
+runs (storage failure must not silently suppress a wake-up). Runtime restart
+recovery will be audited separately before completion. Eight editable alarm slots,
+weekday toggles, once date, enable switch and saved brightness are required.
+Current source uses dedicated clockcfg partition at0xa00000/0x6000 only after live
+read confirms blank; factory partitions/recovery image stay intact.
+
+Alarm editor/runtime deployed. Live esptool read of0xa00000/0x6000 returned
+exactly24576 bytes of0xff, matching factory backup. Added clockcfg NVS partition
+there; flashed partition table0x8000 and app0x20000 with verified hashes. No
+factory NVS/data erased. Current app SHA256:
+5f5f0f19f7ea6288d957eca25445bb5eb87c48d691ac3d7ef40276d0034b5655.
+
+Settings load/save ESP_OK. Disabled slot7 06:43 weekday mask62 survived MCU
+reset exactly. Scheduled once alarm7 triggered at18:41 on2026-09-23 with
+consumption persistence ESP_OK. First harness queried a queued snooze too early
+and timed out, so not counted as snooze proof. Corrected test observed owner-task
+ALARM_PHASE ringing64/snoozed0 -> ringing0/snoozed64 -> ringing0/snoozed0.
+Test slots6/7 restored disabled. Runtime logs alarm-startup.log/alarm-runtime.log/
+alarm-transitions.log under local-config/clock. Clock continued, heap204096
+before alarm overlay. Owner editor and louder-tone feedback requested.
+
+Host next-alarm tests also verify spring-gap skipping and both fall-hour candidates
+with consumed-date suppression. Home now shows next occurrence rather than count.
+All relevant host tests and IDF build pass; documentation/whitespace pass.
+Next: persist/recover ringing and snooze across restart (currently runtime-only),
+verify brightness persistence and physical editor, resolve speaker silence, then
+power-loss checks. Do not call goal complete on current partial acceptance.

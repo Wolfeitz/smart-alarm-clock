@@ -126,7 +126,9 @@ readable clock/date, advancing seconds and touch Dim/Brighten. USB provisioning
 set UTC in the PCF85063; MCU reset restored time from RTC without provisioning.
 See [clock README](../firmware/clock/README.md) for build and time commands.
 
-Current layout matches the diagnostic (factory app offset0x20000). From the
+Current layout keeps factory app offset0x20000 and adds project-owned clockcfg
+NVS at0xa00000/0x6000. This table is already installed; it differs from the
+original diagnostics table. From the
 project root after building and closing any serial reader:
 
 ```sh

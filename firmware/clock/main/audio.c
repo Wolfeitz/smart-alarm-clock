@@ -1,5 +1,6 @@
 #include "audio.h"
 #include <math.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <string.h>
 #include "driver/i2s_std.h"
@@ -10,14 +11,17 @@
 #include "freertos/queue.h"
 static i2s_chan_handle_t tx;
 static QueueHandle_t requests;
+static atomic_bool alarm_active;
 static void play_task(void *unused)
 {
     (void)unused;uint8_t command;int16_t pcm[256*2];
     for(;;){
-        xQueueReceive(requests,&command,portMAX_DELAY);
+        bool alarm=atomic_load(&alarm_active);
+        if(!alarm && xQueueReceive(requests,&command,pdMS_TO_TICKS(50))!=pdTRUE)continue;
         esp_err_t result=ESP_OK;size_t total=0;
         /* Four quiet pulses, with a 10ms envelope to avoid edge clicks. */
         for(unsigned frame=0;frame<22050*2;frame+=256){
+            if(alarm && !atomic_load(&alarm_active))break;
             for(unsigned i=0;i<256;i++){
                 unsigned n=frame+i,pos=n%11025;
                 float envelope=pos<220?pos/220.0f:pos<5292?1.0f:pos<5512?(5512-pos)/220.0f:0;
@@ -77,3 +81,5 @@ bool audio_test(void)
 {
     uint8_t command=1;return requests && xQueueSend(requests,&command,0)==pdTRUE;
 }
+
+void audio_alarm(bool ringing){atomic_store(&alarm_active,ringing);}

@@ -1,10 +1,11 @@
 #include "clock_service.h"
 #include "rtc_codec.h"
 #include <stdlib.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <sys/time.h>
 static i2c_master_dev_handle_t rtc;
-static bool synchronized;
+static atomic_bool synchronized;
 static const char *source="Set time via USB";
 static esp_err_t read_regs(uint8_t reg,uint8_t *v,size_t n)
 { return i2c_master_transmit_receive(rtc,&reg,1,v,n,100); }
