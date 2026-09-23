@@ -13,12 +13,12 @@ assuming the chip is V003. Driver protocol can be compatible with multiple MCUs.
 | Interface | Recovered configuration | Evidence in factory runtime address space | Physical validation |
 |---|---|---|---|
 | I2C0 | SDA27, SCL26, internal pullups, glitch filter7 | bsp_i2c_init 0x4201bade; config stores at 0x4201bafe–0x4201bb1c | Four scans: eight ACKs, zero errors |
-| SPI2 bus | MOSI7, MISO2, SCLK6, quad pins unused | bsp_spi_init 0x4201ba5c, stores 0x4201ba7c–0x4201ba92 | Pending |
-| LCD SPI | CS8, DC5, mode0, 60MHz, queue2, 8-bit command/parameter | bsp_display_new 0x4201c07a, 0x4201c0ae–0x4201c0ce | Pending |
-| LCD panel | ST7796, 16 bits/pixel, native reset GPIO -1 | 0x4201c120–0x4201c15e and driver-name string | Pending |
-| Touch | I2C address0x38, interrupt GPIO3, reset GPIO -1 | config 0x4201c1ee–0x4201c242; FT6336 constructor | Pending |
+| SPI2 bus | MOSI7, MISO2, SCLK6, quad pins unused | bsp_spi_init 0x4201ba5c, stores 0x4201ba7c–0x4201ba92 | Display rendering passed; MISO reads not tested |
+| LCD SPI | CS8, DC5, mode0, 60MHz, queue2, 8-bit command/parameter | bsp_display_new 0x4201c07a, 0x4201c0ae–0x4201c0ce | Rendering passed at20MHz |
+| LCD panel | ST7796, 16 bits/pixel, native reset GPIO -1 | 0x4201c120–0x4201c15e and driver-name string | Software reset and rendering passed |
+| Touch | I2C address0x38, interrupt GPIO3, reset GPIO -1 | config 0x4201c1ee–0x4201c242; FT6336 constructor | Aligned drawing/CLEAR confirmed; interrupt not tested |
 | I/O expander | I2C address0x24, 400kHz | bsp init at 0x4201bfe4; constructor 0x42022150 | Pending |
-| Backlight | Expander command byte0x05 followed by one PWM byte; 0–100 mapped to 0–255 | bsp brightness 0x4201c25a calls 0x42022308 | Pending |
+| Backlight | Expander command byte0x05 followed by one PWM byte; 0–100 mapped to 0–255 | bsp brightness 0x4201c25a calls 0x42022308 | PWM160 command succeeded; brightness range untested |
 | Audio I2S | MCLK unused(-1), BCLK23, WS10, DOUT25, DIN24 | default 72-byte std config at 0x4227f3a8, GPIO words at 0x4227f3d8 | Pending |
 
 I2C struct layout was checked against official ESP-IDF v5.5.4
@@ -51,3 +51,18 @@ Firmware is currently the board-probe, not the factory GUI. Boot log confirms
 ESP-IDF v6.1 and the measured 32MB flash with configured 16MB accessible range.
 Logs: local-config/board-probe/serial.log and write.log. Physical display/touch,
 RTC content, audio and cold-power-start behavior remain untested by this probe.
+
+
+## Display/touch acceptance
+
+Owner confirmed the final test works correctly on 2026-09-23 ("Perfect!").
+ST7796 landscape480x320: BGR565, invert=true, swapXY=true, mirrorX=true,
+mirrorY=true. Touch reports portrait coordinates; final mapping is
+screen_x=479-raw_y, screen_y=raw_x. Initial reflection and opposite-corner
+button activation were corrected using user observations and raw touch logs.
+
+Current firmware is display-touch, superseding board-probe. Uses software LCD
+reset and existing power rails, with expander command5 PWM160; no PMU or
+expander direction/reset writes. Warm-reset display/touch acceptance is complete.
+Cold-power startup, sleep/wake, interrupt input and full brightness range remain
+unqualified. The product UI/LVGL and alarm features are not implemented yet.

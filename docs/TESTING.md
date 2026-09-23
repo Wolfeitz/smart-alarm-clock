@@ -76,3 +76,12 @@ firmware/board-probe builds under v6.1 and runs on the board. Four complete
 address-only scans on SDA27/SCL26 returned the same eight ACKs with zero errors.
 See hardware/RECOVERED-MAP.md for addresses and provenance. This validates the
 bus mapping but not device identity, register semantics, or display/audio paths.
+
+## Display/touch test (2026-09-23)
+
+IDF6.1 build and flash passed. Panel initialization/rendering stayed responsive;
+serial logs recorded touch coordinates with zero I2C errors. Owner observed
+initial reflection, then confirmed the final corrected drawing/CLEAR behavior.
+Final transform: x=479-raw_y, y=raw_x; swapXY/mirrorX/mirrorY enabled for LCD.
+This qualifies warm-reset diagnostic display/touch, not cold-power startup,
+LVGL integration, audio, RTC, or alarm reliability.

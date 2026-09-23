@@ -1,6 +1,6 @@
 # Work, decisions and evidence
 
-Owner: Rob. Updated: 2026-09-23. Approved bootstrap complete. Hardware readiness active: IDF 6.1 board-probe installed; recovered I2C bus verified; factory-derived LCD/audio map awaiting hardware tests.
+Owner: Rob. Updated: 2026-09-23. Approved bootstrap complete. Hardware readiness active: IDF6.1 display-touch installed; I2C, screen rendering and aligned touch/CLEAR verified; cold-start power/audio still outstanding.
 Approval: user replied “Approved” to docs/bootstrap/PROPOSAL.md in this task.
 
 ## Bootstrap checklist
@@ -357,3 +357,45 @@ until tested. No destructive full erase, eFuse changes or network provisioning.
 Documentation verifier and whitespace checks passed after the recovered-map
 and hardware-test updates. Local Git retains probe source and evidence notes;
 private factory binaries/disassembly remain ignored.
+
+## Authorized display/touch bring-up
+
+Owner requested working display/touch. Acceptance: IDF6.1 diagnostic initializes
+ST7796 on recovered SPI pins, draws a visibly new test screen with heartbeat,
+logs FT6336 coordinates and draws corresponding marks; owner checks alignment.
+Single UI loop owns SPI and I2C reads. No PMU writes, audio or network changes.
+Use software LCD reset and existing powered rails first; cold-power initialization
+remains a separate verification. Backlight writes use recovered expander command5.
+Touch factory routine reads count from register2 and six bytes per point at3,
+12-bit X/Y high nibble + low byte; 0x42022bc4–0x42022d06.
+
+Display/touch build: vendored official esp_lcd_st7796 1.4.0, upstream commit
+fd0098aaa277c5b35cc54779ee7bfbda72e8db1e. Five source/header/license files
+verified against published CHECKSUMS.json. Local CMake uses IDF6.1 GPIO dependency
+and version defines; C5 absent in upstream manifest, hence explicitly a local
+SPI port. Initial compiler indentation warning corrected; build then passed.
+
+First on-device run: DISPLAY_READY under v6.1; repeated DISPLAY_ALIVE with zero
+I2C errors. Owner confirmed visible test and drawing but reported reflection.
+Raw touch logs included Y>320, proving portrait touch axes despite landscape
+display. Corrected display mirrorY and transformed x=raw_y, y=319-raw_x.
+App-only update at0x20000 verified successfully. Physical alignment check pending.
+Evidence: local-config/display-touch/{build.log,write.log,serial.log,
+write-orientation.log,orientation-serial.log}.
+
+
+Final touch correction: owner reported visible CLEAR at upper-right activated by
+lower-left touch. Together with raw portrait coordinates, this establishes the
+two-axis reversal in the first transform. Final mapping x=479-raw_y, y=raw_x;
+LCD swapXY/mirrorX/mirrorY remain true. App-only reflash exit0, hash verified.
+Owner confirmed "Perfect!" after the aligned drawing/CLEAR check. Firmware is
+LEFT INSTALLED. Serial monitor records DISPLAY_READY/v6.1 and DISPLAY_ALIVE;
+no PMU register changes or factory restoration occurred.
+
+Next: qualify cold-power/reset behavior and power initialization, then integrate
+LVGL on this verified display/touch transport. Other hardware gates remain open.
+
+Final installed app SHA-256:
+`f28413ca4fd60b5fa9929ee27f74e7b4008090bba6f4f4d850223668aeb8e252`.
+Documentation verifier and whitespace checks passed. Vendor source hashes checked;
+private binary/log artifacts remain under ignored local-config.

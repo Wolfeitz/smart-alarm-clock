@@ -123,7 +123,7 @@ monitor with failed firmware without checking reset/serial control state.
 
 ## Current installed application
 
-The later owner-authorized wiring investigation left firmware/board-probe on the
-board after a successful I2C ACK test. It runs IDF v6.1 and reports over USB; it
-does not implement the factory GUI. The recovery test above remains valid
-historical evidence, not a statement that factory firmware is currently running.
+`firmware/display-touch` is installed and running under IDF6.1. The owner
+confirmed aligned drawing and the CLEAR button. It supersedes the bus-only probe
+and factory demo. Build instructions are in its README. No rollback was performed.
+The earlier full-image recovery test remains valid historical evidence.

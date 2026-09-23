@@ -2,8 +2,9 @@
 
 A local-first bedside alarm clock project targeting the Waveshare ESP32-C5 Touch
 LCD 3.5-inch board described in the supplied brief and identified by Rob's receipt
-(recorded in PROJECT). Firmware is not implemented; PCB revision, peripheral
-identity and toolchain compatibility still require verification.
+(recorded in PROJECT). The clock application is not implemented yet. IDF6.1 diagnostics now run on the
+board with physically confirmed display/touch; see WORK for current evidence and
+remaining hardware gates.
 
 ## Start here / Operating Model Index
 
