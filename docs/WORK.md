@@ -682,3 +682,14 @@ pass via python scripts/test-clock-host.py; docs and whitespace checks pass.
 Asked owner to inspect Set time and save/reopen a disabled alarm. Audible speaker
 response remains pending from earlier question. No battery/full-power-loss proof.
 Goal remains active; physical acceptance is still required.
+
+## Completion audit after ab10c17
+
+Previous turn was progress: completed the real five-minute snooze proof and
+installed offline time entry/exact save acknowledgments. Reviewed current source
+and receipts against every active-goal requirement; recorded the distinction
+between host/serial evidence and physical evidence in CLOCK-ACCEPTANCE.md.
+Audible output, new screen/buttons and complete power loss remain unproven.
+Requested10-second USB unplug/replug with battery left disconnected; no firmware
+reset or automatic TIME provisioning will substitute for that physical test.
+No test process was left running by the previous turn. Goal is not complete.
