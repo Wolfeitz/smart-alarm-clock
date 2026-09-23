@@ -2,7 +2,8 @@
 
 Subject: ESP32-C5-Touch-LCD-3.5 source, schematic and factory recovery image
 
-I own the ESP32-C5 3.5-inch rounded-corner IPS 320×480 board with dual-band Wi-Fi.
+I own SKU 35419, ESP32-C5-Touch-LCD-3.5-C, the 3.5-inch rounded-corner IPS
+320×480 board with dual-band Wi-Fi.
 The device is running its factory touchscreen demo; display and touch respond,
 and the WLAN screen scans networks. USB diagnostics identify ESP32-C5 silicon
 revision v1.2 and 32 MB flash. The existing application metadata reports project

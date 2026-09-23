@@ -5,6 +5,14 @@ source/schematic unavailable in checked public vendor resources. Firmware bring-
 is not complete. Rob owns the physical board; this record separates device evidence,
 user observations and vendor specifications.
 
+## Purchased variant
+
+User supplied the product URL `https://www.waveshare.com/esp32-c5-touch-lcd-3.5.htm?sku=35419`.
+The official board documentation maps **SKU 35419** to
+**ESP32-C5-Touch-LCD-3.5-C**. This resolves the ordered variant, not the PCB revision.
+The storefront itself rejected automated retrieval (HTTP 403); the mapping comes
+from the successfully retrieved official documentation SKU table.
+
 ## Confirmed on the connected device
 
 | Item | Evidence |

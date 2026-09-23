@@ -162,3 +162,10 @@ Post-diagnostic runtime check: bounded pyserial capture received 6,313 bytes of
 factory startup output, including app_main() and AXP2101 `Init PMU SUCCESS!`.
 Documentation verification and whitespace checks passed. Hardware GUI/peripheral
 acceptance remains incomplete; no replacement firmware has been installed.
+
+2026-09-23: owner supplied storefront URL with SKU 35419 plus official overview,
+flashing and resource links. Overview SKU table resolves the purchased variant to
+ESP32-C5-Touch-LCD-3.5-C. The flashing page still says test firmware is in preparation.
+Storefront and direct resource-page fetches returned 403 during recheck. Following
+the Resources link from the overview succeeded through the web reader and again
+showed examples/hardware resources as still being prepared. No board changes.

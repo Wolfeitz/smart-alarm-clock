@@ -24,6 +24,10 @@ RTC, flash/PSRAM configuration or pin map. The PCF85063 RTC remains a claim from
 the earlier brief pending vendor/board verification. Driver and SDK compatibility
 must be established from the matching vendor example and actual board revision.
 
+Subsequent user-provided product link identifies SKU **35419**, which Waveshare's
+official documentation maps to **ESP32-C5-Touch-LCD-3.5-C**. See HARDWARE.md for
+verified silicon/flash identity, factory backup and remaining board-support gaps.
+
 Use ESP-IDF and C/C++, LVGL for local GUI, FreeRTOS tasks/events/queues, NVS for
 configuration, vendor-supported drivers, SD/FAT where useful, ESP-IDF HTTP(S) and
 SNTP. Exact SDK/BSP/LVGL versions, dependency locks and layout follow the verified
