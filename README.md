@@ -1,8 +1,9 @@
 # esp-link — bedside clock
 
 A local-first bedside alarm clock project targeting the Waveshare ESP32-C5 Touch
-LCD 3.5-inch board described in the supplied brief. Firmware is not implemented;
-board identity, revision and toolchain compatibility still require verification.
+LCD 3.5-inch board described in the supplied brief and identified by Rob's receipt
+(recorded in PROJECT). Firmware is not implemented; PCB revision, peripheral
+identity and toolchain compatibility still require verification.
 
 ## Start here / Operating Model Index
 

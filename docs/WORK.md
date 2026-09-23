@@ -1,6 +1,6 @@
 # Work, decisions and evidence
 
-Owner: Rob. Updated: 2026-09-23. Approved bootstrap complete. Next proposed task: hardware readiness (not started).
+Owner: Rob. Updated: 2026-09-23. Approved bootstrap complete. Hardware readiness: receipt identification recorded; technical discovery pending.
 Approval: user replied “Approved” to docs/bootstrap/PROPOSAL.md in this task.
 
 ## Bootstrap checklist
@@ -30,7 +30,14 @@ Discovery evidence and input SHA-256 values are in the approved proposal. Curren
 shell sandbox previously failed to launch with `mountinfo path is not absolute`;
 reviewed escalation worked. Do not disable global sandbox controls to fix this task.
 
-## Next bounded task: hardware readiness (not started)
+## Next bounded task: hardware readiness (receipt identification recorded)
+
+2026-09-23: Rob supplied the precise purchased-board description from the receipt;
+recorded verbatim in PROJECT. It identifies the ESP32-C5 rounded-corner 3.5-inch IPS
+320×480, 262K-color board with 2.4/5GHz Wi-Fi and Bluetooth 5 LE. SKU/PCB revision,
+peripheral controllers, memory configuration and physical device identity remain
+unverified. This clarification updates the target evidence; it does not establish
+SDK/driver compatibility or authorize flashing or installation.
 
 Goal: establish a reproducible, board-specific basis for diagnostics before writing
 clock features. Read current vendor documentation/example sources; identify exact
@@ -48,7 +55,7 @@ Then implement diagnostics within the next authorized scope and demonstrate HW.
 
 Preserve the brief's section 25 dependency order:
 
-1. Bootstrap (current).
+1. Bootstrap (complete).
 2. Hardware diagnostics infrastructure.
 3. Display, touch and LVGL.
 4. RTC/time.
@@ -106,3 +113,6 @@ Documentation verification is complete; no firmware build, flashing, peripheral,
 service integration or physical wake-up claim is made. The observed CLI read-only
 probe succeeded despite the separate desktop shell sandbox launch issue seen
 during discovery. No global runtime or host configuration was changed.
+
+2026-09-23: recorded receipt description in PROJECT and updated hardware-readiness
+status. Documentation verifier and whitespace check passed; no hardware operations.

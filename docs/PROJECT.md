@@ -10,9 +10,19 @@ Actual code, tests and physical measurements establish implementation evidence.
 
 Create a bedside clock that remains useful and sounds a local alarm when Wi-Fi,
 Internet, Home Assistant, Spotify, weather and every external service are absent.
-The intended board is the Waveshare ESP32-C5 Touch LCD 3.5-inch; the brief specifies
-320×480 touch display and PCF85063 RTC. These are intake claims awaiting vendor and
-physical verification, not an approved pin map or driver selection.
+The target is the ESP32-C5 3.5-inch rounded-corner LCD development board identified
+by Rob's receipt. The earlier brief identifies the vendor as Waveshare. The exact
+receipt wording supplied by Rob on 2026-09-23 is:
+
+> ESP32-C5 3.5inch Rounded Corner LCD Development Board, IPS  Panel, 320 × 480 Resolution, 262K Color, Supports 2.4GHz/5GHz Dual-band  Wi-Fi And Bluetooth 5 (LE)
+
+This establishes the purchased product description: ESP32-C5, rounded-corner
+3.5-inch IPS display, 320×480 resolution, 262K color, dual-band 2.4/5GHz Wi-Fi and
+Bluetooth 5 LE. It is user-provided receipt evidence, not a physical board test.
+The receipt excerpt does not identify a SKU, PCB revision, display/touch controller,
+RTC, flash/PSRAM configuration or pin map. The PCF85063 RTC remains a claim from
+the earlier brief pending vendor/board verification. Driver and SDK compatibility
+must be established from the matching vendor example and actual board revision.
 
 Use ESP-IDF and C/C++, LVGL for local GUI, FreeRTOS tasks/events/queues, NVS for
 configuration, vendor-supported drivers, SD/FAT where useful, ESP-IDF HTTP(S) and
