@@ -3,6 +3,7 @@
 #include "settings_store.h"
 #include "alarm_recovery.h"
 #include <stdlib.h>
+#include <stdatomic.h>
 #include "clock_service.h"
 #include "audio.h"
 #include "esp_timer.h"
@@ -12,15 +13,17 @@
 #include "freertos/semphr.h"
 #include <stdio.h>
 #include <string.h>
-typedef struct {unsigned kind,index;alarm_config_t alarm;uint8_t brightness;} command_t;
+typedef struct {unsigned kind,index;uint32_t ticket;alarm_config_t alarm;uint8_t brightness;} command_t;
 static QueueHandle_t commands;
 static SemaphoreHandle_t lock;
 static alarm_snapshot_t published;
+static atomic_uint next_ticket;
 static void run(void *unused)
 {
     (void)unused;clock_settings_t settings;alarm_engine_t engine={0};
     esp_err_t storage=settings_store_open(&settings);unsigned revision=0;
     uint8_t prior_ringing=0,prior_snoozed=0;
+    uint32_t save_ticket=0;esp_err_t save_status=ESP_OK;
     memcpy(engine.alarms,settings.alarms,sizeof(engine.alarms));
     diagnostics_printf("SETTINGS_LOAD status=%s brightness=%u\n",esp_err_to_name(storage),settings.brightness);
     bool restored=false,retry=false;uint64_t last_ms=0,retry_at=0;time_t last_epoch=0;
@@ -44,6 +47,7 @@ static void run(void *unused)
                     if(c.kind==1)alarm_cancel(&engine,c.index);
                     revision++;
                 }
+                if(c.ticket){save_ticket=c.ticket;save_status=storage;}
                 diagnostics_printf("SETTINGS_SAVE status=%s kind=%u index=%u revision=%u\n",esp_err_to_name(storage),c.kind,c.index,revision);
             }else if(c.kind==3){alarm_snooze(&engine,ms);dirty=true;}
             else if(c.kind==4){
@@ -71,7 +75,7 @@ static void run(void *unused)
         }
         audio_alarm(ringing!=0);
         xSemaphoreTake(lock,portMAX_DELAY);
-        published=(alarm_snapshot_t){.settings=settings,.ringing=ringing,.snoozed=snoozed,.storage_status=storage,.revision=revision};
+        published=(alarm_snapshot_t){.settings=settings,.ringing=ringing,.snoozed=snoozed,.storage_status=storage,.revision=revision,.save_ticket=save_ticket,.save_status=save_status};
         xSemaphoreGive(lock);
         vTaskDelay(pdMS_TO_TICKS(100));
     }
@@ -88,6 +92,14 @@ bool alarm_service_save(unsigned i,const alarm_config_t *a)
 {
     if(i>=ALARM_COUNT || !alarm_config_valid(a))return false;
     command_t c={.kind=1,.index=i,.alarm=*a};return xQueueSend(commands,&c,0)==pdTRUE;
+}
+uint32_t alarm_service_save_tracked(unsigned i,const alarm_config_t *a)
+{
+    if(i>=ALARM_COUNT || !alarm_config_valid(a))return 0;
+    uint32_t ticket;
+    do{ticket=atomic_fetch_add(&next_ticket,1)+1;}while(!ticket);
+    command_t c={.kind=1,.index=i,.ticket=ticket,.alarm=*a};
+    return xQueueSend(commands,&c,0)==pdTRUE?ticket:0;
 }
 bool alarm_service_brightness(uint8_t b)
 { if(!b)return false;command_t c={.kind=2,.brightness=b};return xQueueSend(commands,&c,0)==pdTRUE; }

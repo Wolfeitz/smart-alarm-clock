@@ -7,7 +7,7 @@
 #include <sys/time.h>
 static i2c_master_dev_handle_t rtc;
 static atomic_bool synchronized;
-static const char *source="Set time via USB";
+static const char *source="Set time to begin";
 static esp_err_t read_regs(uint8_t reg,uint8_t *v,size_t n)
 { return i2c_master_transmit_receive(rtc,&reg,1,v,n,100); }
 static esp_err_t write_reg(uint8_t reg,uint8_t v)
@@ -46,5 +46,5 @@ esp_err_t clock_set(time_t epoch)
     time_t check=timegm(&decoded);if(check<epoch || check>epoch+1)return ESP_ERR_INVALID_RESPONSE;
     e=write_reg(3,0xa7);if(e!=ESP_OK)return e;
     struct timeval tv={.tv_sec=check};if(settimeofday(&tv,NULL)!=0)return ESP_FAIL;
-    synchronized=true;source="USB time / RTC saved";return ESP_OK;
+    synchronized=true;source="Time saved / offline";return ESP_OK;
 }

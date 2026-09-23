@@ -108,3 +108,8 @@ brightness persists; serial snapshots confirm restored disabled test slots.
 See WORK for private logs, failed intermediate attempts and installed hash.
 Audible sound, physical alarm editor/controls and battery/full-power-loss behavior
 remain unverified. No build or serial success establishes those physical results.
+
+Run the consolidated host suites: `python scripts/test-clock-host.py`. This includes
+local time-entry validation for leap dates, invalid dates, spring-DST gaps and the
+earlier fall-back occurrence. Physical Set time/Save time interaction remains a
+separate acceptance check.

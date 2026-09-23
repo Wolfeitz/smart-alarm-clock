@@ -648,3 +648,37 @@ and recovery proof, not audible speaker or physical UI proof. Owner has been
 asked to tap Test sound with the sealed case intact; feedback pending.
 Remaining: actual sound, physical editor and ringing controls, full power loss
 with disconnected battery, and end-to-end five-minute snooze expiry. Goal active.
+
+## Save acknowledgment and complete snooze interval
+
+Previous turn was progress: deployed and proved reset recovery plus audio/UI
+scheduling correction. A live five-minute snooze test now runs on existing image,
+with test slot1 automatically returned disabled. No flash while it is running.
+Editor correctness acceptance: close only after acknowledgment of its own save,
+not an unrelated checkpoint/revision increment. Failed save retains the editor
+and reports the exact operation failure. Ignore repeated Save taps while pending.
+Use a request ticket carried with the owner command and a separately published
+completion ticket/status; untracked serial and brightness commands cannot overwrite
+the editor completion. This is independent of the running hardware test.
+
+Offline time-entry acceptance before coding: visible Set time control with local
+calendar date and24-hour hour/minute. Validate calendar and reject DST gaps;
+ambiguous fall-back hour selects the earlier occurrence. Save writes/read-verifies
+RTC through the existing clock service; failures keep editor open. Do not claim
+physical UI qualification from the build. Host-test calendar/DST conversion.
+
+Live five-minute test passed: snooze returned to ringing after300.01 seconds,
+then DISMISS cleared it. Slot1 restored disabled07:00daily. Evidence:
+local-config/clock/snooze-duration-summary.log and snooze-duration.log. RTC/system
+heartbeats continued throughout with stable free heap193916. This proves timed
+state transition on hardware, not sound or physical button operation.
+
+Per-save acknowledgment and local time editor build passed and are installed;
+app-only write hash verified, SHA256 095ee2246533a79c88550e54d2a9eb5c3a3bc7cccfcd013170c14c0574559c1f.
+New image boots CLOCK_READY, RTC/offline time valid, brightness160 loaded,
+ringing/snoozed zero, storageESP_OK, RTC heartbeat within one second. Evidence
+local-time-runtime.log and local-time-flash.log. All five consolidated host suites
+pass via python scripts/test-clock-host.py; docs and whitespace checks pass.
+Asked owner to inspect Set time and save/reopen a disabled alarm. Audible speaker
+response remains pending from earlier question. No battery/full-power-loss proof.
+Goal remains active; physical acceptance is still required.

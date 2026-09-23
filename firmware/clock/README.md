@@ -90,3 +90,16 @@ Test scripts/logs are under local-config/clock; serial STATE reports current slo
 Runtime diagnostics use a bounded best-effort queue; slow/disconnected USB can
 lose logs without blocking UI or alarm tasks. Tone synthesis uses an integer
 waveform and explicitly yields each DMA block.
+
+## Set time without a computer
+
+Tap Set time on the clock. Choose the local year/month/day and24-hour time, then
+Save time. Seconds start at00. Invalid dates and nonexistent spring-DST times
+are rejected; the repeated fall-back hour uses its earlier occurrence. The screen
+uses America/New_York, including DST. A successful save writes and verifies RTC
+before updating system time. USB TIME remains available for precise provisioning.
+With the battery disconnected, full power loss may invalidate RTC; settings remain
+in flash, and the clock must receive valid time before scheduled alarms can fire.
+
+Run all host logic suites with `python scripts/test-clock-host.py`. These cannot
+prove physical UI usability or audio output.

@@ -1,6 +1,7 @@
 #include "clock_ui.h"
 #include "alarm_service.h"
 #include "clock_service.h"
+#include "local_time.h"
 #include "board.h"
 #include "audio.h"
 #include "lvgl.h"
@@ -11,8 +12,9 @@ static lv_obj_t *root,*time_text,*date_text,*detail,*next_text,*status,*dim_text
 static lv_obj_t *slot,*hours,*minutes,*repeat,*enabled,*days[7],*year,*month,*day,*edit_status,*overlay;
 static alarm_config_t draft;
 static unsigned index_selected;
-static bool editing,pending;
-static unsigned pending_revision;
+static bool editing,pending,time_editing;
+static lv_obj_t *time_year,*time_month,*time_day,*time_hour,*time_minute,*time_status;
+static uint32_t pending_ticket;
 static uint8_t applied_brightness;
 static lv_obj_t *label(lv_obj_t *parent,const char *text,int x,int y,int w,const lv_font_t *font)
 {
@@ -28,6 +30,7 @@ static lv_obj_t *button(lv_obj_t *parent,const char *text,int x,int y,int w,lv_e
 }
 static void home(void);
 static void show_editor(void);
+static void show_time_editor(lv_event_t *e);
 static void reset_screen(void)
 {
     lv_obj_clean(root);lv_obj_set_style_bg_color(root,lv_color_hex(0x0b1119),0);
@@ -65,18 +68,18 @@ static lv_obj_t *number_list(int first,int last,int x,int y,int w)
 }
 static void save(lv_event_t *e)
 {
-    (void)e;draft.hour=lv_dropdown_get_selected(hours);draft.minute=lv_dropdown_get_selected(minutes);
+    (void)e;if(pending)return;draft.hour=lv_dropdown_get_selected(hours);draft.minute=lv_dropdown_get_selected(minutes);
     draft.enabled=lv_obj_has_state(enabled,LV_STATE_CHECKED);
     if(lv_dropdown_get_selected(repeat)==1){
         draft.weekdays=0;draft.once_date=(2000+lv_dropdown_get_selected(year))*10000+(1+lv_dropdown_get_selected(month))*100+1+lv_dropdown_get_selected(day);
     }else if(!draft.weekdays){lv_label_set_text(edit_status,"Choose at least one day");return;}
     if(!alarm_config_valid(&draft)){lv_label_set_text(edit_status,"Check the date");return;}
-    alarm_snapshot_t s;alarm_service_snapshot(&s);pending_revision=s.revision;
-    pending=alarm_service_save(index_selected,&draft);lv_label_set_text(edit_status,pending?"Saving...":"Unable to queue save");
+    pending_ticket=alarm_service_save_tracked(index_selected,&draft);
+    pending=pending_ticket!=0;lv_label_set_text(edit_status,pending?"Saving...":"Unable to queue save");
 }
 static void show_editor(void)
 {
-    alarm_snapshot_t s;alarm_service_snapshot(&s);draft=s.settings.alarms[index_selected];editing=true;pending=false;reset_screen();
+    alarm_snapshot_t s;alarm_service_snapshot(&s);draft=s.settings.alarms[index_selected];editing=true;time_editing=false;pending=false;reset_screen();
     label(root,"Alarm",15,12,240,&lv_font_montserrat_20);
     enabled=lv_switch_create(root);lv_obj_set_pos(enabled,380,10);lv_obj_set_size(enabled,70,36);
     if(draft.enabled)lv_obj_add_state(enabled,LV_STATE_CHECKED);
@@ -100,15 +103,41 @@ static void show_editor(void)
     edit_status=label(root,"24-hour time  /  select days or a date",15,211,450,&lv_font_montserrat_16);
     button(root,"Cancel",50,260,160,go_home,NULL);button(root,"Save",270,260,160,save,NULL);
 }
+static void save_time(lv_event_t *e)
+{
+    (void)e;time_t epoch;
+    if(!local_time_epoch(2000+lv_dropdown_get_selected(time_year),1+lv_dropdown_get_selected(time_month),
+        1+lv_dropdown_get_selected(time_day),lv_dropdown_get_selected(time_hour),lv_dropdown_get_selected(time_minute),&epoch)){
+        lv_label_set_text(time_status,"Invalid date or skipped DST time");return;
+    }
+    if(clock_set(epoch)!=ESP_OK){lv_label_set_text(time_status,"RTC write failed - please retry");return;}
+    home();clock_ui_update();
+}
+static void show_time_editor(lv_event_t *e)
+{
+    (void)e;editing=false;pending=false;time_editing=true;reset_screen();
+    label(root,"Set local time",15,10,450,&lv_font_montserrat_20);
+    label(root,"Year             Month             Day",15,47,450,&lv_font_montserrat_16);
+    time_year=number_list(2000,2099,30,72,130);time_month=number_list(1,12,180,72,120);time_day=number_list(1,31,320,72,120);
+    label(root,"Hour (24h)           Minute",50,134,380,&lv_font_montserrat_16);
+    time_hour=number_list(0,23,110,160,110);time_minute=number_list(0,59,260,160,110);
+    struct tm local={.tm_year=126,.tm_mon=0,.tm_mday=1};
+    if(clock_valid()){time_t now=time(NULL);localtime_r(&now,&local);}
+    lv_dropdown_set_selected(time_year,local.tm_year-100);lv_dropdown_set_selected(time_month,local.tm_mon);
+    lv_dropdown_set_selected(time_day,local.tm_mday-1);lv_dropdown_set_selected(time_hour,local.tm_hour);lv_dropdown_set_selected(time_minute,local.tm_min);
+    time_status=label(root,"America/New_York  /  seconds reset to 00",10,222,460,&lv_font_montserrat_16);
+    button(root,"Cancel",50,260,160,go_home,NULL);button(root,"Save time",270,260,160,save_time,NULL);
+}
 static void snooze(lv_event_t *e){(void)e;alarm_service_snooze();}
 static void dismiss(lv_event_t *e){(void)e;alarm_service_dismiss();}
 static void home(void)
 {
-    editing=false;pending=false;reset_screen();
-    date_text=label(root,"Clock",20,23,440,&lv_font_montserrat_20);
+    editing=false;time_editing=false;pending=false;reset_screen();
+    date_text=label(root,"Clock",15,20,315,&lv_font_montserrat_20);
+    button(root,"Set time",350,12,115,show_time_editor,NULL);
     time_text=label(root,"--:--",90,80,300,&lv_font_montserrat_48);
     lv_obj_set_style_transform_pivot_x(time_text,LV_PCT(50),0);lv_obj_set_style_transform_pivot_y(time_text,LV_PCT(50),0);lv_obj_set_style_transform_scale(time_text,384,0);
-    detail=label(root,"Set time via USB",20,159,440,&lv_font_montserrat_20);
+    detail=label(root,"Set time to begin",20,159,440,&lv_font_montserrat_20);
     next_text=label(root,"No alarms enabled",20,199,440,&lv_font_montserrat_16);
     status=label(root,"",20,227,440,&lv_font_montserrat_16);
     lv_obj_t *b=button(root,"Dim",15,261,140,dim,NULL);dim_text=lv_obj_get_child(b,0);
@@ -128,9 +157,13 @@ void clock_ui_update(void)
     }
     if(!active && overlay){lv_obj_delete(overlay);overlay=NULL;}
     if(overlay){lv_obj_t *title=lv_obj_get_child(overlay,0);lv_label_set_text(title,s.ringing?"Alarm":"Snoozed");}
+    if(time_editing)return;
     if(editing){
-        if(pending && s.revision>pending_revision)home();
-        else if(pending && s.storage_status!=ESP_OK){lv_label_set_text(edit_status,"Save failed - settings unchanged");pending=false;}
+        if(pending && s.save_ticket==pending_ticket){
+            pending=false;
+            if(s.save_status==ESP_OK)home();
+            else lv_label_set_text(edit_status,"Save failed - settings unchanged");
+        }
         return;
     }
     char b[80];
