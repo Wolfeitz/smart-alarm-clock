@@ -104,11 +104,9 @@ failed for lack of permission; this does not affect compilation. Revisit device
 permissions only if USB debugging is needed. Existing serial access has its own
 per-device ACL described above.
 
-No working build/flash command for our clock exists yet. Exact-board source,
-schematic, PCB identity and LVGL/BSP dependencies remain missing. The separately authorized flash/recovery test used firmware/serial-diagnostic
-and passed deployment, USB heartbeat and full-image restoration checks. The
-factory application is running again; screen/touch confirmation is pending.
-Future firmware writes require their own task scope.
+The initial flash/recovery test used firmware/serial-diagnostic and passed
+deployment, USB heartbeat and full-image restoration checks. Later board
+reconstruction and diagnostics enabled the current clock build described below.
 
 
 ## Verified deployment diagnostic
@@ -123,7 +121,22 @@ monitor with failed firmware without checking reset/serial control state.
 
 ## Current installed application
 
-`firmware/display-touch` is installed and running under IDF6.1. The owner
-confirmed aligned drawing and the CLEAR button. It supersedes the bus-only probe
-and factory demo. Build instructions are in its README. No rollback was performed.
-The earlier full-image recovery test remains valid historical evidence.
+`firmware/clock` is installed under IDF6.1/LVGL9.4.0. The owner confirmed
+readable clock/date, advancing seconds and touch Dim/Brighten. USB provisioning
+set UTC in the PCF85063; MCU reset restored time from RTC without provisioning.
+See [clock README](../firmware/clock/README.md) for build and time commands.
+
+Current layout matches the diagnostic (factory app offset0x20000). From the
+project root after building and closing any serial reader:
+
+```sh
+source /home/rob/.espressif/tools/activate_idf_v6.1.sh
+python -m esptool --chip esp32c5 --port /dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:BD:A3:E3:52:74-if00 --baud 460800 --after hard-reset write-flash --flash-mode keep --flash-size keep --flash-freq keep 0x20000 local-config/clock/build/esp_link_clock.bin
+python scripts/set-board-time.py
+```
+
+This app-only command assumes the already-verified bootloader/partition table;
+it is not a fresh-board installation command. It preserves other flash areas.
+Display diagnostic remains available in firmware/display-touch; no rollback was
+performed. Battery is disconnected, so time retention through complete power loss
+is not yet guaranteed. Full-image factory recovery remains historical evidence.

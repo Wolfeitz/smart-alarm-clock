@@ -434,3 +434,49 @@ zero errors. Logs build-cold-fix.log/write-cold-fix.log/cold-fix-serial.log
 in local-config/display-touch. No PMU writes. Asked owner to verify visible
 screen and a fresh ten-second USB power removal/reconnect; acceptance pending.
 Documentation verifier and git diff --check passed before this evidence update.
+
+## Clock screen foundation
+
+Owner confirms screen/drawing/CLEAR work and requests the actual clock.
+Acceptance: LVGL time/date screen, advancing seconds, touch brightness toggle,
+RTC read/write/readback, host-time USB provisioning, reboot restore from RTC,
+and explicit unsynchronized state on invalid/lost RTC. No alarm/weather/music
+placeholders implying working features. Initial timezone America/New_York from
+owner environment, POSIX DST rules; RTC stores UTC. No network dependency.
+
+Interfaces: board adapter owns SPI/I2C and fixed orientation/reset startup;
+clock service (no LVGL) owns RTC validity and system time; UI owns all LVGL
+operations in one task. USB accepts bounded TIME <Unix seconds> lines, no
+credentials. RTC RAM byte03=a7 marks this application's UTC convention; clear
+marker before writes and set after readback. OS/STOP/12h/calendar validation
+prevents trusting arbitrary factory dates. Battery is disconnected, so full
+power loss may require time provisioning again. NXP PCF85063A Rev7.3 register
+map consulted; dependency LVGL pinned9.4.0, compatibility to be established by
+IDF6.1 build and physical rendering. Preserve working diagnostic separately.
+
+LVGL9.4.0 resolved with component hash
+17e68bfd21f0edf4c3ee838e2273da840bf3930e5dbc3bfa6c1190c3aed41f9f;
+manifest and dependencies.lock tracked. IDF6.1 clock build passed. RTC codec
+host checks passed (invalid BCD/OS/date, leap day, encoding round trip, DST
+spring-forward). Host America/New_York and NTPSynchronized=yes verified.
+
+App-only clock flash verified. Binary SHA-256:
+`cff2c335fb50d1007811e5db8e9d6e9e780e8a451bfc6eb31ab6719cfc7b2017`.
+First boot correctly rejected unprovisioned RTC; USB TIME command succeeded.
+CLOCK_ALIVE reports system and RTC epoch1790201398, rtc_status=ESP_OK,
+heap224652. No network configuration or credentials. Owner visual clock and
+Dim/Brighten check requested; MCU-reset RTC restore check running.
+Previous owner reply confirms diagnostic display/drawing/CLEAR functional after
+startup patch; does not explicitly distinguish a second full power cycle.
+
+Clock acceptance: owner replied everything works as advertised (time/date,
+seconds, Dim/Brighten). MCU reset restored RTC time without a TIME command:
+CLOCK_INIT rtc=ESP_OK source=RTC / offline. Three successive ten-second reports
+advanced system/RTC time within one second; free heap224652 unchanged.
+CLOCK_BRIGHTNESS dim=1 then0 captured. Evidence reset.log/reset-serial.log.
+Working clock is LEFT INSTALLED. README/SETUP updated to this current state.
+
+Next bounded milestone: qualify local audio codec/amplifier and audible output
+before implementing alarm delivery; battery-backed retention, NVS settings,
+Wi-Fi/NTP and full power-cycle clock qualification remain open. No alarm is armed
+or implied by this clock milestone. Documentation/whitespace verification passed.

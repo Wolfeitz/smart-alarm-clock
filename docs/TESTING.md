@@ -85,3 +85,14 @@ initial reflection, then confirmed the final corrected drawing/CLEAR behavior.
 Final transform: x=479-raw_y, y=raw_x; swapXY/mirrorX/mirrorY enabled for LCD.
 This qualifies warm-reset diagnostic display/touch, not cold-power startup,
 LVGL integration, audio, RTC, or alarm reliability.
+
+## Clock foundation acceptance (2026-09-23)
+
+firmware/clock builds under IDF6.1 with pinned LVGL9.4.0. RTC codec/date and
+host timezone-transition checks pass (command in its README). Application-only
+flash hash verified; USB TIME command received ESP_OK. MCU reset then reported
+CLOCK_INIT rtc=ESP_OK source=RTC / offline without another TIME command.
+Three ten-second reports showed advancing system/RTC time within one second,
+rtc_status=ESP_OK, stable free heap224652. Serial recorded both brightness
+events, and owner confirmed readable clock/date, advancing seconds and both
+buttons work. This is not battery-retention, alarm or audio acceptance.

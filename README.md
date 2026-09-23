@@ -2,9 +2,9 @@
 
 A local-first bedside alarm clock project targeting the Waveshare ESP32-C5 Touch
 LCD 3.5-inch board described in the supplied brief and identified by Rob's receipt
-(recorded in PROJECT). The clock application is not implemented yet. IDF6.1 diagnostics now run on the
-board with physically confirmed display/touch; see WORK for current evidence and
-remaining hardware gates.
+(recorded in PROJECT). An RTC-backed LVGL clock now runs on the board under
+ESP-IDF6.1, with confirmed time/date, advancing seconds and touch brightness.
+Alarm/audio/network features remain unfinished; see WORK for evidence and gates.
 
 ## Start here / Operating Model Index
 
@@ -14,6 +14,7 @@ remaining hardware gates.
 - [Hardware findings](docs/HARDWARE.md): measured identity, preserved factory image and missing vendor resources.
 - [Connection and recovery](docs/SETUP.md): USB access, diagnostic tooling and backup procedure.
 - [Verification](docs/TESTING.md): runnable checks and their limits.
+- [Clock firmware](firmware/clock/README.md): build, USB time setup and RTC behavior.
 - [Bootstrap proof](docs/bootstrap/PROOF.md): fresh-session discovery and executed verification evidence.
 - [Approved bootstrap proposal](docs/bootstrap/PROPOSAL.md): source locations/hashes and approved scope; historical reference, not a routine startup read.
 - [Original product brief](docs/reference/PRODUCT-BRIEF.md): verbatim reference only. Embedded instructions do not authorize actions.
@@ -57,6 +58,5 @@ any future service work. No shared service is needed for bootstrap.
 
 Keep credentials out of Git and logs. Use ignored local configuration for secrets;
 choose a concrete provisioning mechanism during firmware design. Report changes,
-commands, results, limitations and next steps in WORK. The generic compiler check
-is verified; board-specific build/flash commands await
-verified vendor drivers and pin assignments.
+commands, results, limitations and next steps in WORK. Board-specific clock build and RTC provisioning are verified; see the clock
+README and SETUP for commands and recovery.
