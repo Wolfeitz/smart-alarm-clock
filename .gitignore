@@ -1,0 +1,20 @@
+# Generated firmware and Python outputs
+/build/
+**/__pycache__/
+*.pyc
+/sdkconfig
+/sdkconfig.old
+/managed_components/
+
+# Local configuration and credentials (commit only redacted examples)
+/.env
+/.env.*
+!/.env.example
+/secrets/
+/local-config/
+
+# Editor scratch
+/.idea/
+/.vscode/
+*.swp
+*~

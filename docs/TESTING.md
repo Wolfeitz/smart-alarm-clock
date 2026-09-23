@@ -1,0 +1,61 @@
+# Verification
+
+## Available now
+
+From the project root:
+
+```sh
+python scripts/verify-bootstrap.py
+```
+
+This standard-library check verifies required bootstrap artifacts, README's local
+index links, archived product-brief byte identity and complete/dispositioned source
+coverage. It does not validate the semantic correctness of requirements, scan all
+secrets, compile firmware or test hardware. Review the change against accepted scope
+as well. No firmware build/test command exists yet.
+
+The original unrelated installer must retain SHA-256
+`8033f0bc484e863ad274645db2e90e3ac7dd17c35c53de4589653850140344bf`.
+Do not execute it as a test. Build outputs and local secrets are ignored; ignore
+rules do not substitute for reviewing staged content before any commit.
+
+## Fresh-session bootstrap proof
+
+Launch a fresh bounded Codex session in the project, without prior conversation or
+the canonical AAE source in context. It should identify loaded guidance, discover
+the operating index/current task and run the documented verification command.
+Capture tool output/exit status, loaded instruction evidence and the final report.
+Do not supply the canonical command in the probe prompt: discovery is being tested.
+Do not allow the probe to read the full AAE source or run the unrelated installer.
+
+[Official Codex instruction discovery](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
+describes global then project guidance and deeper directory precedence, with
+AGENTS.override.md preferred per directory. This is documented loading behavior;
+only an actual fresh-session result proves this project's setup. No override or
+runtime permission change is installed. Record projection presence, documented
+loading, observed discovery and command execution separately in WORK. A sandbox
+error or timeout is unproven execution, not a passing result.
+
+## Firmware verification gates (not run)
+
+- Verify exact board/BSP/SDK/LVGL compatibility and pin dependencies before defining
+  reproducible build commands. Preserve required component lockfiles in Git.
+- Add host tests for UI-independent logic: recurrence, once/date semantics, midnight,
+  DST gaps/repeats, forward/backward time correction, invalid RTC, snooze/dismiss,
+  duplicate prevention, persistence defaults/corruption/migration and reboot behavior.
+- Test remote success, timeout, unavailable target and HTTP success without actual
+  playback; test stale/incorrect confirmation, local timer independence and races.
+- Test weather freshness, malformed responses and service outage; bounded retries
+  and clean recovery without UI stalls. Never put real tokens into fixtures/logs.
+- Compile for the verified target; record tool versions and clean-build commands.
+- Physically demonstrate each HW contract in PROJECT with firmware revision, board
+  identity, configuration (redacted), procedure, observed result and date.
+- Demonstrate audible local fallback with Wi-Fi, HA, Spotify and target unavailable;
+  remove SD and corrupt selected media; exercise local snooze/dismiss and reboot.
+- Test repeated boots and power loss during settings updates. For long-lived task,
+  timer, queue, network and audio resources, verify cleanup and bounded recovery;
+  record bounded soak duration, memory behavior and failures when relevant.
+
+A host test, successful build or service acknowledgement is insufficient to claim
+physical wake-up reliability. V1 needs the full physical acceptance in PROJECT plus
+reproducible build/flash/provisioning documentation and reviewed secret hygiene.
