@@ -52,7 +52,7 @@ Keep the original backup immutable. Future captures must use a new path. The fir
 command keeps the application stopped so it cannot change NVS before the second
 command verifies it; the second returns the device to its existing firmware.
 
-## Recovery procedure — documented, not executed
+## Recovery procedure — verified 2026-09-23
 
 Only after an explicitly authorized firmware replacement/recovery, re-identify the
 same device and verify the backup's SHA-256 against HARDWARE. Confirm security
@@ -60,12 +60,13 @@ settings remain compatible and close competing serial readers. The full dump is
 mapped from address 0 and preserves the original 16 MB boot-image configuration
 within the 32 MB physical flash. Do not force a new flash-size header setting.
 
-A reviewed restoration would use `write-flash 0 <verified-full-backup>` with the
-same pinned tool and matching device, preserving header parameters, followed by
-`verify-flash` while the application is stopped, and then a normal reset. This
-restores NVS/settings and assets as well as firmware. Do not perform a separate
-full erase, overwrite the backup, or treat this unexecuted restoration procedure
-as proof of recovery. Never restore this image to another board model.
+The authorized restoration used `write-flash 0 <verified-full-backup>` with the
+same pinned tool and matching device, preserving header parameters. Its automatic
+full-image digest check verified all 32MB while the application was stopped, then
+the board was reset. This restores NVS/settings and assets as well as firmware.
+Do not perform a separate full erase, overwrite the backup, or infer peripheral
+health solely from a successful image verification. Never restore this image to
+another board model.
 
 ## Firmware development
 
@@ -104,6 +105,18 @@ permissions only if USB debugging is needed. Existing serial access has its own
 per-device ACL described above.
 
 No working build/flash command for our clock exists yet. Exact-board source,
-schematic, PCB identity and LVGL/BSP dependencies remain missing. Do not flash
-hello_world merely to prove a compiler works: it would replace the working
-board-specific demonstration without advancing peripheral proof.
+schematic, PCB identity and LVGL/BSP dependencies remain missing. The separately authorized flash/recovery test used firmware/serial-diagnostic
+and passed deployment, USB heartbeat and full-image restoration checks. The
+factory application is running again; screen/touch confirmation is pending.
+Future firmware writes require their own task scope.
+
+
+## Verified deployment diagnostic
+
+Source and build command: `firmware/serial-diagnostic/README.md`. Its USB heartbeat
+reported ESP-IDF v6.1 and ESP32-C5 on the physical board. Factory restoration then
+verified the entire preserved image and returned to app_main/PMU startup.
+A passive pyserial reader should set DTR and RTS false **before opening** the port.
+The first direct-reset capture received no bytes; esptool `run` followed by that
+passive-open sequence produced factory startup logs. Do not equate a silent
+monitor with failed firmware without checking reset/serial control state.

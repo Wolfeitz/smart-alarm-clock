@@ -231,3 +231,44 @@ board support and hardware acceptance remain outstanding.
 Documentation verifier and git diff --check passed after the setup documentation
 update. Tools/build artifacts remain Git-ignored. The unrelated install-arch.sh
 SHA-256 still matches the preserved baseline.
+
+## Authorized flash and recovery test
+
+2026-09-23: owner said "go go go" to flash a minimal IDF 6.1 diagnostic,
+verify boot/serial output, then restore the preserved factory firmware.
+Acceptance: image writes verify, repeated diagnostic heartbeats report v6.1 and
+ESP32-C5, full factory restore verifies before reset, factory startup logs return;
+owner confirms the physical GUI. No standalone full erase or eFuse operations.
+Diagnostic interface: USB Serial/JTAG text only, no GPIO/peripheral/NVS/network
+initialization. Use DIO/80MHz/16MB matching the factory header, auto-detect crystal,
+factory app at 0x20000; temporary partition table contains only that application.
+Backup hash rechecked and ROM identity/security match prior evidence.
+
+Diagnostic build and execution passed: app 1.0, 166352 bytes, SHA-256
+`9565b9ed1fa880a57f9bc5319dd1549ce86458038c72b00b6c0c86ec8a98fe91`.
+Bootloader at 0x2000, partition table at 0x8000 and app at 0x20000 were written
+with esptool 5.4.0, DIO/80MHz/16MB; all write hashes verified, exit 0.
+Twelve-second serial capture received 1144 bytes, including uninterrupted ticks
+31 through 42: `ESP_LINK_DIAGNOSTIC_OK idf=v6.1 target=esp32c5 revision=102
+flash_bytes=16777216`. The 16MB value reflects configured accessible flash, not
+a new physical-size measurement. Serial startup began with a partial line; the
+following complete heartbeats were valid. This proves flashing and execution,
+not screen/touch or peripheral behavior. Logs are in local-config/flash-test.
+
+Full factory restoration uses `write-flash --flash-mode keep --flash-freq keep
+--flash-size keep 0 <factory-flash.bin>` with `--after no-reset` before digest
+verification, preserving factory headers. Restoration completed: 33554432 bytes written,
+full-image hash verified while still in the loader, exit 0. A second redundant
+full comparison was unnecessary after the successful write-time verification.
+
+Factory restart: the first direct reset/capture produced zero bytes and failed its
+startup assertion. Using esptool `--after hard-reset run` and opening pyserial with
+DTR/RTS false before open resolved the capture. Received 7014 bytes, including
+`Calling app_main()` and `Init PMU SUCCESS!`, exit 0. Evidence:
+local-config/flash-test/restore-write.log and factory-serial-retry.log.
+Physical screen/touch confirmation was requested from the owner and is pending.
+No standalone erase or eFuse changes were performed. Factory backup unchanged.
+
+Post-test backup SHA-256 still matches the preserved original. Documentation
+verification and git diff --check passed. Diagnostic source/configuration and
+receipts are retained in local Git; private images and logs stay ignored.

@@ -37,7 +37,7 @@ runtime permission change is installed. Record projection presence, documented
 loading, observed discovery and command execution separately in WORK. A sandbox
 error or timeout is unproven execution, not a passing result.
 
-## Firmware verification gates (not run)
+## Product firmware verification gates (not run)
 
 - Verify exact board/BSP/SDK/LVGL compatibility and pin dependencies before defining
   reproducible build commands. Preserve required component lockfiles in Git.
@@ -60,3 +60,12 @@ error or timeout is unproven execution, not a passing result.
 A host test, successful build or service acknowledgement is insufficient to claim
 physical wake-up reliability. V1 needs the full physical acceptance in PROJECT plus
 reproducible build/flash/provisioning documentation and reviewed secret hygiene.
+
+
+## Deployment/recovery check (2026-09-23)
+
+The tracked serial-diagnostic built under IDF v6.1, flashed with verified hashes,
+and emitted repeated matching target/version heartbeats on the physical board.
+Full factory restoration passed the whole-image hash check and returned to
+factory app_main/PMU startup. This is deployment/recovery evidence, not completion
+of the product firmware or peripheral gates above. Physical GUI check is pending.

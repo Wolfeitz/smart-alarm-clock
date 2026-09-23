@@ -1,0 +1,4 @@
+cmake_minimum_required(VERSION 3.22)
+set(PROJECT_VER "1.0")
+include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+project(esp_link_serial_diagnostic)

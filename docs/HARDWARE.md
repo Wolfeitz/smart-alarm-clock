@@ -1,6 +1,6 @@
 # Hardware readiness — 2026-09-23
 
-Status: USB communication and factory-image preservation verified. Exact-board
+Status: USB communication, IDF v6.1 diagnostic execution and factory-image restoration verified. Exact-board
 source/schematic unavailable in checked public vendor resources. Firmware bring-up
 is not complete. Rob owns the physical board; this record separates device evidence,
 user observations and vendor specifications.
@@ -111,5 +111,7 @@ IDF compiler installation alone would not establish working board support.
 
 Next: obtain matching board source/schematic, reconcile exact PCB revision and
 component pins, then pin dependencies, build diagnostics and verify the resulting
-image before a separately scoped flash operation. Recovery commands are documented
-in SETUP; an actual restore has not been performed.
+image before a separately scoped flash operation. The authorized serial-only v6.1 test has now run on the board and the full factory
+backup has been restored with a matching write-time digest. Factory app_main and
+PMU startup logs returned; physical GUI confirmation is pending. See WORK for
+receipts and SETUP for recovery details.
