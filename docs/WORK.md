@@ -399,3 +399,38 @@ Final installed app SHA-256:
 `f28413ca4fd60b5fa9929ee27f74e7b4008090bba6f4f4d850223668aeb8e252`.
 Documentation verifier and whitespace checks passed. Vendor source hashes checked;
 private binary/log artifacts remain under ignored local-config.
+
+## Cold-start failure investigation
+
+Owner confirms battery is disconnected: USB removal fully removes power. On
+reconnect the display is blank; temporary serial ACL restored. Capture
+local-config/display-touch/cold-start-serial.log shows IDF6.1 boots and
+DISPLAY_READY, but every touch read fails (501/501). Warm-start acceptance
+does not establish cold-start initialization.
+
+Bounded acceptance: identify missing peripheral initialization, implement only
+verified board power/reset settings, then confirm drawing/CLEAR after actual USB
+power removal. First diagnostic adds read-only PMU and I2C presence reporting;
+no regulator writes until register semantics and factory intent are established.
+
+Read-only probe: PMU ID03=4a, enable90=ff/91=01, ALDO2 voltage93=1c
+(3.3V); touch38 absent while expander24 responds. Registers checked against
+Waveshare-hosted X-Powers AXP2101 SWcharge V1.0 pp42–43. Do not change
+voltage rails: enabled ALDO2 rules out the initial missing-enable hypothesis.
+Next controlled test reproduces this exact board's factory expander startup,
+not inferred wiring: command2 directionff, command3 output00; directionbf
+(all factory outputs except input bit6); output03, delay500ms, output00,
+delay500ms, output23, settle200ms. Factory direction flag polarity verified
+at 0x42022606–42022624 (uninverted means output=1); constructor flags zero
+and initial directionff/output00. Individual net labels remain unproven;
+factory mask23 usage and absent touch after complete power loss motivate this
+reset-path test. No PMU voltage or charging changes.
+
+Reset startup build and app-only flash passed; esptool write hash verified.
+Installed image SHA-256:
+`5c1f70bdf1350a2ece2b3b097e01f6f14df7b536eb8fcb0d08276f1b6e96afd6`.
+Serial: BOARD_RESET_DONE touch_probe=ESP_OK, DISPLAY_READY, 251 reads with
+zero errors. Logs build-cold-fix.log/write-cold-fix.log/cold-fix-serial.log
+in local-config/display-touch. No PMU writes. Asked owner to verify visible
+screen and a fresh ten-second USB power removal/reconnect; acceptance pending.
+Documentation verifier and git diff --check passed before this evidence update.

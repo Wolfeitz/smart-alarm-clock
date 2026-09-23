@@ -69,6 +69,28 @@ void app_main(void)
     ESP_ERROR_CHECK(i2c_master_bus_add_device(bus,&dc,&touch));
     dc.device_address=0x24;i2c_master_dev_handle_t expander;
     ESP_ERROR_CHECK(i2c_master_bus_add_device(bus,&dc,&expander));
+    for (unsigned addr=1; addr<127; addr++) {
+        if (i2c_master_probe(bus,addr,30)==ESP_OK) printf("COLD_I2C addr=0x%02x\n",addr);
+    }
+    dc.device_address=0x34;i2c_master_dev_handle_t pmu;
+    ESP_ERROR_CHECK(i2c_master_bus_add_device(bus,&dc,&pmu));
+    const uint8_t pmu_regs[]={0x03,0x80,0x90,0x91,0x92,0x93,0x94,0x95,0x96,0x97,0x98,0x99,0x9a};
+    for (unsigned i=0;i<sizeof(pmu_regs);i++) {
+        uint8_t value=0;
+        esp_err_t err=i2c_master_transmit_receive(pmu,&pmu_regs[i],1,&value,1,100);
+        printf("COLD_PMU reg=0x%02x value=0x%02x status=%s\n",pmu_regs[i],value,esp_err_to_name(err));
+    }
+    ESP_ERROR_CHECK(i2c_master_bus_rm_device(pmu));
+    /* Exact board factory expander sequence; see docs/hardware/RECOVERED-MAP.md.
+     * Command 2: direction (1=output); command 3: output latch.
+     * Keep factory bit 6 as input. Net labels are not yet schematic-verified. */
+    const uint8_t startup[][2]={{2,0xff},{3,0x00},{2,0xbf},{3,0x03},{3,0x00},{3,0x23}};
+    for (unsigned i=0;i<sizeof(startup)/sizeof(startup[0]);i++) {
+        ESP_ERROR_CHECK(i2c_master_transmit(expander,startup[i],2,100));
+        if(i==3 || i==4) vTaskDelay(pdMS_TO_TICKS(500));
+    }
+    vTaskDelay(pdMS_TO_TICKS(200));
+    printf("BOARD_RESET_DONE touch_probe=%s\n",esp_err_to_name(i2c_master_probe(bus,0x38,100)));
     spi_bus_config_t spi={.mosi_io_num=7,.miso_io_num=2,.sclk_io_num=6,
         .quadwp_io_num=-1,.quadhd_io_num=-1,.max_transfer_sz=W*8*2};
     ESP_ERROR_CHECK(spi_bus_initialize(SPI2_HOST,&spi,SPI_DMA_CH_AUTO));

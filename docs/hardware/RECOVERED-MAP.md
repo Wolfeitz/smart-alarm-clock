@@ -29,8 +29,8 @@ and esp_lcd_panel_io_spi_config_t; checked against those headers at v5.5.4. Exec
 
 The expander initialization sets direction mask0x23 to output and mask0x40 to
 input, toggles mask0x03 high/low with delays, then sets mask0x23 high. The board
-functions of these individual bits are not yet established. Do not replay this
-sequence merely because it appears near display initialization.
+functions of these individual bits are not yet established. This was initially withheld pending a concrete startup failure; see the
+cold-start investigation below for the evidence supporting its controlled test.
 
 Offline artifacts: local-config/board-analysis/segments.json, segment-*.bin,
 irom.S, and matching IDF header copies. Original backup remains unchanged.
@@ -66,3 +66,23 @@ reset and existing power rails, with expander command5 PWM160; no PMU or
 expander direction/reset writes. Warm-reset display/touch acceptance is complete.
 Cold-power startup, sleep/wake, interrupt input and full brightness range remain
 unqualified. The product UI/LVGL and alarm features are not implemented yet.
+
+## Cold-start reset initialization (2026-09-23)
+
+Battery is disconnected, confirmed by owner. USB power loss produced a blank
+display and every FT6336 read failed, although the ESP32 application kept running.
+Read-only PMU snapshot: ID03=4a, enable90=ff/91=01, ALDO2 voltage93=1c.
+All LDO enables were already set; no PMU writes were required for this test.
+Register semantics: [X-Powers AXP2101 datasheet, pp42–43](https://files.waveshare.com/wiki/common/X-power-AXP2101_SWcharge_V1.0.pdf).
+
+Factory expander constructor writes command2=ff and command3=00.
+Direction flag polarity at 0x42022606–42022624 is output=1, input=0;
+BSP initialization therefore writes directionbf (bit6 input), output03,
+waits50 ticks, output00, waits50 ticks, output23. Diagnostic uses500ms
+between pulses and200ms settling before panel init. Exact net labels remain
+unverified; this is the factory sequence for this board, not a guessed pin map.
+
+With the sequence installed, touch_probe=ESP_OK and DISPLAY_ALIVE errors=0
+through251 reads. No voltage/charging changes. This establishes communication
+recovery after the failure; owner visual and fresh power-cycle checks pending.
+It supersedes the earlier no-expander-writes description above.

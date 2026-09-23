@@ -7,8 +7,10 @@ yellow touch marks and a CLEAR button. Uses no LVGL or product alarm logic yet.
 - ST7796: SPI2 MOSI7/MISO2/SCLK6, CS8/DC5, 20MHz (factory used60MHz).
 - FT6336: I2C0 SDA27/SCL26, address0x38, 100kHz polling; count register2 and
   coordinate bytes from3, verified against factory code.
-- Backlight: expander0x24, command5, PWM160/255. No expander direction writes,
-  reset-output toggles or PMU changes.
+- Backlight: expander0x24, command5, PWM160/255. Startup now initializes the
+  expander directions/output latches using the exact-board factory sequence
+  documented in docs/hardware/RECOVERED-MAP.md. PMU registers are read only;
+  no regulator or charging changes.
 - Panel software reset; BGR565, inverted colors, swapXY and mirrorX/mirrorY enabled. Orientation adjusted from visual feedback;
   raw portrait touch maps to landscape x=479-raw_y, y=raw_x. Owner confirmed aligned drawing and CLEAR.
 - DMA buffer is reused only after the SPI completion semaphore; one task owns
@@ -29,5 +31,5 @@ from the upstream manifest's target list.
 
 Acceptance: new screen visible, blinking square, marks track finger at all four
 corners, CLEAR removes marks, repeated touch with zero I2C errors. Cold-power
-startup is not proven by warm-reset success; board power initialization remains
-for the next hardware qualification. Firmware remains installed after testing.
+startup is not proven by warm-reset success; the reset initialization fix is
+installed and awaiting a fresh USB power-cycle check. Firmware remains installed after testing.
