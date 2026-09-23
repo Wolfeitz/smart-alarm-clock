@@ -12,6 +12,7 @@
 #include "freertos/task.h"
 #include "board.h"
 #include "clock_service.h"
+#include "audio.h"
 static lv_obj_t *time_label,*date_label,*seconds_label,*source_label,*dim_label;
 static uint32_t tick(void){return (uint32_t)(esp_timer_get_time()/1000);}
 static void flush(lv_display_t *d,const lv_area_t *a,uint8_t *data)
@@ -24,6 +25,10 @@ static void touch_read(lv_indev_t *i,lv_indev_data_t *d)
     (void)i;int x,y;bool pressed=board_touch(&x,&y);
     d->state=pressed?LV_INDEV_STATE_PRESSED:LV_INDEV_STATE_RELEASED;
     if(pressed){d->point.x=x;d->point.y=y;}
+}
+static void sound_clicked(lv_event_t *e)
+{
+    (void)e;printf("AUDIO_TEST_REQUEST accepted=%d\n",audio_test());
 }
 static void dim_clicked(lv_event_t *e)
 {
@@ -60,13 +65,14 @@ static void serial_poll(void)
                     err=clock_set((time_t)value);
                 printf("TIME_SET status=%s epoch=%lld\n",esp_err_to_name(err),value);update();
             }
+            if(!overflow && strcmp(line,"SOUND")==0)printf("AUDIO_TEST_REQUEST accepted=%d\n",audio_test());
             n=0;overflow=false;
         }else if(n<sizeof(line)-1)line[n++]=b[i];else overflow=true;
     }
 }
 void app_main(void)
 {
-    board_init();clock_init(board_bus());
+    board_init();clock_init(board_bus());audio_init(board_bus());
     usb_serial_jtag_driver_config_t usb=USB_SERIAL_JTAG_DRIVER_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(usb_serial_jtag_driver_install(&usb));
     lv_init();lv_tick_set_cb(tick);
@@ -83,9 +89,14 @@ void app_main(void)
     seconds_label=label("Waiting for time",&lv_font_montserrat_20,186,0xa6b5c8);
     source_label=label("Set time via USB",&lv_font_montserrat_16,225,0x7c9eaa);
     lv_obj_t *button=lv_button_create(lv_screen_active());lv_obj_set_size(button,164,46);
-    lv_obj_align(button,LV_ALIGN_BOTTOM_MID,0,-16);lv_obj_set_style_bg_color(button,lv_color_hex(0x203347),0);
+    lv_obj_align(button,LV_ALIGN_BOTTOM_LEFT,52,-16);lv_obj_set_style_bg_color(button,lv_color_hex(0x203347),0);
     lv_obj_add_event_cb(button,dim_clicked,LV_EVENT_CLICKED,NULL);
     dim_label=lv_label_create(button);lv_label_set_text(dim_label,"Dim screen");lv_obj_center(dim_label);
+    lv_obj_t *sound=lv_button_create(lv_screen_active());lv_obj_set_size(sound,164,46);
+    lv_obj_align(sound,LV_ALIGN_BOTTOM_RIGHT,-52,-16);
+    lv_obj_set_style_bg_color(sound,lv_color_hex(0x203347),0);
+    lv_obj_add_event_cb(sound,sound_clicked,LV_EVENT_CLICKED,NULL);
+    lv_obj_t *sound_label=lv_label_create(sound);lv_label_set_text(sound_label,"Test sound");lv_obj_center(sound_label);
     update();printf("CLOCK_READY lvgl=%d.%d.%d timezone=America/New_York\n",LVGL_VERSION_MAJOR,LVGL_VERSION_MINOR,LVGL_VERSION_PATCH);
     uint32_t last=0,report=0;
     for(;;){

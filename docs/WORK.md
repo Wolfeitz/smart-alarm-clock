@@ -480,3 +480,31 @@ Next bounded milestone: qualify local audio codec/amplifier and audible output
 before implementing alarm delivery; battery-backed retention, NVS settings,
 Wi-Fi/NTP and full power-cycle clock qualification remain open. No alarm is armed
 or implied by this clock milestone. Documentation/whitespace verification passed.
+
+## Continued delivery: audio then local alarm core
+
+Owner explicitly asks to keep working across milestones. Continue authorized
+implementation without treating each successful hardware check as a stopping
+point. Next acceptance: short low-volume tone, clock remains responsive,
+codec/I2S startup and shutdown checked, owner confirms audible output.
+Interfaces: audio task owns I2S output and bounded tone requests; codec uses
+existing I2C bus only at initialization (later register changes stay serialized).
+No remote services, PMU voltage changes or host packages. Add pinned Espressif
+codec component; verify its config layout against factory initialization.
+
+Audio test firmware built and app-only flashed with verified hash. Image SHA256
+4dff04f22ff77c156548535da0716119e6ef0f1526afcd52f01e2181d139417c.
+Runtime: ES8311 slave mode, 22050Hz/16-bit stereo, codec open OK, AUDIO_READY
+volume25, CLOCK_READY and RTC restore OK. Test sound button requests four
+quiet pulses via one-item queue to independent audio task. DMA buffers auto-clear
+to silence after transmission. Evidence audio-build.log/audio-write.log/
+audio-serial.log under local-config/clock. Owner audible check pending; successful
+codec initialization is not proof of speaker output.
+
+Owner reports no audible sound and suspects no speaker. Two test requests each
+completed ESP_OK with177152 transmitted bytes; clock continued with RTC agreeing.
+This is transport evidence ONLY. Physical SPK connection check requested.
+Factory audio playback/resume calls at0x4201b948/0x4201b9ca set expander
+mask0x20 high; our startup output0x23 already does so. Default volume25 maps
+to -37.5dB before hardware-gain adjustment; quietness remains another possible
+reason for silence. Do not claim working audio or assume speaker is installed.

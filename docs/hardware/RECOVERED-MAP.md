@@ -86,3 +86,14 @@ With the sequence installed, touch_probe=ESP_OK and DISPLAY_ALIVE errors=0
 through251 reads. No voltage/charging changes. This establishes communication
 recovery after the failure; owner visual and fresh power-cycle checks pending.
 It supersedes the earlier no-expander-writes description above.
+
+## Audio configuration recovery
+
+Factory bsp_audio_codec_init0x4201bec6 supplies I2C address0x30 in the codec
+API's shifted-address convention (7-bit0x18), pa_pin=-1, master/use_mclk flags
+false, DAC supply3.3V and PA supply5V. Float constants at0x42203ea0/ea4;
+codec struct stores at0x4201bf52–bf86. No external MCLK pin or direct PA GPIO
+is configured by this factory routine. Default I2S config at0x4227f3a8 is
+22050Hz,16-bit stereo Philips framing, BCLK23/WS10/DOUT25/DIN24.
+Clock's output-only test retains these transmit settings, leaves DIN unused,
+and pins official espressif/esp_codec_dev1.6.2. Audible verification pending.

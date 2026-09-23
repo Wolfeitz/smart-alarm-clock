@@ -3,7 +3,7 @@
 ESP-IDF 6.1 / ESP32-C5 clock with LVGL 9.4.0 pinned by manifest and lockfile.
 Uses the proven ST7796 component from ../display-touch/components/st7796.
 480×320 dark clock screen, date, seconds/timezone, source state, and a touch
-brightness toggle. Alarm scheduling, audio, Wi-Fi/NTP, weather and persistent
+brightness toggle and a bounded Test sound button. Alarm scheduling, Wi-Fi/NTP, weather and persistent
 user settings are not implemented in this milestone.
 
 ## Build and provision
@@ -55,3 +55,11 @@ Hardware acceptance: visible readable clock, advancing seconds, correctly aligne
 Dim/Brighten button, RTC readback agrees with system time, and an MCU reset restores
 time without another TIME command. Full battery/USB-loss behavior remains a
 separate acceptance gate. Logs and binaries remain private under local-config/clock.
+
+## Audio bring-up
+
+Pinned esp_codec_dev1.6.2 initializes ES8311 playback, using factory-derived
+BCLK23/WS10/DOUT25, no MCLK or direct PA GPIO, 22050Hz16-bit stereo.
+Test sound (or serial SOUND) queues four quiet pulses on a separate audio task.
+No sound plays automatically on boot. Codec initialization has passed; audible
+speaker qualification is pending owner feedback. See WORK for the latest receipt.
