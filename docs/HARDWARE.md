@@ -100,9 +100,11 @@ No idf.py or esptool was initially on PATH, and no ESP-IDF checkout was found in
 the bounded locations searched (Downloads, /opt, Projects3 and ~/Projects).
 This does not prove none exists elsewhere. uv, CMake, Ninja and Python 3.12.13
 are available. Esptool 5.4.0 was run in a temporary uv environment; no system
-package, ESP-IDF SDK or compiler toolchain was installed.
+package, ESP-IDF SDK or compiler toolchain was installed during identification.
+Subsequent owner-authorized setup installed ESP-IDF v6.1 and successfully built
+the official ESP32-C5 hello_world example; see SETUP and WORK.
 
-The factory metadata supports ESP-IDF v5.5.4 as the first compatibility candidate.
+The factory metadata establishes ESP-IDF v5.5.4 as a compatibility reference.
 Upstream tag resolves to commit `735507283d5b2f9fb363a1901172dbd9e847945d`.
 LVGL version, board component versions and sdkconfig are unresolved; a generic
 IDF compiler installation alone would not establish working board support.

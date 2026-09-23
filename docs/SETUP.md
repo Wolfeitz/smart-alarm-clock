@@ -69,8 +69,41 @@ as proof of recovery. Never restore this image to another board model.
 
 ## Firmware development
 
+ESP-IDF **v6.1** is installed and the upstream hello_world example builds for
+**esp32c5**. This verifies the compiler environment, not Waveshare peripherals.
+Factory firmware uses v5.5.4; compatibility of the exact-board BSP with v6.1
+remains to be verified when sources become available.
+
+Installation locations:
+
+- EIM v0.19.0: `local-config/toolchains/eim/eim`.
+- SDK: `local-config/toolchains/esp-idf/v6.1/esp-idf`.
+- Compiler tools, Python environment and activation: `/home/rob/.espressif/tools`.
+- EIM registry/configuration/logs: `local-config/toolchains/`.
+- Local dfu-util prerequisite: `local-config/toolchains/prerequisites/bin`.
+- Upstream example copy and output: `local-config/toolchain-smoke/hello_world`.
+
+From the repository root, activate and rebuild the existing smoke example:
+
+```sh
+source /home/rob/.espressif/tools/activate_idf_v6.1.sh
+idf.py --version
+export IDF_PY_BUILD_JOBS=4
+idf.py -C local-config/toolchain-smoke/hello_world build
+```
+
+Initial setup copied `examples/get-started/hello_world` from the pinned SDK and
+ran `idf.py -C local-config/toolchain-smoke/hello_world set-target esp32c5 build`.
+These commands compile only. The example uses generic defaults including a 2MB
+flash header; it is not a prepared board diagnostics image. Ignore the automatic
+flash suggestions printed at the end of a successful IDF build.
+
+No system packages changed. EIM's attempt to copy an OpenOCD udev rule to `/etc`
+failed for lack of permission; this does not affect compilation. Revisit device
+permissions only if USB debugging is needed. Existing serial access has its own
+per-device ACL described above.
+
 No working build/flash command for our clock exists yet. Exact-board source,
-schematic, PCB identity and LVGL/BSP dependencies are missing. Candidate SDK
-v5.5.4 comes from factory metadata, not from the generic documentation screenshot.
-Do not flash hello-world merely to prove a compiler works while it would replace
-the only working board-specific demonstration without advancing peripheral proof.
+schematic, PCB identity and LVGL/BSP dependencies remain missing. Do not flash
+hello_world merely to prove a compiler works: it would replace the working
+board-specific demonstration without advancing peripheral proof.

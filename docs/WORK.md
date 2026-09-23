@@ -24,7 +24,7 @@ The long AAE source remains reference-only outside repository discovery.
 | Loading documented | Official Codex guide checked during discovery; link in TESTING |
 | Fresh session discovery | Passed in fresh ephemeral CLI session; see bootstrap/PROOF.md; internal loader trace not captured |
 | Fresh session verification | Canonical command exit 0 in fresh session; see bootstrap/PROOF.md |
-| Firmware build / device tests | Not run; no firmware/toolchain established |
+| Firmware build / device tests | ESP-IDF v6.1 upstream ESP32-C5 hello_world build passed; board peripheral tests still pending |
 
 Discovery evidence and input SHA-256 values are in the approved proposal. Current
 shell sandbox previously failed to launch with `mountinfo path is not absolute`;
@@ -169,3 +169,65 @@ ESP32-C5-Touch-LCD-3.5-C. The flashing page still says test firmware is in prepa
 Storefront and direct resource-page fetches returned 403 during recheck. Following
 the Resources link from the overview succeeded through the web reader and again
 showed examples/hardware resources as still being prepared. No board changes.
+
+## Authorized local toolchain setup
+
+2026-09-23: user selected ESP-IDF 6.1 and asked Codex to handle setup.
+Scope: install official EIM and SDK locally, then compile the upstream hello_world
+example for esp32c5. Acceptance: pinned SDK/compiler identity and a successful
+build with recorded repeatable commands. No board-specific driver integration,
+firmware replacement, flash erase, or host package changes are included.
+Factory v5.5.4 remains recovery/reference evidence; new development starts on v6.1,
+subject to later exact-board BSP compatibility verification.
+
+EIM v0.19.0 official Linux x64 archive verified against GitHub release asset SHA-256
+`f020f19afa9153417394fd6579d13d684d85df5ee5e1d00ad5fbf7de909a631d`.
+Its prerequisite check found only dfu-util missing. Built upstream dfu-util 0.11
+from https://dfu-util.sourceforge.net/releases/dfu-util-0.11.tar.gz using existing
+libusb 1.0.30 and installed it under local-config/toolchains/prerequisites.
+No system package installation was needed. EIM installation completed;
+logs and generated configuration are kept under ignored local-config/toolchains.
+EIM resolves compiler/download paths separately from its SDK base path: compiler
+tools and archives use /home/rob/.espressif/{tools,dist}, while SDK and manager
+registry use the project. These are user installations, not system package changes.
+The downloaded dfu-util source archive SHA-256 is
+`b4b53ba21a82ef7e3d4c47df2952adf5fa494f499b6b0b57c58c5d04ae8ff19e`
+(recorded fingerprint, not a separate publisher checksum verification).
+
+
+Toolchain acceptance passed (2026-09-23):
+
+- EIM v0.19.0 completed SDK/tool/Python installation, exit 0.
+- SDK tag v6.1 resolves to `fff9895c82d744c7237be8847347bdd1b07c6643`;
+  SDK `git status --short` was empty.
+- `idf.py --version`: ESP-IDF v6.1; compiler: riscv32-esp-elf-gcc
+  (crosstool-NG esp-15.2.0_20251204) 15.2.0; Python 3.14.7.
+- Activated `/home/rob/.espressif/tools/activate_idf_v6.1.sh`, copied the SDK's
+  hello_world example under local-config/toolchain-smoke, and ran
+  `IDF_PY_BUILD_JOBS=4 idf.py -C local-config/toolchain-smoke/hello_world set-target esp32c5 build`.
+  Exit 0, project build complete. Log: local-config/toolchain-smoke/build.log.
+- `python -m esptool image-info` confirms ESP32-C5, ESP-IDF v6.1, valid
+  checksum and validation hash. App binary: 142704 bytes; SHA-256
+  `3e6aea7c1cbb8d2c4ab5684f476a927fe1179ac6b68613b6c42e4efc29c3304c`.
+  App version reflects the containing project Git state (`6a3b108-dirty`);
+  generic example flash header is 2MB, not the board's measured 32MB.
+- EIM could not copy its OpenOCD udev rule into /etc (permission denied).
+  Compilation passed without it; no system packages or rules changed.
+- Tools occupy approximately 7.1GB in ~/.espressif; project SDK/tools 778MB.
+  No board reset, flash, erase or serial command was needed for this setup.
+
+Installer invocation used project-local EIM with `--do-not-track true`, local
+`--log-file` and `--esp-idf-json-path`, then `install --path` pointing at
+local-config/toolchains/esp-idf, `--idf-versions v6.1 --target esp32c5
+--non-interactive true --skip-components-download true`, and local
+`--config-file-save-path`. The local prerequisites/bin directory was prepended
+to PATH; UV_CACHE_DIR was /tmp/esp-link-uv-cache. EIM generated the full resolved
+configuration at local-config/toolchains/eim-install-config.toml.
+
+Next: obtain exact-board source/schematic and reconcile peripheral dependencies
+against v6.1 before preparing board diagnostics. Toolchain setup is complete;
+board support and hardware acceptance remain outstanding.
+
+Documentation verifier and git diff --check passed after the setup documentation
+update. Tools/build artifacts remain Git-ignored. The unrelated install-arch.sh
+SHA-256 still matches the preserved baseline.

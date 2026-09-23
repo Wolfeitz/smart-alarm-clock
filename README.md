@@ -38,8 +38,10 @@ future firmware gates. Small changes use focused verification; meaningful change
 need acceptance and interfaces recorded in WORK before implementation.
 
 Approved technology direction: ESP-IDF, C/C++, LVGL, FreeRTOS, NVS. Pin compatible
-versions from verified vendor evidence when hardware readiness begins. No SDK,
-CI provider, remote repository or integration service is configured by bootstrap.
+versions from verified vendor evidence when hardware readiness begins. Bootstrap
+configured no SDK, CI provider, remote repository or integration service.
+Subsequent authorized setup installed ESP-IDF v6.1 and verified an ESP32-C5
+hello_world build; see SETUP for activation/build commands and their limits.
 No existing firmware conventions, tests or delivery pipeline need preservation.
 
 Native guidance is cooperative; runtime permissions enforce access. Global and
@@ -54,5 +56,6 @@ any future service work. No shared service is needed for bootstrap.
 
 Keep credentials out of Git and logs. Use ignored local configuration for secrets;
 choose a concrete provisioning mechanism during firmware design. Report changes,
-commands, results, limitations and next steps in WORK. No exact build/flash command
-is claimed until a compatible toolchain and target have been verified.
+commands, results, limitations and next steps in WORK. The generic compiler check
+is verified; board-specific build/flash commands await
+verified vendor drivers and pin assignments.

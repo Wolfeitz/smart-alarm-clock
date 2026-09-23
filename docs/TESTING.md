@@ -12,7 +12,8 @@ This standard-library check verifies required bootstrap artifacts, README's loca
 index links, archived product-brief byte identity and complete/dispositioned source
 coverage. It does not validate the semantic correctness of requirements, scan all
 secrets, compile firmware or test hardware. Review the change against accepted scope
-as well. No firmware build/test command exists yet.
+as well. The generic ESP32-C5 compiler smoke build is documented in SETUP and
+passed with ESP-IDF v6.1. It is not a product-firmware or hardware test.
 
 The original unrelated installer must retain SHA-256
 `8033f0bc484e863ad274645db2e90e3ac7dd17c35c53de4589653850140344bf`.
