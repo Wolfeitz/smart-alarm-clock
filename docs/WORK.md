@@ -116,3 +116,22 @@ during discovery. No global runtime or host configuration was changed.
 
 2026-09-23: recorded receipt description in PROJECT and updated hardware-readiness
 status. Documentation verifier and whitespace check passed; no hardware operations.
+
+2026-09-23: after user reboot, running kernel is 7.2.6-arch2-1; cdc_acm
+is loaded and Espressif USB 303a:1001 enumerates as /dev/ttyACM0. Serial open
+as rob failed with EACCES: node is root:uucp mode 0660, and rob is not in uucp.
+One-time sudo passive-read attempt could not run because authentication is required.
+No serial bytes received, reset sent, firmware written or permissions changed.
+Next connection step: owner grants temporary per-device access, then retry passive
+serial capture. User reports factory display and touch UI respond; WLAN factory
+page is documented as scan/display by Waveshare, not verified provisioning.
+
+2026-09-23: owner granted rob per-device serial access. Opening /dev/ttyACM0
+succeeded; a ten-second passive read received 616 bytes of factory diagnostic
+output. Example: `I (4640385) qmi8658: Now_time is  2050.1.1  6 1:18:18`.
+Successive records advanced by one second. This proves readable firmware logs,
+not an interactive command interface or correct RTC time; the reported date is
+2050-01-01. The reader briefly waited in tty_wait_until_sent while closing, then
+exited successfully on its own. No application commands, reset or flash operation
+was sent. Next: identify firmware/version and supported provisioning or diagnostic
+interfaces before attempting Wi-Fi configuration.
