@@ -115,3 +115,9 @@ image before a separately scoped flash operation. The authorized serial-only v6.
 backup has been restored with a matching write-time digest. Factory app_main and
 PMU startup logs returned; physical GUI confirmation is pending. See WORK for
 receipts and SETUP for recovery details.
+
+## Factory-derived wiring investigation
+
+See [recovered map](hardware/RECOVERED-MAP.md) for configuration extracted from
+the actual factory application and the owner photo identifying the CH32V006
+expander. These are candidate mappings with explicit validation status.

@@ -120,3 +120,10 @@ A passive pyserial reader should set DTR and RTS false **before opening** the po
 The first direct-reset capture received no bytes; esptool `run` followed by that
 passive-open sequence produced factory startup logs. Do not equate a silent
 monitor with failed firmware without checking reset/serial control state.
+
+## Current installed application
+
+The later owner-authorized wiring investigation left firmware/board-probe on the
+board after a successful I2C ACK test. It runs IDF v6.1 and reports over USB; it
+does not implement the factory GUI. The recovery test above remains valid
+historical evidence, not a statement that factory firmware is currently running.

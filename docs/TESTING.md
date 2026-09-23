@@ -69,3 +69,10 @@ and emitted repeated matching target/version heartbeats on the physical board.
 Full factory restoration passed the whole-image hash check and returned to
 factory app_main/PMU startup. This is deployment/recovery evidence, not completion
 of the product firmware or peripheral gates above. Physical GUI check is pending.
+
+## Recovered-bus test (2026-09-23)
+
+firmware/board-probe builds under v6.1 and runs on the board. Four complete
+address-only scans on SDA27/SCL26 returned the same eight ACKs with zero errors.
+See hardware/RECOVERED-MAP.md for addresses and provenance. This validates the
+bus mapping but not device identity, register semantics, or display/audio paths.

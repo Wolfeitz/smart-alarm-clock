@@ -1,6 +1,6 @@
 # Work, decisions and evidence
 
-Owner: Rob. Updated: 2026-09-23. Approved bootstrap complete. Hardware readiness active: USB connected; silicon/flash identified; factory backup verified; exact-board source/schematic needed.
+Owner: Rob. Updated: 2026-09-23. Approved bootstrap complete. Hardware readiness active: IDF 6.1 board-probe installed; recovered I2C bus verified; factory-derived LCD/audio map awaiting hardware tests.
 Approval: user replied “Approved” to docs/bootstrap/PROPOSAL.md in this task.
 
 ## Bootstrap checklist
@@ -310,3 +310,50 @@ unresolved. Vendor support request remains drafted and unsent; contacting others
 requires explicit user instruction. Board-independent clock/alarm logic can be
 developed without this hardware information; screen/audio bring-up requires
 verified wiring or a separately scoped hardware/firmware reconstruction effort.
+
+## Factory reconstruction and bounded bus test
+
+Owner asked Codex to figure out missing board details and run tests. Scope: offline
+factory application analysis, recover BSP constants against SDK 5.5.4 layouts,
+then flash an IDF 6.1 USB/I2C diagnostic on evidenced SDA27/SCL26 and check ACKs.
+No speculative GPIO sweep, PMU configuration writes, peripheral register writes,
+erase-all or eFuse writes. Acceptance: board heartbeat plus repeated address ACKs;
+address presence does not alone establish device identity. Leave the diagnostic
+installed if it passes, retaining verified factory recovery.
+
+Factory BSP source string identifies waveshare__esp32_c5_touch_lcd_3_5. Public
+registry lookup for this exact component is 404. Offline RISC-V disassembly
+places bsp_i2c_init at 0x4201bade: stores 27 at config offset4 and 26 at offset8,
+then calls i2c_new_master_bus; checked against IDF v5.5.4 i2c_master.h layout.
+LCD bus setup at 0x4201ba5c stores MOSI7/MISO2/SCLK6. Display constructor at
+0x4201c07a stores CS8/DC5 and 60MHz SPI clock. These are reconstructed factory
+configuration values; hardware validation remains separate.
+
+
+Owner photo IMG_2840.jpeg confirms CH32V006 expander labeling and E8–E15
+header labels. Factory driver symbol retains the older ch32v003 name; exact
+protocol/part distinction is recorded in hardware/RECOVERED-MAP.md.
+
+USB re-enumeration removed the prior ACL. sudo -n required a password; owner
+restored temporary rob access and replied done. No account/group or global
+permission change was made by Codex.
+
+Bus-test acceptance passed: IDF v6.1 board-probe build and flash exit0; image
+checksum/hash and write hashes valid. Binary SHA-256:
+`d58cc2c11caeb39edc874f3a998dd0a8d18470e956afc873ac98f2ee93a9a472`.
+A 16-second passive serial capture shows rounds0–3, each with eight responders:
+0x18,0x24,0x34,0x38,0x51,0x6b,0x6e,0x70; every round reports errors=0.
+Source: firmware/board-probe. Logs/build: local-config/board-probe. Individual
+chip IDs and functions are not inferred from ACKs alone. The successful probe
+is LEFT INSTALLED, as communicated; factory demo is not currently running.
+
+Next bounded hardware work: read-only device identification and RTC/touch reads;
+then validate display initialization using recovered SPI/expander configuration.
+PMU/expander configuration writes need understood register/bit behavior. The
+recovered map replaces the earlier assumption that absence of public schematics
+prevents all hardware progress. LCD/audio pins remain firmware-derived candidates
+until tested. No destructive full erase, eFuse changes or network provisioning.
+
+Documentation verifier and whitespace checks passed after the recovered-map
+and hardware-test updates. Local Git retains probe source and evidence notes;
+private factory binaries/disassembly remain ignored.
