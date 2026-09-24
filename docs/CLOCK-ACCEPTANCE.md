@@ -12,7 +12,7 @@ integrations. Last audit2026-09-23. Installed application SHA256:
 | Requirement | Evidence | Status |
 |---|---|---|
 | Installed ESP-IDF clock application | Application-only esptool hash verification; CLOCK_READY and RTC heartbeat in local-time-runtime.log | Demonstrated |
-| Readable display and aligned touch | Owner confirmed time/date, drawing/CLEAR and Dim/Brighten | Demonstrated for clock foundation; new screens pending |
+| Readable display and aligned touch | Owner confirmed time/date, drawing/CLEAR and Dim/Brighten | Clock foundation demonstrated; owner reports current screen looks good after power return |
 | RTC-backed offline time | RTC write/readback and reset without TIME command; system/RTC agree within one second | Demonstrated across MCU reset |
 | Local time/date entry | Set time installed; host calendar/leap/DST tests pass; RTC adapter already hardware-tested | On-device LVGL navigation/save tested; physical editor use pending |
 | Editable persistent alarms | Eight-slot editor installed; NVS save/reset readback preserved disabled06:43 weekdays62; exact save acknowledgment implemented | Persistence and on-device LVGL editing/save demonstrated; physical editor pending |
@@ -21,13 +21,14 @@ integrations. Last audit2026-09-23. Installed application SHA256:
 | Snooze and dismiss | Real five-minute snooze re-rang after300.01 seconds; dismissal cleared state | Scheduler and on-device LVGL event paths demonstrated; physical button check pending |
 | Restart recovery | Ringing, snooze, dismissal and brightness survive MCU resets | Demonstrated |
 | Saved brightness | Owner confirmed Dim/Brighten; brightness25 survived reset, restored160 | Demonstrated |
-| Complete power loss | No battery connected; previous blank-screen problem received expander-reset fix | Final unplug/replug and RTC validity behavior pending |
+| Power-return startup | Owner reports powered back on and current application looks good; prior battery state disconnected | Display/application recovery observed by owner; offline RTC retention without backup power is not established |
 | Independence from Wi-Fi | RTC, engine, NVS, UI and audio remain local; HTTPS in separate lower-priority worker | Offline local example demonstrated before provisioning; online UI/RTC responsiveness verified |
 | Factory recovery preserved | Private32MB factory backup and prior whole-image restoration/hash proof; factory partitions retained | Demonstrated; no further factory rewrite needed |
 
 Build/host tests cannot prove sound, physical controls or a complete power cycle.
-Full alarm reliability remains unqualified while complete-power-loss testing and
-physical controls on the final combined application are pending.
+Owner has confirmed successful power-return startup. Battery-backed RTC retention,
+alarm recovery across full power loss, and physical alarm controls on the final
+combined application remain separate acceptance checks.
 
 Evidence and commands are recorded in WORK.md; private runtime receipts are under
 local-config/clock. Reproduce pure logic checks with python scripts/test-clock-host.py.

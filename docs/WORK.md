@@ -3,8 +3,8 @@
 Owner: Rob. Updated: 2026-09-23. Working clock/weather example installed.
 Current evidence: local alarm UI/scheduler/persistence tested, quiet sound accepted,
 Wi-Fi scan and saved reconnection, live HTTPS weather and NTP/RTC sync verified.
-Manual ZIP27358 retained. Final combined firmware still needs physical overnight/
-power-loss acceptance; HA, external playback and spoken briefings are future work.
+Manual ZIP27358 retained. Owner confirmed power-return startup; battery-backed retention and full-power-loss
+alarm recovery remain unqualified. HA, external playback and spoken briefings are future work.
 See final dated entries below and CLOCK-ACCEPTANCE.md; earlier sections are history.
 Approval: user replied “Approved” to docs/bootstrap/PROPOSAL.md in this task.
 
@@ -930,3 +930,19 @@ records and heap returned91128bytes. Repeated10-second heartbeats remained live.
 No new audible alarm test was run while owner was heading to bed; prior audio and
 real5-minute snooze evidence remains recorded separately. Current image's full
 power-loss reliability and physical GUI review are still unproven.
+
+## Owner-confirmed power return
+
+Owner reports "powered back on - sudo command given - things look good to me".
+Accept this as physical confirmation that the current application/display starts
+after the owner's power cycle; prior blank-screen startup fault did not recur in
+this check. This does not establish battery-backed RTC retention (battery was
+previously disconnected), a powered-off alarm firing, or every alarm-editor control.
+Serial access was checked separately; opening USB can itself reset this board, so
+subsequent serial boot evidence must not be mislabeled as the original cold boot.
+
+Serial follow-up passed: access works, opening produced USB reset0x15 (not a second
+full power cycle), CLOCK_INIT rtc=ESP_OK, SETTINGS_LOAD/ALARM_STATE storageESP_OK,
+brightness160 and home screen. Saved Wi-Fi reconnected and weatherHTTPS200 returned
+732bytes. Two10-second heartbeats showed system/RTC equal, heap91340bytes stable.
+Receipt: local-config/clock/power-return-check.log. No firmware or settings changed.
