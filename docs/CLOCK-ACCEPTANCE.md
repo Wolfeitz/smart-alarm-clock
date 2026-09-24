@@ -1,13 +1,12 @@
 # Offline clock acceptance
 
-**Temporary diagnostic state:** factory demo is installed for the owner-requested
-music-volume comparison. Exact clock boot/table/app and settings snapshots are
-preserved under local-config/clock/factory-comparison. Restore the clock after
-comparison; this temporary state does not fulfill the installed-clock goal.
+**Current board:** bedside clock restored after factory music comparison.
+Owner accepts the clear current local tone provisionally; desired alarm loudness
+may require later hardware or external playback improvements.
 
 Scope: active goal only; weather, Home Assistant and Spotify remain deferred.
-Last audit: 2026-09-23. Latest runtime change: full-level tone adjustment after ab10c17.
-Installed application SHA256: c1f518f8d57dc25e8b5493f9a49af8b6cff7ca9bba7ae1487a47efc92e3182f1.
+Last audit: 2026-09-23. Latest runtime change: read-only audio power diagnostics; exact saved clock restored.
+Restored application partition SHA256: d06800c76acc4534811a42d533779caee08a9e891075dcf8238645b049e57d3c.
 
 | Requirement | Evidence | Status |
 |---|---|---|
@@ -17,7 +16,7 @@ Installed application SHA256: c1f518f8d57dc25e8b5493f9a49af8b6cff7ca9bba7ae1487a
 | Local time/date entry | Set time installed; host calendar/leap/DST tests pass; RTC adapter already hardware-tested | Physical editor use pending |
 | Editable persistent alarms | Eight-slot editor installed; NVS save/reset readback preserved disabled06:43 weekdays62; exact save acknowledgment implemented | Persistence demonstrated; physical editor pending |
 | Local scheduled trigger | Once alarm triggered on physical board; consumption saved before playback | State transition demonstrated |
-| Audible local sound | Owner confirms Test sound is audible but barely; ES8311 and I2S checks also pass | Speaker output demonstrated; usable alarm loudness pending |
+| Audible local sound | Owner confirms clear audible tone; factory music louder but distorted; accepts current tone for now | Demonstrated and provisionally accepted; desired loudness remains a limitation |
 | Snooze and dismiss | Real five-minute snooze re-rang after300.01 seconds; dismissal cleared state | Scheduler demonstrated; physical buttons pending |
 | Restart recovery | Ringing, snooze, dismissal and brightness survive MCU resets | Demonstrated |
 | Saved brightness | Owner confirmed Dim/Brighten; brightness25 survived reset, restored160 | Demonstrated |

@@ -780,3 +780,21 @@ untouched. Restore the exact saved clock after this physical comparison; do not
 leave the factory demo as the final goal delivery. Original clock RTC may be
 changed by factory code; validate/provision time if necessary after restoration.
 No assumption of factory loudness until owner reports it.
+
+## Factory comparison result and accepted interim volume
+
+Owner reports factory music is quite a bit louder but distorts. This demonstrates
+additional output capability with different content/configuration, not a proven
+missing amplifier switch or a hardware fault. Owner explicitly accepts our clear
+current level for now; keep codec100/PCMpeak20000 and do not keep chasing gain.
+Potential later options are speaker replacement or external Sonos/Spotify playback.
+These are future directions, not authorization to remove independent local sound
+or start remote integrations now. Restore exact pre-demo clock and verify saved
+settings and RTC. Full-power-loss and new physical controls remain open gates.
+
+Clock restored: settings-after-demo.bin byte-matches clock-settings.bin; both
+saved boot/table and app writes hash-verified. Restored runtime reports RTC/offline
+valid/current time, codec100/peak20000, brightness160, storageESP_OK, idle alarm
+state and CLOCK_READY. No TIME correction was necessary. Evidence restore.log
+and restored-runtime.log under local-config/clock/factory-comparison.
+CURRENT BOARD: our bedside clock again, with the accepted interim local volume.

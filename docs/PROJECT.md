@@ -128,3 +128,12 @@ not deleted from V1. Detailed task ordering lives in [WORK](WORK.md).
 | 22 | deferred | Build/flash/setup/hardware documentation grows with verified implementation |
 | 23-24 | excluded-v1 | Future compatibility and non-goals above |
 | 25-27 | adopted | WORK ordering, physical V1 acceptance and local reliability priority |
+
+## Owner decision: interim audio level (2026-09-23)
+
+After comparing factory music (louder but distorted), owner accepts the clock's
+current clear local tone as an interim alarm level. It is audible but not yet at
+the desired bedside alarm loudness. Retain local sound at this level; possible
+future upgrades include a replacement speaker or external Sonos/Spotify playback.
+External playback remains subject to independent local fallback and later
+integration scope; this decision does not claim reliable remote playback.
