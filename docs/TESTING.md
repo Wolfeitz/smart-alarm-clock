@@ -216,3 +216,11 @@ and `speaker/bedroom` target. It verifies configure/read/play/pause confirmation
 offline rejection. HA-specific parser/service tests still run through the real HA
 adapter, including persisted selection migration and failures. This proves a code
 boundary, not an implemented non-HA device integration.
+
+`alarm_service_test.c` executes the production alarm-owner loop with fake RTOS,
+wall/monotonic clocks, storage and audio. A trigger checkpoint failure must still
+activate local sound; Snooze and Dismiss must work while writes fail, and the
+five-second retry must persist dismissal/consumption without retriggering. A failed
+tracked edit must preserve the old alarm and report its ticket/error; a later
+successful edit must persist. These deterministic owner tests do not simulate
+thread races, physical flash atomicity or audible output.

@@ -1438,3 +1438,22 @@ IDF6.1 build/app-only flash1785328bytes verified; SHA256:
 On-device navigation passed, all8 alarms unchanged, RTC/system agree, storageESP_OK,
 heap80148..80160. No playback or Pi changes. Receipts: backend-host.log,
 backend-preview-build.log, backend-build.log, backend-flash.log, backend-runtime.log.
+
+## Alarm-owner persistence fault test (2026-09-24)
+
+Close a specific offline-core test gap by running production alarm_service.c's
+owner task under a deterministic fake RTOS/storage/audio boundary. Verify failed
+trigger checkpoints do not suppress local sound, Snooze/Dismiss stay responsive,
+failed persistence retries recover without retriggering, and failed tracked edits
+retain prior alarms and report their exact ticket/error. No board changes or
+physical power-fault simulation; codec/engine tests alone did not cover this owner.
+
+Production alarm-owner fault tests passed both scenarios. With checkpoint writes
+returning93, the RTC-due alarm still activates audio, Snooze publishes300seconds
+and silences audio, and Dismiss clears active phases. Once storage recovers, the
+bounded five-second retry saves consumed date/dismissal without another ring;
+three failed state-transition checkpoints plus one retry were observed. A tracked
+edit failure preserves the original07:00 alarm and matching failure ticket; a
+subsequent08:00 edit succeeds and is persisted. All existing host suites pass.
+Only test/docs changed; no flash, reset, credentials or user settings touched.
+This closes owner-loop fault coverage, not physical power-loss/acoustic acceptance.
