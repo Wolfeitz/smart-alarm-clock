@@ -946,3 +946,29 @@ full power cycle), CLOCK_INIT rtc=ESP_OK, SETTINGS_LOAD/ALARM_STATE storageESP_O
 brightness160 and home screen. Saved Wi-Fi reconnected and weatherHTTPS200 returned
 732bytes. Two10-second heartbeats showed system/RTC equal, heap91340bytes stable.
 Receipt: local-config/clock/power-return-check.log. No firmware or settings changed.
+
+## Current work: scheduled night brightness (2026-09-24)
+
+Owner defers all further full-power-off tests until functionality is complete and
+regards the current visual design as a proof of concept. Next functional slice:
+editable local-time night interval (defaults22:00–07:00), persisted enable/settings,
+30-second touch wake, bright screen for ringing alarms, and manual brightness when
+schedule is off. Existing installations migrate with schedule disabled. Equal
+start/end is invalid; overnight/daytime intervals are supported. Invalid clock
+uses manual brightness. UI owns backlight; pure policy has no LVGL/network calls.
+Store version3 in unused header bytes, preserving version1/2 alarm/recovery data.
+Use same save-ticket acknowledgement as alarm editor. No full-power tests or
+visual redesign in this slice; build/host/migration and ordinary device checks only.
+
+Night slice completed: pure policy, v3 migration, actual-UI preview tests and IDF6.1
+build passed. Inspected480x320 settings render. Backed up clockcfg privately before
+migration (before-night-settings.bin,0600; contains secrets, never publish). App-only
+flash hash verified: ec31e7d815448459c8e74d2c553fc383d2c341759f8b4fab9e31a2224a166128.
+On-device UI enable/save/disable/save passed; all8 alarm records unchanged and
+settings storageESP_OK; schedule restored disabled with22:00–07:00 defaults.
+First UI assertion sampled before the one-second UI refresh; corrected test waits
+for save acknowledgement/home transition. Intermediate ordinary USB reset also
+loaded enabled schedule from NVS successfully. WeatherHTTPS200 remained functional.
+No full power-off tests were performed. Physical night brightness perception and
+long unattended behavior remain unverified. Test receipt: night-ui-check.log;
+build/flash receipts: night-build.log and night-flash.log.

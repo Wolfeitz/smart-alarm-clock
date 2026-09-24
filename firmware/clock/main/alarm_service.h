@@ -16,3 +16,5 @@ uint32_t alarm_service_save_tracked(unsigned index,const alarm_config_t *alarm);
 bool alarm_service_brightness(uint8_t brightness);
 bool alarm_service_snooze(void);
 bool alarm_service_dismiss(void);
+
+uint32_t alarm_service_display(const display_schedule_t *schedule,uint8_t manual_brightness);

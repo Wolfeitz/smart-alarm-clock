@@ -8,11 +8,12 @@ root = Path(__file__).resolve().parents[1]
 main = root / "firmware/clock/main"
 tests = root / "firmware/clock/tests"
 suites = {
+    "display_policy": ["display_policy"],
     "rtc_codec": ["rtc_codec"],
     "local_time": ["local_time"],
     "alarm_engine": ["alarm_engine"],
-    "settings_codec": ["alarm_engine", "settings_codec"],
-    "alarm_recovery": ["alarm_engine", "settings_codec", "alarm_recovery"],
+    "settings_codec": ["alarm_engine", "settings_codec", "display_policy"],
+    "alarm_recovery": ["alarm_engine", "settings_codec", "alarm_recovery", "display_policy"],
 }
 with tempfile.TemporaryDirectory(prefix="esp-link-host-") as directory:
     for name, modules in suites.items():

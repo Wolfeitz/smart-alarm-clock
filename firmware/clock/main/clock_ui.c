@@ -7,6 +7,7 @@
 #include "audio.h"
 #include "weather_service.h"
 #include "esp_system.h"
+#include "esp_timer.h"
 #include "lvgl.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +21,12 @@ static bool editing,pending,time_editing;
 static lv_obj_t *time_year,*time_month,*time_day,*time_hour,*time_minute,*time_status;
 static uint32_t pending_ticket;
 static uint8_t applied_brightness;
+static uint64_t wake_until;
+static bool settings_view,display_editing,display_pending;
+static uint32_t display_ticket;
+static lv_obj_t *night_enabled,*night_start_hour,*night_start_minute,*night_end_hour,*night_end_minute,*manual_level,*display_status;
+static void show_display(lv_event_t *e);
+static void show_settings(lv_event_t *e);
 static bool weather_view,network_editing,network_error,location_editing,wifi_listing,network_connecting;
 static unsigned shown_scan;
 static lv_obj_t *network_list;
@@ -45,6 +52,7 @@ static void show_editor(void);
 static void show_time_editor(lv_event_t *e);
 static void reset_screen(void)
 {
+    settings_view=false;display_editing=false;display_pending=false;
     weather_view=false;network_editing=false;location_editing=false;wifi_listing=false;network_connecting=false;
     lv_obj_clean(root);lv_obj_set_style_bg_color(root,lv_color_hex(0x0b1119),0);
     lv_obj_remove_flag(root,LV_OBJ_FLAG_SCROLLABLE);
@@ -55,6 +63,7 @@ static void sound(lv_event_t *e){(void)e;audio_test();}
 static void dim(lv_event_t *e)
 {
     (void)e;alarm_snapshot_t s;alarm_service_snapshot(&s);
+    if(s.settings.display.enabled){show_display(NULL);return;}
     if(!alarm_service_brightness(s.settings.brightness<80?160:25))lv_label_set_text(status,"Busy - try again");
 }
 static void day_toggle(lv_event_t *e)
@@ -78,6 +87,40 @@ static lv_obj_t *number_list(int first,int last,int x,int y,int w)
     char options[512]={0};size_t n=0;
     for(int i=first;i<=last;i++)n+=snprintf(options+n,sizeof(options)-n,i==last?"%02d":"%02d\n",i);
     return dropdown(options,x,y,w);
+}
+static void show_settings(lv_event_t *e)
+{
+    (void)e;editing=false;time_editing=false;reset_screen();settings_view=true;
+    label(root,"Settings",10,15,460,&lv_font_montserrat_20);
+    button(root,"Time & date",80,75,320,show_time_editor,NULL);
+    button(root,"Display & night mode",80,135,320,show_display,NULL);
+    button(root,"Clock",150,260,180,go_home,NULL);
+}
+static void save_display(lv_event_t *e)
+{
+    (void)e;if(display_pending)return;
+    display_schedule_t schedule={.enabled=lv_obj_has_state(night_enabled,LV_STATE_CHECKED),
+        .start_minute=60*lv_dropdown_get_selected(night_start_hour)+lv_dropdown_get_selected(night_start_minute),
+        .end_minute=60*lv_dropdown_get_selected(night_end_hour)+lv_dropdown_get_selected(night_end_minute)};
+    if(!display_schedule_valid(&schedule)){lv_label_set_text(display_status,"Start and end must differ");return;}
+    display_ticket=alarm_service_display(&schedule,lv_dropdown_get_selected(manual_level)?25:160);
+    display_pending=display_ticket!=0;lv_label_set_text(display_status,display_pending?"Saving...":"Busy - try again");
+}
+static void show_display(lv_event_t *e)
+{
+    (void)e;alarm_snapshot_t state;alarm_service_snapshot(&state);editing=false;time_editing=false;reset_screen();display_editing=true;
+    label(root,"Scheduled night mode",10,15,330,&lv_font_montserrat_20);
+    night_enabled=lv_switch_create(root);lv_obj_set_pos(night_enabled,375,12);lv_obj_set_size(night_enabled,70,36);
+    if(state.settings.display.enabled)lv_obj_add_state(night_enabled,LV_STATE_CHECKED);
+    label(root,"Dim from",15,60,205,&lv_font_montserrat_16);label(root,"Brighten at",255,60,205,&lv_font_montserrat_16);
+    night_start_hour=number_list(0,23,25,88,90);night_start_minute=number_list(0,59,125,88,90);
+    night_end_hour=number_list(0,23,265,88,90);night_end_minute=number_list(0,59,365,88,90);
+    lv_dropdown_set_selected(night_start_hour,state.settings.display.start_minute/60);lv_dropdown_set_selected(night_start_minute,state.settings.display.start_minute%60);
+    lv_dropdown_set_selected(night_end_hour,state.settings.display.end_minute/60);lv_dropdown_set_selected(night_end_minute,state.settings.display.end_minute%60);
+    label(root,"When schedule is off:",10,158,240,&lv_font_montserrat_16);
+    manual_level=dropdown("Bright\nDim",265,145,190);lv_dropdown_set_selected(manual_level,state.settings.brightness<80);
+    display_status=label(root,"Local time / touch wakes for 30 seconds",10,207,460,&lv_font_montserrat_16);
+    button(root,"Cancel",45,264,170,show_settings,NULL);button(root,"Save",265,264,170,save_display,NULL);
 }
 static void save(lv_event_t *e)
 {
@@ -148,7 +191,7 @@ static void home(void)
     editing=false;time_editing=false;pending=false;reset_screen();
     date_text=label(root,"Clock",18,19,310,&lv_font_montserrat_20);
     lv_obj_set_style_text_align(date_text,LV_TEXT_ALIGN_LEFT,0);
-    button(root,"Set time",350,12,115,show_time_editor,NULL);
+    button(root,"Settings",350,12,115,show_settings,NULL);
     time_text=label(root,"--:--",22,76,270,&lv_font_montserrat_48);
     lv_obj_set_style_text_color(time_text,lv_color_hex(0xffd998),0);
     lv_obj_set_style_transform_pivot_x(time_text,LV_PCT(50),0);lv_obj_set_style_transform_pivot_y(time_text,LV_PCT(50),0);lv_obj_set_style_transform_scale(time_text,320,0);
@@ -277,7 +320,11 @@ void clock_ui_init(void)
 void clock_ui_update(void)
 {
     alarm_snapshot_t s;alarm_service_snapshot(&s);
-    if(s.settings.brightness!=applied_brightness){applied_brightness=s.settings.brightness;board_brightness(applied_brightness<80);}
+    time_t wall=time(NULL);struct tm local_now;localtime_r(&wall,&local_now);
+    bool dimmed=display_should_dim(&s.settings.display,clock_valid(),local_now.tm_hour*60+local_now.tm_min,
+        s.settings.brightness,s.ringing!=0,esp_timer_get_time()/1000,wake_until);
+    uint8_t desired=dimmed?25:160;
+    if(desired!=applied_brightness){applied_brightness=desired;board_brightness(dimmed);}
     bool active=s.ringing || s.snoozed;
     if(active && !overlay){
         overlay=lv_obj_create(lv_layer_top());lv_obj_set_size(overlay,460,230);lv_obj_center(overlay);
@@ -300,6 +347,15 @@ void clock_ui_update(void)
         }
         lv_label_set_text(overlay_detail,text);
     }
+    if(display_editing){
+        if(display_pending&&s.save_ticket==display_ticket){
+            display_pending=false;
+            if(s.save_status==ESP_OK){home();return;}
+            lv_label_set_text(display_status,"Save failed - settings unchanged");
+        }
+        return;
+    }
+    if(settings_view)return;
     if(weather_view||network_editing||location_editing){
         weather_snapshot_t w;weather_service_snapshot(&w);
         if(network_editing||location_editing){
@@ -355,7 +411,7 @@ void clock_ui_update(void)
     else snprintf(b,sizeof(b),"%s",clock_valid()?"No upcoming alarms":"Set time to arm alarms");
     lv_label_set_text(next_text,b);
     lv_label_set_text(status,s.storage_status==ESP_OK?clock_source():"Settings storage error");
-    lv_label_set_text(dim_text,applied_brightness<80?"Brighten":"Dim");
+    lv_label_set_text(dim_text,s.settings.display.enabled?"Display":applied_brightness<80?"Brighten":"Dim");
     weather_snapshot_t weather;weather_service_snapshot(&weather);
     lv_label_set_text(home_place,weather.location.name[0]?weather.location.name:"Local weather");
     if(weather.has_data){
@@ -375,10 +431,12 @@ static void dropdown_diagnostics(const char *name,lv_obj_t *o)
 }
 void clock_ui_diagnostics(void)
 {
-    diagnostics_printf("UI_SCREEN name=%s overlay=%u pending=%u\n",location_editing?"location":network_editing?"network":weather_view?"weather":time_editing?"time":editing?"alarm":"home",overlay!=NULL,pending);
+    diagnostics_printf("UI_SCREEN name=%s overlay=%u pending=%u\n",display_editing?"display":settings_view?"settings":location_editing?"location":network_editing?"network":weather_view?"weather":time_editing?"time":editing?"alarm":"home",overlay!=NULL,pending);
     if(weather_view||network_editing||location_editing){weather_snapshot_t w;weather_service_snapshot(&w);
         diagnostics_printf("WEATHER_STATE online=%u valid=%u fresh=%u zip=%s zone=%s status=%s\n",w.connected,w.has_data,w.has_data&&weather_fresh(&w.data,time(NULL)),w.zip,w.location.timezone,w.status);
     }
+    alarm_snapshot_t state;alarm_service_snapshot(&state);
+    diagnostics_printf("DISPLAY_STATE auto=%u start=%u end=%u level=%u\n",state.settings.display.enabled,state.settings.display.start_minute,state.settings.display.end_minute,applied_brightness);
     if(overlay)diagnostics_printf("UI_OVERLAY text=%s\n",lv_label_get_text(overlay_detail));
     if(editing){
         diagnostics_printf("UI_ALARM slot=%u enabled=%u weekdays=%u message=%s\n",index_selected,lv_obj_has_state(enabled,LV_STATE_CHECKED),draft.weekdays,lv_label_get_text(edit_status));
@@ -389,4 +447,11 @@ void clock_ui_diagnostics(void)
         dropdown_diagnostics("hour",time_hour);dropdown_diagnostics("minute",time_minute);
         diagnostics_printf("UI_MESSAGE text=%s\n",lv_label_get_text(time_status));
     }
+}
+
+void clock_ui_touch(void)
+{
+    wake_until=esp_timer_get_time()/1000+30000;
+    alarm_snapshot_t s;alarm_service_snapshot(&s);
+    if(s.settings.display.enabled&&applied_brightness<80){applied_brightness=160;board_brightness(false);}
 }

@@ -11,10 +11,11 @@
 #include <assert.h>
 static uint16_t pixels[480*320];
 static uint32_t ticks;
-static bool has_weather;
+static bool has_weather,backlight_dim;
 static weather_snapshot_t weather;
 static alarm_snapshot_t alarm_state;
 static uint32_t tick(void){return ticks;}
+int64_t esp_timer_get_time(void){return (int64_t)ticks*1000;}
 static void flush(lv_display_t *d,const lv_area_t *a,uint8_t *data)
 {
     uint16_t *src=(uint16_t *)data;
@@ -27,7 +28,7 @@ uint32_t alarm_service_save_tracked(unsigned i,const alarm_config_t *a){alarm_st
 bool alarm_service_brightness(uint8_t b){alarm_state.settings.brightness=b;return true;}
 bool alarm_service_snooze(void){return true;}
 bool alarm_service_dismiss(void){return true;}
-void board_brightness(bool dim){(void)dim;}
+void board_brightness(bool dim){backlight_dim=dim;}
 bool audio_test(void){return true;}
 bool clock_valid(void){return true;}
 const char *clock_source(void){return "RTC / offline";}
@@ -65,7 +66,9 @@ int main(int argc,char **argv)
     lv_init();lv_tick_set_cb(tick);lv_display_t *d=lv_display_create(480,320);lv_display_set_color_format(d,LV_COLOR_FORMAT_RGB565);
     static uint16_t buffer[480*40];lv_display_set_buffers(d,buffer,NULL,sizeof(buffer),LV_DISPLAY_RENDER_MODE_PARTIAL);lv_display_set_flush_cb(d,flush);
     clock_ui_init();advance();
-    if(argc>3){click_text(lv_screen_active(),"Weather");advance();
+    if(argc>3){
+        if(!strcmp(argv[3],"display")){click_text(lv_screen_active(),"Settings");advance();click_text(lv_screen_active(),"Display & night mode");advance();}
+        else {click_text(lv_screen_active(),"Weather");advance();}
         if(!strcmp(argv[3],"wifi")||!strcmp(argv[3],"connect")){
             click_text(lv_screen_active(),"Wi-Fi");advance();
             if(!strcmp(argv[3],"connect")){
@@ -80,6 +83,17 @@ int main(int argc,char **argv)
         }
         if(!strcmp(argv[3],"location")){click_text(lv_screen_active(),"Location");advance();}
     }
+    if(argc>3&&!strcmp(argv[3],"night-test")){
+        time_t current=time(NULL);struct tm local;localtime_r(&current,&local);unsigned minute=local.tm_hour*60+local.tm_min;
+        alarm_state.settings.display=(display_schedule_t){true,(minute+1439)%1440,(minute+2)%1440};
+        clock_ui_update();assert(backlight_dim);clock_ui_touch();assert(!backlight_dim);
+        ticks+=29999;clock_ui_update();assert(!backlight_dim);ticks+=1;clock_ui_update();assert(backlight_dim);
+        alarm_state.ringing=1;clock_ui_update();assert(!backlight_dim);
+        puts("PASS UI night dim, immediate touch wake, expiry and ringing backlight");
+    }
     FILE *f=fopen(argv[1],"wb");if(!f)return 3;fprintf(f,"P6\n480 320\n255\n");
     for(unsigned i=0;i<480*320;i++){uint16_t p=pixels[i];unsigned char rgb[]={((p>>11)&31)*255/31,((p>>5)&63)*255/63,(p&31)*255/31};fwrite(rgb,1,3,f);}fclose(f);return 0;
 }
+
+uint32_t alarm_service_display(const display_schedule_t *s,uint8_t brightness)
+{alarm_state.settings.display=*s;alarm_state.settings.brightness=brightness;return ++alarm_state.save_ticket;}

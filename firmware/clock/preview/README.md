@@ -20,3 +20,14 @@ local-config/clock/preview-build/clock_preview /tmp/location.ppm weather locatio
 Omit `weather` for an offline home screen. PPM output is 480x320 RGB. Open with an
 image viewer, or convert using Pillow when available. Review long labels, empty
 states and keyboard screens as well as populated data before installing UI edits.
+
+Night settings and actual-UI backlight policy check:
+
+```sh
+local-config/clock/preview-build/clock_preview /tmp/display.ppm weather display
+local-config/clock/preview-build/clock_preview /tmp/night-check.ppm weather night-test
+```
+
+The latter asserts immediate touch wake,30-second expiry and ringing priority
+through actual clock_ui callbacks with a stubbed backlight; it is not a physical
+brightness measurement.

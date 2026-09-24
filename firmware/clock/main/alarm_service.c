@@ -13,7 +13,7 @@
 #include "freertos/semphr.h"
 #include <stdio.h>
 #include <string.h>
-typedef struct {unsigned kind,index;uint32_t ticket;alarm_config_t alarm;uint8_t brightness;} command_t;
+typedef struct {unsigned kind,index;uint32_t ticket;alarm_config_t alarm;uint8_t brightness;display_schedule_t display;} command_t;
 static QueueHandle_t commands;
 static SemaphoreHandle_t lock;
 static alarm_snapshot_t published;
@@ -34,13 +34,13 @@ static void run(void *unused)
             diagnostics_printf("ALARM_RECOVERY restored=1\n");
         }
         while(xQueueReceive(commands,&c,0)==pdTRUE){
-            if(c.kind==1 || c.kind==2){
+            if(c.kind==1 || c.kind==2 || c.kind==5){
                 clock_settings_t next=settings;
                 if(restored)alarm_capture(&next,&engine,now,ms);
                 if(c.kind==1){
                     c.alarm=alarm_merge_edit(&engine.alarms[c.index],&c.alarm);
                     next.alarms[c.index]=c.alarm;next.phase[c.index]=0;next.deadline[c.index]=0;
-                }else next.brightness=c.brightness;
+                }else{next.brightness=c.brightness;if(c.kind==5)next.display=c.display;}
                 storage=settings_store_save(&next);
                 if(storage==ESP_OK){
                     settings=next;memcpy(engine.alarms,settings.alarms,sizeof(engine.alarms));
@@ -107,3 +107,11 @@ bool alarm_service_snooze(void)
 { command_t c={.kind=3};return xQueueSend(commands,&c,0)==pdTRUE; }
 bool alarm_service_dismiss(void)
 { command_t c={.kind=4};return xQueueSend(commands,&c,0)==pdTRUE; }
+
+uint32_t alarm_service_display(const display_schedule_t *schedule,uint8_t brightness)
+{
+    if(!brightness||!display_schedule_valid(schedule))return 0;
+    uint32_t ticket;do{ticket=atomic_fetch_add(&next_ticket,1)+1;}while(!ticket);
+    command_t c={.kind=5,.ticket=ticket,.display=*schedule,.brightness=brightness};
+    return xQueueSend(commands,&c,0)==pdTRUE?ticket:0;
+}

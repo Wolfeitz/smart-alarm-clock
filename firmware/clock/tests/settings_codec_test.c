@@ -18,6 +18,14 @@ int main(void)
     const uint8_t legacy[]={69,83,80,67,1,8,25,0,0,0,0,0,0,0,0,0,1,6,43,62,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,127,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,127,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,127,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,127,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,127,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,127,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,127,0,0,0,0,0,0,0,0,0,0,0,0,97,25,116,121};
     assert(settings_decode(legacy,sizeof(legacy),&read));
     assert(read.brightness==25 && read.alarms[0].enabled && read.alarms[0].minute==43 && read.phase[0]==0);
-    assert(settings_encode(&read,data) && data[4]==2);
+    assert(settings_encode(&read,data) && data[4]==3);
+    assert(!read.display.enabled&&read.display.start_minute==1320&&read.display.end_minute==420);
+    read.display.enabled=true;read.display.start_minute=1234;read.display.end_minute=456;
+    assert(settings_encode(&read,data)&&settings_decode(data,sizeof(data),&s));
+    assert(s.display.enabled&&s.display.start_minute==1234&&s.display.end_minute==456);
+    const uint8_t v2[]={69,83,80,67,2,8,25,0,0,0,0,0,0,0,0,0,1,7,0,127,0,0,0,0,59,40,53,1,2,0,0,0,236,73,180,106,0,0,0,0,0,7,0,127,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,127,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,127,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,127,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,127,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,127,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,127,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,145,7,78,155};
+    assert(settings_decode(v2,sizeof(v2),&read));
+    assert(read.alarms[0].enabled&&read.phase[0]==2&&read.deadline[0]==1790200300&&read.alarms[0].consumed_date==20260923);
+    assert(!read.display.enabled&&read.display.start_minute==1320&&read.brightness==25);
     puts("PASS settings defaults, durable alarm fields, corruption and truncation rejection");
 }

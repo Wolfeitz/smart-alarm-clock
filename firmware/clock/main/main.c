@@ -32,7 +32,7 @@ static void touch_read(lv_indev_t *i,lv_indev_data_t *d)
         if(!pressed)test_touch=false;
     }else pressed=board_touch(&x,&y);
     d->state=pressed?LV_INDEV_STATE_PRESSED:LV_INDEV_STATE_RELEASED;
-    if(pressed){d->point.x=x;d->point.y=y;}
+    if(pressed){clock_ui_touch();d->point.x=x;d->point.y=y;}
 }
 static void serial_poll(void)
 {

@@ -127,3 +127,10 @@ The actual LVGL UI can be rendered without hardware using the commands in
 integration. On-device acceptance must include scan, connection, TLS forecast,
 time sync/RTC handoff, retry after loss, cached-data freshness and local alarm
 responsiveness while network work is active.
+
+Night-mode checks: the consolidated host runner covers interval boundaries,
+overnight/daytime schedules, invalid-time/manual fallback and wake expiry. Settings
+fixtures verify version1/2 migration to version3, preserving active snooze deadline,
+consumed date and manual brightness. The windowless `night-test` exercises the real
+UI's touch-wake and ringing-brightness path. Full-power-off checks are deferred by
+owner until regular functionality is complete; do not request or run them meanwhile.

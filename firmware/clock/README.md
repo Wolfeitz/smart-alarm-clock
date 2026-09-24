@@ -106,3 +106,13 @@ in flash, and the clock must receive valid time before scheduled alarms can fire
 
 Run all host logic suites with `python scripts/test-clock-host.py`. These cannot
 prove physical UI usability or audio output.
+
+## Display schedule
+
+Settings → Display & night mode offers an enable switch and local 24-hour start/
+end times (defaults22:00–07:00). During that interval, touch brightens the screen
+for30 seconds; ringing alarms also brighten it. Outside the interval the screen
+is bright. With the schedule disabled, the manual Bright/Dim choice applies.
+Existing settings migrate with scheduling disabled, preserving alarms and recovery
+state. The home Dim/Brighten shortcut becomes Display while scheduling is enabled.
+Time/date entry is now under Settings → Time & date. Visual redesign is deferred.

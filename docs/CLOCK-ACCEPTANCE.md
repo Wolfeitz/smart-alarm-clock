@@ -7,7 +7,7 @@ or external playback improvements.
 
 Owner expanded scope to weather/location; Home Assistant and Spotify remain future
 integrations. Last audit2026-09-23. Installed application SHA256:
-`23d59810b8b3c866533caf1d3f80de7c339b37d672658ce9e966cbbb56787e87`.
+`ec31e7d815448459c8e74d2c553fc383d2c341759f8b4fab9e31a2224a166128`.
 
 | Requirement | Evidence | Status |
 |---|---|---|
@@ -35,3 +35,7 @@ local-config/clock. Reproduce pure logic checks with python scripts/test-clock-h
 Weather connection, HTTPS success, fresh parsed snapshot and RTC sync were
 observed on-device; see WEATHER.md. The remaining human checks have been requested. Do not infer successful checks
 from unanswered requests or from this checklist.
+
+Owner defers further full power-off tests until regular functionality is complete.
+Scheduled night mode is installed; interval/wake/migration host checks pass.
+The current UI remains a proof of concept; visual redesign is deferred.
