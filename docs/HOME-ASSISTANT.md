@@ -5,7 +5,7 @@ Use the existing dedicated Pi at `http://192.168.1.232:8123`. Its
 Home Assistant or change the Pi configuration as part of clock development.
 
 Open Settings → Home Assistant → Setup on the clock. The server address is
-pre-filled. Supply a light entity such as `light.bedside` (example only) and a
+pre-filled. Supply an optional light entity such as `light.bedside` (example only) and a
 Home Assistant long-lived access token. Keep the token out of chat and logs.
 The token field is masked immediately. Close the keyboard with its checkmark,
 then Save. An empty token preserves the saved token only for the same server.
@@ -35,3 +35,28 @@ a token and actual entity; no access token has been supplied or extracted.
 
 References: [REST API](https://developers.home-assistant.io/docs/api/rest/) and
 [light actions](https://www.home-assistant.io/integrations/light/).
+
+## External media player
+
+Settings → Media opens a separate player screen. In its Setup, select an existing
+`media_player.*` entity. It shares the server/token configured in HA setup; the
+light entity may now be blank when only a media player is wanted. No token is
+copied into player preferences. A player is bound to the configured server address;
+changing servers requires reselecting the player before controls can run there.
+
+The screen shows reported name, track/artist, playback state and volume. It enables
+only controls advertised by the player: previous/next, play/pause and volume.
+Volume uses relative actions when supported, otherwise5-percentage-point explicit
+volume changes if a current volume is known. Missing, stale or unavailable state
+disables controls. A successful play/pause request is followed by state checks;
+unchanged/failed state remains unconfirmed and polling backs off after the bounded
+confirmation window. Track/volume controls display reported state, without claiming
+that an accepted HTTP request proves the intended physical effect.
+
+This is manual player control only. Alarms still use the independent local speaker;
+remote alarm playback, playlist/context selection and fallback integration are not
+yet implemented. An actual token and entity are needed for live authenticated use.
+No Pi configuration, speaker grouping or media playback was changed during build.
+
+API references: [media player actions](https://www.home-assistant.io/integrations/media_player/)
+and [pinned2026.9.3 feature flags](https://github.com/home-assistant/core/blob/2026.9.3/homeassistant/components/media_player/const.py).

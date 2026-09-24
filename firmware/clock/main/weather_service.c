@@ -1,6 +1,7 @@
 #include "weather_service.h"
 #include "network_http.h"
 #include "ha_service.h"
+#include "media_service.h"
 #include "timezone_rules.h"
 #include "diagnostics.h"
 #include "clock_service.h"
@@ -176,7 +177,7 @@ static void scan_networks(void)
 static void worker(void *arg)
 {
     (void)arg;esp_err_t radio=radio_init();
-    if(radio!=ESP_OK){available=false;state_lock();state.busy=false;state_unlock();ha_service_disable();status("Wi-Fi initialization failed; clock works offline");vTaskDelete(NULL);return;}
+    if(radio!=ESP_OK){available=false;state_lock();state.busy=false;state_unlock();ha_service_disable();media_service_disable();status("Wi-Fi initialization failed; clock works offline");vTaskDelete(NULL);return;}
     int64_t retry=0,weather_at=0;bool was_online=false;
     if(prefs.ssid[0]){status("Connecting to Wi-Fi...");connect_wifi();retry=esp_timer_get_time()+30000000;}
     else status("Set up Wi-Fi to get local weather");
@@ -221,6 +222,7 @@ static void worker(void *arg)
         if(online!=was_online){was_online=online;publish();if(online){status("Wi-Fi connected");weather_at=0;}}
         if(!radio_paused&&!online&&prefs.ssid[0]&&now>=retry){status("Wi-Fi unavailable; reconnecting...");esp_wifi_connect();retry=now+30000000;}
         ha_service_poll(online);
+        media_service_poll(online);
         if(online&&now>=weather_at){
             if(clock_valid()){bool ok=update_weather();weather_at=esp_timer_get_time()+(ok?1800000000LL:60000000);}
             else{status("Waiting for network time...");weather_at=now+5000000;}
@@ -242,12 +244,12 @@ void weather_service_init(void)
         if(nvs_get_str(storage,"fallback_zone",prior,&length)==ESP_OK&&timezone_rule(prior))strcpy(active_zone,prior);
     }
     const char *rule=timezone_rule(active_zone);if(rule){setenv("TZ",rule,1);tzset();}
-    ha_service_init();publish();status("Starting weather service...");
+    ha_service_init();media_service_init();publish();status("Starting weather service...");
     if(!lock||!commands||!time_updates){
-        status("Network memory unavailable; clock works offline");ha_service_disable();return;
+        status("Network memory unavailable; clock works offline");ha_service_disable();media_service_disable();return;
     }
     available=true;
-    if(xTaskCreate(worker,"weather",8192,NULL,2,NULL)!=pdPASS){available=false;ha_service_disable();status("Weather task unavailable; clock works offline");}
+    if(xTaskCreate(worker,"weather",8192,NULL,2,NULL)!=pdPASS){available=false;ha_service_disable();media_service_disable();status("Weather task unavailable; clock works offline");}
 }
 void weather_service_snapshot(weather_snapshot_t *out)
 {state_lock();*out=state;out->connected=online;state_unlock();}

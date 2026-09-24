@@ -14,3 +14,6 @@ void ha_service_snapshot(ha_snapshot_t *snapshot);
 bool ha_service_configure(const char *endpoint,const char *token,const char *entity);
 bool ha_service_toggle(void);
 bool ha_service_refresh(void);
+
+/* Existing network worker only; never exposes a token to callers. */
+int ha_service_request(const char *path,const char *body,char *response,size_t capacity,size_t *size);

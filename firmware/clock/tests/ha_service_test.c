@@ -67,6 +67,13 @@ int main(int argc,char **argv)
     assert(ha_service_configure("http://192.168.1.232:8123","synthetic-test-token","light.other"));ha_service_poll(true);
     assert(requests==count&&!strcmp(snapshot().entity,"light.bedside"));
     assert(strstr(snapshot().status,"not saved"));
+    storage_error=0;
+    assert(ha_service_configure("http://192.168.1.232:8123","",""));ha_service_poll(true);
+    assert(snapshot().configured&&!snapshot().entity[0]);
+    char response[256];size_t size=0;
+    assert(ha_service_request("/api/states/media_player.bedroom",NULL,response,sizeof(response),&size)==200);
+    count=requests;
+    assert(ha_service_request("https://other.invalid",NULL,response,sizeof(response),&size)==-1&&requests==count);
     ha_service_disable();assert(!snapshot().busy&&!snapshot().fresh);
     assert(!ha_service_refresh()&&!ha_service_toggle());ha_service_poll(true);assert(requests==count);
     puts("PASS HA owner: persistence, queue, confirmation, HTTP200 without change, failure expiry, auth, stale and offline state");

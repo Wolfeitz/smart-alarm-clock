@@ -7,6 +7,7 @@
 #include "audio.h"
 #include "weather_service.h"
 #include "ha_service.h"
+#include "media_service.h"
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "lvgl.h"
@@ -38,6 +39,9 @@ static lv_obj_t *weather_title,*weather_now,*weather_today,*weather_status,*zone
 static lv_obj_t *network_password,*network_zip,*network_status,*keyboard;
 static void show_weather(lv_event_t *e);
 static void show_ha(lv_event_t *e);
+static void show_media(lv_event_t *e);
+static bool media_view,media_editing,media_error;
+static lv_obj_t *media_name,*media_title,*media_artist,*media_info,*media_status,*media_entity,*media_controls[6];
 static bool ha_view,ha_editing,ha_error;
 static lv_obj_t *ha_name,*ha_state,*ha_status,*ha_toggle,*ha_url,*ha_entity,*ha_token;
 
@@ -58,7 +62,7 @@ static void show_editor(void);
 static void show_time_editor(lv_event_t *e);
 static void reset_screen(void)
 {
-    alarm_list_view=false;settings_view=false;display_editing=false;display_pending=false;ha_view=false;ha_editing=false;ha_error=false;
+    alarm_list_view=false;settings_view=false;display_editing=false;display_pending=false;ha_view=false;ha_editing=false;ha_error=false;media_view=false;media_editing=false;media_error=false;
     weather_view=false;network_editing=false;location_editing=false;wifi_listing=false;network_connecting=false;
     lv_obj_clean(root);lv_obj_set_style_bg_color(root,lv_color_hex(0x0b1119),0);
     lv_obj_remove_flag(root,LV_OBJ_FLAG_SCROLLABLE);
@@ -145,7 +149,8 @@ static lv_obj_t *number_list(int first,int last,int x,int y,int w)
 static void show_settings(lv_event_t *e)
 {
     (void)e;editing=false;time_editing=false;reset_screen();settings_view=true;
-    label(root,"Settings",10,15,460,&lv_font_montserrat_20);
+    label(root,"Settings",10,15,320,&lv_font_montserrat_20);
+    button(root,"Media",350,8,115,show_media,NULL);
     button(root,"Time & date",80,75,320,show_time_editor,NULL);
     button(root,"Display & night mode",80,135,320,show_display,NULL);
     button(root,"Home Assistant",80,195,320,show_ha,NULL);
@@ -298,7 +303,7 @@ static void ha_setup(lv_event_t *e)
     ha_entity=network_field("Light",s.entity,80,95,false);
     ha_token=network_field("Token","",126,511,true);
     lv_textarea_set_password_show_time(ha_token,0);
-    lv_textarea_set_placeholder_text(ha_entity,"light.bedside");
+    lv_textarea_set_placeholder_text(ha_entity,"Optional: light.bedside");
     lv_textarea_set_placeholder_text(ha_token,s.configured?"Blank keeps saved token":"Long-lived access token");
     ha_status=label(root,"Use the server address, without a dashboard path",10,181,460,&lv_font_montserrat_16);
     button(root,"Cancel",40,260,180,show_ha,NULL);button(root,"Save",260,260,180,ha_save,NULL);
@@ -327,6 +332,50 @@ static void show_ha(lv_event_t *e)
     ha_toggle=button(root,"Turn on",170,260,140,ha_switch,NULL);
     lv_obj_add_state(ha_toggle,LV_STATE_DISABLED);
     button(root,"Refresh",325,260,140,ha_refresh,NULL);
+}
+static void media_save(lv_event_t *e)
+{
+    (void)e;bool ok=media_service_configure(lv_textarea_get_text(media_entity));
+    if(ok)show_media(NULL);else lv_label_set_text(media_status,"Set up HA server/token first; check player name");
+}
+static void media_setup(lv_event_t *e)
+{
+    (void)e;media_snapshot_t s;media_service_snapshot(&s);reset_screen();media_editing=true;
+    label(root,"External player",10,12,460,&lv_font_montserrat_20);
+    media_entity=network_field("Player",s.entity,75,95,false);
+    lv_textarea_set_placeholder_text(media_entity,"media_player.bedroom");
+    media_status=label(root,"Uses your saved Home Assistant connection",10,140,460,&lv_font_montserrat_16);
+    button(root,"HA setup",150,197,180,ha_setup,NULL);
+    button(root,"Cancel",40,265,180,show_media,NULL);button(root,"Save",260,265,180,media_save,NULL);
+    keyboard=lv_keyboard_create(root);lv_obj_set_size(keyboard,480,130);lv_obj_align(keyboard,LV_ALIGN_BOTTOM_MID,0,0);
+    lv_obj_add_flag(keyboard,LV_OBJ_FLAG_HIDDEN);lv_obj_add_event_cb(keyboard,keyboard_event,LV_EVENT_ALL,NULL);
+}
+static void media_action(lv_event_t *e)
+{
+    media_error=!media_service_action((media_action_t)(uintptr_t)lv_event_get_user_data(e));
+    if(media_error)lv_label_set_text(media_status,"Action unavailable; refresh player state");
+}
+static void media_refresh(lv_event_t *e)
+{(void)e;media_error=!media_service_refresh();if(media_error)lv_label_set_text(media_status,"Request unavailable or already in progress");}
+static void show_media(lv_event_t *e)
+{
+    (void)e;editing=false;time_editing=false;reset_screen();media_view=true;
+    label(root,"Media",10,12,315,&lv_font_montserrat_20);button(root,"Setup",350,8,115,media_setup,NULL);
+    media_name=label(root,"Choose a player",15,60,450,&lv_font_montserrat_20);
+    media_title=label(root,"",15,92,450,&lv_font_montserrat_16);media_artist=label(root,"",15,116,450,&lv_font_montserrat_16);
+    lv_obj_t *one_line[]={media_name,media_title,media_artist};
+    for(unsigned i=0;i<3;i++){lv_obj_set_height(one_line[i],24);lv_label_set_long_mode(one_line[i],LV_LABEL_LONG_DOT);}
+    media_info=label(root,"",15,144,450,&lv_font_montserrat_16);
+    media_controls[0]=button(root,"Previous",15,180,100,media_action,(void*)MEDIA_PREVIOUS);
+    media_controls[1]=button(root,"Play",125,180,105,media_action,(void*)MEDIA_PLAY);
+    media_controls[2]=button(root,"Pause",240,180,105,media_action,(void*)MEDIA_PAUSE);
+    media_controls[3]=button(root,"Next",355,180,110,media_action,(void*)MEDIA_NEXT);
+    media_status=label(root,"",15,232,450,&lv_font_montserrat_16);
+    button(root,"Clock",15,270,100,go_home,NULL);
+    media_controls[4]=button(root,"Quieter",125,270,105,media_action,(void*)MEDIA_QUIETER);
+    media_controls[5]=button(root,"Louder",240,270,105,media_action,(void*)MEDIA_LOUDER);
+    button(root,"Refresh",355,270,110,media_refresh,NULL);
+    for(unsigned i=0;i<6;i++)lv_obj_add_state(media_controls[i],LV_STATE_DISABLED);
 }
 static void show_network(lv_event_t *e);
 static void save_network(lv_event_t *e)
@@ -456,6 +505,21 @@ void clock_ui_update(void)
         return;
     }
     if(alarm_list_view){update_alarm_rows(&s);return;}
+    if(media_editing)return;
+    if(media_view){
+        media_snapshot_t m;media_service_snapshot(&m);
+        lv_label_set_text(media_name,m.player.name[0]?m.player.name:m.entity[0]?m.entity:"Choose a player in Setup");
+        lv_label_set_text(media_title,m.player.title);lv_label_set_text(media_artist,m.player.artist);
+        char info[96];
+        if(m.fresh&&m.player.volume_known)snprintf(info,sizeof(info),"%s  /  Volume %.0f%%",media_state_name(m.player.state),m.player.volume*100);
+        else snprintf(info,sizeof(info),"%s",m.fresh?media_state_name(m.player.state):"State unavailable");
+        lv_label_set_text(media_info,info);if(!media_error)lv_label_set_text(media_status,m.status);
+        for(unsigned i=0;i<6;i++){
+            if(m.configured&&m.fresh&&!m.busy&&media_action_supported(&m.player,i))lv_obj_remove_state(media_controls[i],LV_STATE_DISABLED);
+            else lv_obj_add_state(media_controls[i],LV_STATE_DISABLED);
+        }
+        return;
+    }
     if(ha_editing)return;
     if(ha_view){
         ha_snapshot_t h;ha_service_snapshot(&h);
@@ -543,7 +607,7 @@ static void dropdown_diagnostics(const char *name,lv_obj_t *o)
 }
 void clock_ui_diagnostics(void)
 {
-    diagnostics_printf("UI_SCREEN name=%s overlay=%u pending=%u\n",alarm_list_view?"alarms":ha_editing?"ha_setup":ha_view?"ha":display_editing?"display":settings_view?"settings":location_editing?"location":network_editing?"network":weather_view?"weather":time_editing?"time":editing?"alarm":"home",overlay!=NULL,pending);
+    diagnostics_printf("UI_SCREEN name=%s overlay=%u pending=%u\n",media_editing?"media_setup":media_view?"media":alarm_list_view?"alarms":ha_editing?"ha_setup":ha_view?"ha":display_editing?"display":settings_view?"settings":location_editing?"location":network_editing?"network":weather_view?"weather":time_editing?"time":editing?"alarm":"home",overlay!=NULL,pending);
     if(weather_view||network_editing||location_editing){weather_snapshot_t w;weather_service_snapshot(&w);
         diagnostics_printf("WEATHER_STATE online=%u valid=%u fresh=%u zip=%s zone=%s status=%s\n",w.connected,w.has_data,w.has_data&&weather_fresh(&w.data,time(NULL)),w.zip,w.location.timezone,w.status);
     }

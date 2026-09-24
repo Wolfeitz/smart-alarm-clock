@@ -4,6 +4,7 @@
 #include "alarm_service.h"
 #include "weather_service.h"
 #include "ha_service.h"
+#include "media_service.h"
 #include "clock_service.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +21,12 @@ bool ha_service_configure(const char *url,const char *token,const char *entity){
 }
 bool ha_service_toggle(void){ha_state.light.state=ha_state.light.state==HA_ON?HA_OFF:HA_ON;return true;}
 bool ha_service_refresh(void){return true;}
+static media_snapshot_t media_state={.entity="media_player.bedroom",.configured=true,.fresh=true,
+    .player={.state=MEDIA_PAUSED,.name="Bedroom speaker",.title="Example track",.artist="Example artist",.features=16437,.volume=.35,.volume_known=true},.status="Showing reported player state"};
+void media_service_snapshot(media_snapshot_t *s){*s=media_state;}
+bool media_service_configure(const char *entity){snprintf(media_state.entity,sizeof(media_state.entity),"%s",entity);return true;}
+bool media_service_action(media_action_t action){if(action==MEDIA_PLAY)media_state.player.state=MEDIA_PLAYING;if(action==MEDIA_PAUSE)media_state.player.state=MEDIA_PAUSED;return true;}
+bool media_service_refresh(void){return true;}
 static uint16_t pixels[480*320];
 static uint32_t ticks;
 static bool has_weather,backlight_dim;
@@ -80,7 +87,22 @@ int main(int argc,char **argv)
     static uint16_t buffer[480*40];lv_display_set_buffers(d,buffer,NULL,sizeof(buffer),LV_DISPLAY_RENDER_MODE_PARTIAL);lv_display_set_flush_cb(d,flush);
     clock_ui_init();advance();
     if(argc>3){
-        if(!strcmp(argv[3],"alarms")||!strcmp(argv[3],"alarms-test")){
+        if(!strcmp(argv[3],"media")||!strcmp(argv[3],"media-test")){
+            click_text(lv_screen_active(),"Settings");advance();click_text(lv_screen_active(),"Media");advance();
+            if(!strcmp(argv[3],"media-test")){
+                click_text(lv_screen_active(),"Play");advance();assert(media_state.player.state==MEDIA_PLAYING);
+                click_text(lv_screen_active(),"Pause");advance();assert(media_state.player.state==MEDIA_PAUSED);
+                click_text(lv_screen_active(),"Setup");advance();click_text(lv_screen_active(),"Cancel");advance();
+                media_state.fresh=false;advance();unsigned disabled=0;
+                for(unsigned i=0;i<lv_obj_get_child_count(lv_screen_active());i++){
+                    lv_obj_t *o=lv_obj_get_child(lv_screen_active(),i);
+                    if(lv_obj_check_type(o,&lv_button_class)&&lv_obj_has_state(o,LV_STATE_DISABLED))disabled++;
+                }
+                assert(disabled==6);media_state.fresh=true;advance();
+                puts("PASS media UI play/pause, setup/cancel and stale-state control disabling");
+            }
+        }
+        else if(!strcmp(argv[3],"alarms")||!strcmp(argv[3],"alarms-test")){
             alarm_state.settings.alarms[0].enabled=true;alarm_state.settings.alarms[0].weekdays=62;
             click_text(lv_screen_active(),"Alarms");advance();
             lv_obj_t *list=lv_obj_get_child(lv_screen_active(),1);assert(lv_obj_get_child_count(list)==ALARM_COUNT);

@@ -7,7 +7,7 @@ or external playback improvements.
 
 Owner expanded scope to weather/location and continued integration development.
 Home Assistant light setup/control is installed; authenticated operation is pending. Last audit2026-09-24. Installed application SHA256:
-`66f1e5d709419fee8f4027b6da6c8c0a935d9758a10ac0298056bd83f440c601`.
+`059cf5aa7bbe8c99cbd653f13fefc0fbf7fae0c9ec8f3df65a273f47b7f60db6`.
 
 | Requirement | Evidence | Status |
 |---|---|---|

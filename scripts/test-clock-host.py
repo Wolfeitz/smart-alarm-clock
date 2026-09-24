@@ -49,4 +49,15 @@ with tempfile.TemporaryDirectory(prefix="esp-link-host-") as directory:
     subprocess.run([binary], check=True, timeout=10)
     for fault in ("mutex-failure", "queue-failure"):
         subprocess.run([binary, fault], check=True, timeout=10)
+    for name, modules in {"media_model": ["media_model"], "media_service": ["media_model", "media_service", "ha_model"]}.items():
+        binary = str(Path(directory) / name)
+        subprocess.run([
+            "cc", "-std=c11", "-DCJSON_NESTING_LIMIT=16", "-Wall", "-Wextra", "-Werror",
+            "-I" + str(tests / "ha_stubs"), "-I" + str(main), "-I" + str(cjson), str(cjson / "cJSON.c"),
+            *[str(main / (module + ".c")) for module in modules], str(tests / (name + "_test.c")), "-lm", "-o", binary,
+        ], check=True, timeout=60)
+        subprocess.run([binary], check=True, timeout=10)
+        if name == "media_service":
+            for fault in ("mutex-failure", "queue-failure"):
+                subprocess.run([binary, fault], check=True, timeout=10)
 print("PASS host logic only; display, touch, audible sound and power loss require device checks")

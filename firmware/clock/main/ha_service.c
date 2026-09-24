@@ -27,7 +27,7 @@ static void message(const char *text)
 static bool config_valid(const config_t *c)
 {
     return c->version==1&&memchr(c->endpoint,0,sizeof(c->endpoint))&&memchr(c->entity,0,sizeof(c->entity))&&memchr(c->token,0,sizeof(c->token))&&
-        ha_endpoint_valid(c->endpoint)&&ha_entity_valid(c->entity)&&ha_token_valid(c->token);
+        ha_endpoint_valid(c->endpoint)&&(!c->entity[0]||ha_entity_valid(c->entity))&&ha_token_valid(c->token);
 }
 void ha_service_init(void)
 {
@@ -60,7 +60,7 @@ bool ha_service_configure(const char *endpoint,const char *token,const char *ent
     command_t c={.kind=1,.config={.version=1}};strcpy(c.config.endpoint,endpoint);
     size_t n=strlen(c.config.endpoint);if(n&&c.config.endpoint[n-1]=='/')c.config.endpoint[n-1]=0;
     strcpy(c.config.entity,entity);strcpy(c.config.token,token);
-    if(!ha_endpoint_valid(c.config.endpoint)||!ha_entity_valid(entity)||(*token&&!ha_token_valid(token))){memset(&c,0,sizeof(c));return false;}
+    if(!ha_endpoint_valid(c.config.endpoint)||(*entity&&!ha_entity_valid(entity))||(*token&&!ha_token_valid(token))){memset(&c,0,sizeof(c));return false;}
     /* Empty token is resolved by owner only when endpoint is unchanged. */
     bool ok=submit(&c);memset(&c,0,sizeof(c));return ok;
 }
@@ -95,7 +95,9 @@ void ha_service_poll(bool online)
         next_poll=0;memset(&c,0,sizeof(c));
         state_lock();state.busy=false;state_unlock();
     }
-    if(config_failed||!config_valid(&config))return;
+    if(config_failed){next_poll=now+10000000;return;}
+    if(!config_valid(&config))return;
+    if(!config.entity[0]){message("Server saved; choose a light or open Media");return;}
     if(!online){failure(-1);desired=HA_UNKNOWN;confirm_until=0;return;}
     if(!toggle&&now<next_poll)return;
     set_busy(true);
@@ -129,4 +131,11 @@ void ha_service_disable(void)
     accepting=false;
     state_lock();state.busy=false;state.fresh=false;state_unlock();
     message("Network unavailable; clock works offline");
+}
+
+int ha_service_request(const char *path,const char *body,char *response,size_t capacity,size_t *size)
+{
+    if(!config_valid(&config)||strncmp(path,"/api/",5)||strlen(path)>160)return -1;
+    char url[384];snprintf(url,sizeof(url),"%s%s",config.endpoint,path);
+    return network_http_request(url,config.token,body,response,capacity,size);
 }

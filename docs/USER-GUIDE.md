@@ -44,6 +44,13 @@ Pi server address. See [connection setup](HOME-ASSISTANT.md) for token and entit
 configuration. An unavailable or stale connection disables the light control; it
 does not disable local alarms. No Home Assistant server is installed by the clock.
 
+## External media
+
+**Settings → Media → Setup** selects a player already available in Home Assistant.
+It uses the saved HA server/token and shows track, artist, state and volume. Only
+supported controls are enabled. This controls existing playback; choosing a new
+Spotify playlist and using remote playback as an alarm are not implemented yet.
+
 ## Status messages
 
 **Local audio unavailable** means the firmware reported an audio initialization or

@@ -1204,3 +1204,37 @@ No physical test request. Updated user/firmware guides and preview instructions.
 Receipts: repeat-preview-build.log, repeat-build.log, repeat-flash.log,
 repeat-runtime.log. This adapts standard widget/state patterns; it does not claim
 that any third-party application was transplanted or replace working scheduler code.
+
+## External media controls (2026-09-24)
+
+Following owner's explicit correction to continue integration development and batch
+physical acceptance, proceed beyond offline core while retaining its independent
+alarm execution. Use existing HA REST media_player actions/state, not direct MCU
+Spotify streaming. Reuse the credential owner and bounded HTTP worker; separate
+player entity preferences from secrets. Implement state/metadata and supported
+play/pause/previous/next/volume controls. HTTP acceptance is not playback proof;
+show observed state only. Do not route alarms to remote playback in this slice.
+No HA/Pi changes; authenticated device operation awaits user-owned credentials.
+
+Media controls delivered: player preferences in clockcfg/media (no token), bound to
+HA endpoint; credential owner supplies authenticated requests only on existing
+network worker. HA light entity is optional for a media-only connection, preserving
+existing credential layout. UI under Settings/Media shows bounded name/title/artist,
+state/volume and six controls gated by actual supported_features and fresh state.
+Uses HA2026.9.3 feature flags from official const.py (PLAY16384, not PLAY_MEDIA512).
+Play/pause confirmation reads observed state with10-second confirmation/backoff;
+previous/next/volume report actual state without claiming an HTTP acknowledgment
+proves physical playback. Server changes cancel queued actions targeting old server.
+No remote alarm routing, playlist/context selection, streaming or Pi config changes.
+
+All12 host suites plus HA/media allocation-failure variants pass; actual-LVGL media
+play/pause/setup/cancel/stale controls pass. Inspected480x320 synthetic render.
+Initial firmware build rejected two misleading-indentation lines; corrected both,
+then successful IDF6.1 build and app-only flash verified1779456bytes. SHA256:
+059cf5aa7bbe8c99cbd653f13fefc0fbf7fae0c9ec8f3df65a273f47b7f60db6.
+On-device home/settings/media/setup/cancel/media/home passed. All8 alarm records
+unchanged, storageESP_OK, RTC/system within1second, heap87284stable, weatherHTTP200.
+No real token/entity configured and no media commands sent to the Pi. Live external
+playback remains unverified; local alarms stay independent. Receipts: media-build,
+media-preview-build, media-flash, media-runtime logs under local-config/clock.
+Physical acceptance remains batched per owner's correction, not a development gate.

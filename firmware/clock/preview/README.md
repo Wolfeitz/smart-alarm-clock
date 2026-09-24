@@ -45,3 +45,6 @@ checks Cancel navigation. Preview persistence is synthetic, not an NVS test.
 
 `repeat-test` exercises daily/weekday/weekend presets, custom day changes, once
 date-field visibility and rejection of an empty recurring schedule.
+
+`media-test` checks play/pause, setup/cancel and disabling all playback controls
+when the reported player state is stale. `media` renders synthetic player data.

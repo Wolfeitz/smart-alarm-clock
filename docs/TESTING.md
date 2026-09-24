@@ -175,3 +175,9 @@ state, RTC agreement, crash output and heap samples. More than8KiB early-to-late
 heap loss fails as suspicious; a pass is a bounded stability observation, not proof
 of unlimited uptime or absence of all leaks. Timestamped receipts are private under
 `local-config/clock`. Do not run while a user alarm is enabled or active.
+
+Media parser/service host suites cover reported capability flags, bounded parsing,
+explicit play/pause/track/volume actions, HTTP200 without changed playback, failed
+confirmation expiry, authentication errors, server-bound targets, failed saves and
+allocation failures. The UI preview covers stale-state control disabling. These
+checks use synthetic HA responses; they are not real external playback evidence.
