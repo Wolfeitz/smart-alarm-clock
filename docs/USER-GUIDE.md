@@ -5,8 +5,9 @@
 Tap **Alarms** on the home screen. The list shows eight slots with their time,
 ON/OFF state and schedule. Scroll to see the remaining slots; tap a row to edit it.
 
-Select the hour and minute (24-hour time), then choose **Repeat** and the desired
-days, or **Once** and a date. Turn the top-right switch on to enable the alarm.
+Select the hour and minute (24-hour time), then choose **Every day**, **Weekdays**,
+**Weekends**, **Custom** days, or **Once** and a date. Tapping individual days
+updates the repeat choice to match your selection. Turn the top-right switch on to enable the alarm.
 Tap **Save**. The overview returns after the settings write succeeds. **Cancel**
 leaves the saved alarm unchanged. You can also select another slot from the editor's
 Alarm dropdown; that discards edits that have not been saved.

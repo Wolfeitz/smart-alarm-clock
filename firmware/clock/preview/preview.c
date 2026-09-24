@@ -163,6 +163,48 @@ int main(int argc,char **argv)
         assert(lv_obj_get_child_count(lv_layer_top())==0);
         puts("PASS audio fault visible; local snooze and dismiss remain operable");
     }
+    if(argc>3&&!strcmp(argv[3],"repeat-test")){
+        click_text(lv_screen_active(),"Clock");advance();
+        const unsigned masks[]={127,62,65};
+        for(unsigned selection=0;selection<3;selection++){
+            click_text(lv_screen_active(),"Alarms");advance();
+            lv_obj_t *list=lv_obj_get_child(lv_screen_active(),1);
+            lv_obj_send_event(lv_obj_get_child(list,0),LV_EVENT_CLICKED,NULL);advance();
+            lv_obj_t *repeat=NULL;unsigned n=0;
+            for(unsigned i=0;i<lv_obj_get_child_count(lv_screen_active());i++){
+                lv_obj_t *o=lv_obj_get_child(lv_screen_active(),i);
+                if(lv_obj_check_type(o,&lv_dropdown_class)&&n++==3)repeat=o;
+            }
+            assert(repeat);lv_dropdown_set_selected(repeat,selection);lv_obj_send_event(repeat,LV_EVENT_VALUE_CHANGED,NULL);
+            click_text(lv_screen_active(),"Save");advance();assert(alarm_state.settings.alarms[0].weekdays==masks[selection]);
+            click_text(lv_screen_active(),"Clock");advance();
+        }
+        click_text(lv_screen_active(),"Alarms");advance();
+        lv_obj_send_event(lv_obj_get_child(lv_obj_get_child(lv_screen_active(),1),0),LV_EVENT_CLICKED,NULL);advance();
+        click_text(lv_screen_active(),"Mo");advance();click_text(lv_screen_active(),"Save");advance();
+        assert(alarm_state.settings.alarms[0].weekdays==67);
+        lv_obj_send_event(lv_obj_get_child(lv_obj_get_child(lv_screen_active(),1),0),LV_EVENT_CLICKED,NULL);advance();
+        lv_obj_t *repeat=NULL;unsigned count=0;
+        for(unsigned i=0;i<lv_obj_get_child_count(lv_screen_active());i++){
+            lv_obj_t *o=lv_obj_get_child(lv_screen_active(),i);
+            if(lv_obj_check_type(o,&lv_dropdown_class)&&count++==3)repeat=o;
+        }
+        assert(repeat);lv_dropdown_set_selected(repeat,4);lv_obj_send_event(repeat,LV_EVENT_VALUE_CHANGED,NULL);advance();
+        count=0;
+        for(unsigned i=0;i<lv_obj_get_child_count(lv_screen_active());i++){
+            lv_obj_t *o=lv_obj_get_child(lv_screen_active(),i);
+            if(lv_obj_check_type(o,&lv_dropdown_class)&&count++>=4)assert(!lv_obj_has_flag(o,LV_OBJ_FLAG_HIDDEN));
+        }
+        lv_dropdown_set_selected(repeat,0);lv_obj_send_event(repeat,LV_EVENT_VALUE_CHANGED,NULL);
+        const char *days[]={"Su","Mo","Tu","We","Th","Fr","Sa"};
+        for(unsigned i=0;i<7;i++)click_text(lv_screen_active(),days[i]);
+        assert(lv_dropdown_get_selected(repeat)==3);
+        uint32_t ticket=alarm_state.save_ticket;click_text(lv_screen_active(),"Save");advance();
+        assert(alarm_state.save_ticket==ticket&&alarm_state.settings.alarms[0].weekdays==67);
+        click_text(lv_screen_active(),"Cancel");advance();
+        for(unsigned i=1;i<ALARM_COUNT;i++)assert(alarm_state.settings.alarms[i].weekdays==127&&alarm_state.settings.alarms[i].hour==7);
+        puts("PASS actual alarm UI: presets, custom day edit, once fields, empty mask rejection and other-slot isolation");
+    }
     FILE *f=fopen(argv[1],"wb");if(!f)return 3;fprintf(f,"P6\n480 320\n255\n");
     for(unsigned i=0;i<480*320;i++){uint16_t p=pixels[i];unsigned char rgb[]={((p>>11)&31)*255/31,((p>>5)&63)*255/63,(p&31)*255/31};fwrite(rgb,1,3,f);}fclose(f);return 0;
 }

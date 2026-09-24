@@ -1181,3 +1181,26 @@ reproducible navigation script and concise USER-GUIDE linked from README; Python
 compile and documentation verifier pass. This is combined UI stability evidence,
 not unlimited-uptime or full-power-loss proof. Deferred physical checks remain
 batched; no new request to the owner.
+
+## Common alarm recurrence presets (2026-09-24)
+
+Reuse follow-through: inspected cached flight-radar alarm.h (ESPHome/C++ packed
+weekly-mask model) and pinned LVGL9.4 dropdown example. Existing scheduler already
+uses the compatible Sunday-first seven-bit model; replacing it adds no capability.
+Use the existing LVGL dropdown pattern for Every day / Weekdays / Weekends / Custom /
+Once, synchronizing seven day buttons to the selected mask. Manual day edits update
+the displayed preset; empty custom selection stays invalid on Save. No persistence
+schema change or third-party application code copied. Acceptance: actual UI preset
+save masks127/62/65, custom adjustment, once-mode visibility and original slot
+isolation; firmware build and automated navigation, no owner testing gate.
+
+Repeat presets installed. Actual-UI test passed127/62/65 saved masks, weekend+Monday
+custom67, once date-field visibility, empty repeating mask rejected without save,
+and unchanged remaining7slots. Build and app-only flash verified1771776bytes:
+66f1e5d709419fee8f4027b6da6c8c0a935d9758a10ac0298056bd83f440c601.
+Automated on-device overview/editor/Cancel/home passed; all8 saved records exactly
+unchanged, storageESP_OK, RTC/system within1second, heap88760stable, weatherHTTP200.
+No physical test request. Updated user/firmware guides and preview instructions.
+Receipts: repeat-preview-build.log, repeat-build.log, repeat-flash.log,
+repeat-runtime.log. This adapts standard widget/state patterns; it does not claim
+that any third-party application was transplanted or replace working scheduler code.

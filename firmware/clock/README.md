@@ -75,7 +75,7 @@ alarm loudness remains pending after a level increase. See WORK for the latest r
 ## Alarms
 
 Alarms button opens eight selectable slots: time is edited in24-hour format.
-Repeat selects individual weekdays; Once selects year/month/day. Switch enables
+Every day, Weekdays and Weekends provide repeat presets; Custom selects individual weekdays; Once selects year/month/day. Switch enables
 the slot; Save commits before returning home. Ringing shows large Snooze5min
 and Dismiss controls. A once alarm disables after consuming its occurrence.
 

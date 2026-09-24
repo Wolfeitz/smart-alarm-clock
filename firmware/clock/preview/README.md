@@ -42,3 +42,6 @@ local-config/clock/preview-build/clock_preview /tmp/alarms-test.ppm weather alar
 The latter selects Alarm8, changes its hour through the actual editor, saves and
 returns to the overview, verifies the other seven slots remain unchanged, and
 checks Cancel navigation. Preview persistence is synthetic, not an NVS test.
+
+`repeat-test` exercises daily/weekday/weekend presets, custom day changes, once
+date-field visibility and rejection of an empty recurring schedule.

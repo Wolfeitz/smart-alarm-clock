@@ -109,13 +109,24 @@ static void dim(lv_event_t *e)
     if(s.settings.display.enabled){show_display(NULL);return;}
     if(!alarm_service_brightness(s.settings.brightness<80?160:25))lv_label_set_text(status,"Busy - try again");
 }
+enum {REPEAT_DAILY,REPEAT_WEEKDAYS,REPEAT_WEEKENDS,REPEAT_CUSTOM,REPEAT_ONCE};
+static unsigned repeat_choice(uint8_t mask)
+{return mask==127?REPEAT_DAILY:mask==62?REPEAT_WEEKDAYS:mask==65?REPEAT_WEEKENDS:REPEAT_CUSTOM;}
 static void day_toggle(lv_event_t *e)
 {
     unsigned i=(unsigned)(uintptr_t)lv_event_get_user_data(e);draft.weekdays^=1u<<i;
+    lv_dropdown_set_selected(repeat,repeat_choice(draft.weekdays));
 }
 static void repeat_changed(lv_event_t *e)
 {
-    (void)e;bool once=lv_dropdown_get_selected(repeat)==1;
+    unsigned selection=lv_dropdown_get_selected(repeat);bool once=selection==REPEAT_ONCE;
+    if(e&&selection<=REPEAT_WEEKENDS){
+        const uint8_t masks[]={127,62,65};draft.weekdays=masks[selection];
+        for(unsigned i=0;i<7;i++){
+            if(draft.weekdays&(1u<<i))lv_obj_add_state(days[i],LV_STATE_CHECKED);
+            else lv_obj_remove_state(days[i],LV_STATE_CHECKED);
+        }
+    }
     for(unsigned i=0;i<7;i++){if(once)lv_obj_add_flag(days[i],LV_OBJ_FLAG_HIDDEN);else lv_obj_remove_flag(days[i],LV_OBJ_FLAG_HIDDEN);}
     lv_obj_t *dates[]={year,month,day};
     for(unsigned i=0;i<3;i++){if(once)lv_obj_remove_flag(dates[i],LV_OBJ_FLAG_HIDDEN);else lv_obj_add_flag(dates[i],LV_OBJ_FLAG_HIDDEN);}
@@ -170,7 +181,7 @@ static void save(lv_event_t *e)
 {
     (void)e;if(pending)return;draft.hour=lv_dropdown_get_selected(hours);draft.minute=lv_dropdown_get_selected(minutes);
     draft.enabled=lv_obj_has_state(enabled,LV_STATE_CHECKED);
-    if(lv_dropdown_get_selected(repeat)==1){
+    if(lv_dropdown_get_selected(repeat)==REPEAT_ONCE){
         draft.weekdays=0;draft.once_date=(2000+lv_dropdown_get_selected(year))*10000+(1+lv_dropdown_get_selected(month))*100+1+lv_dropdown_get_selected(day);
     }else if(!draft.weekdays){lv_label_set_text(edit_status,"Choose at least one day");return;}
     if(!alarm_config_valid(&draft)){lv_label_set_text(edit_status,"Check the date");return;}
@@ -187,7 +198,7 @@ static void show_editor(void)
     lv_dropdown_set_selected(slot,index_selected);lv_obj_add_event_cb(slot,choose_slot,LV_EVENT_VALUE_CHANGED,NULL);
     hours=number_list(0,23,145,65,75);minutes=number_list(0,59,230,65,75);
     lv_dropdown_set_selected(hours,draft.hour);lv_dropdown_set_selected(minutes,draft.minute);
-    repeat=dropdown("Repeat\nOnce",325,65,140);lv_dropdown_set_selected(repeat,draft.weekdays?0:1);
+    repeat=dropdown("Every day\nWeekdays\nWeekends\nCustom\nOnce",325,65,140);lv_dropdown_set_selected(repeat,draft.weekdays?repeat_choice(draft.weekdays):REPEAT_ONCE);
     const char *names[]={"Su","Mo","Tu","We","Th","Fr","Sa"};
     for(unsigned i=0;i<7;i++){
         days[i]=button(root,names[i],15+i*65,142,58,day_toggle,(void*)(uintptr_t)i);
@@ -543,7 +554,7 @@ void clock_ui_diagnostics(void)
     if(editing){
         diagnostics_printf("UI_ALARM slot=%u enabled=%u weekdays=%u message=%s\n",index_selected,lv_obj_has_state(enabled,LV_STATE_CHECKED),draft.weekdays,lv_label_get_text(edit_status));
         dropdown_diagnostics("slot",slot);dropdown_diagnostics("hour",hours);dropdown_diagnostics("minute",minutes);dropdown_diagnostics("repeat",repeat);
-        if(lv_dropdown_get_selected(repeat)==1){dropdown_diagnostics("year",year);dropdown_diagnostics("month",month);dropdown_diagnostics("day",day);}
+        if(lv_dropdown_get_selected(repeat)==REPEAT_ONCE){dropdown_diagnostics("year",year);dropdown_diagnostics("month",month);dropdown_diagnostics("day",day);}
     }else if(time_editing){
         dropdown_diagnostics("year",time_year);dropdown_diagnostics("month",time_month);dropdown_diagnostics("day",time_day);
         dropdown_diagnostics("hour",time_hour);dropdown_diagnostics("minute",time_minute);
