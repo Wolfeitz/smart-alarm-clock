@@ -22,10 +22,11 @@ bool ha_service_configure(const char *url,const char *token,const char *entity){
 bool ha_service_toggle(void){ha_state.light.state=ha_state.light.state==HA_ON?HA_OFF:HA_ON;return true;}
 bool ha_service_refresh(void){return true;}
 static media_snapshot_t media_state={.entity="media_player.bedroom",.configured=true,.fresh=true,
-    .player={.state=MEDIA_PAUSED,.name="Bedroom speaker",.title="Example track",.artist="Example artist",.features=16437,.volume=.35,.volume_known=true},.status="Showing reported player state"};
+    .player={.state=MEDIA_PAUSED,.name="Bedroom speaker",.title="Example track",.artist="Example artist",.features=16949,.volume=.35,.volume_known=true},.status="Showing reported player state"};
 void media_service_snapshot(media_snapshot_t *s){*s=media_state;}
 bool media_service_configure(const char *entity){snprintf(media_state.entity,sizeof(media_state.entity),"%s",entity);return true;}
-bool media_service_action(media_action_t action){if(action==MEDIA_PLAY)media_state.player.state=MEDIA_PLAYING;if(action==MEDIA_PAUSE)media_state.player.state=MEDIA_PAUSED;return true;}
+bool media_service_select(const char *entity,const char *content,const char *type){if(!media_selection_valid(content,type))return false;strcpy(media_state.content,content);strcpy(media_state.content_type,type);return media_service_configure(entity);}
+bool media_service_action(media_action_t action){if(action==MEDIA_PLAY||action==MEDIA_START_SAVED)media_state.player.state=MEDIA_PLAYING;if(action==MEDIA_PAUSE)media_state.player.state=MEDIA_PAUSED;return true;}
 bool media_service_refresh(void){return true;}
 static uint16_t pixels[480*320];
 static uint32_t ticks;
@@ -87,20 +88,30 @@ int main(int argc,char **argv)
     static uint16_t buffer[480*40];lv_display_set_buffers(d,buffer,NULL,sizeof(buffer),LV_DISPLAY_RENDER_MODE_PARTIAL);lv_display_set_flush_cb(d,flush);
     clock_ui_init();advance();
     if(argc>3){
-        if(!strcmp(argv[3],"media")||!strcmp(argv[3],"media-test")){
+        if(!strcmp(argv[3],"media")||!strcmp(argv[3],"media-test")||!strcmp(argv[3],"media-setup")){
             click_text(lv_screen_active(),"Settings");advance();click_text(lv_screen_active(),"Media");advance();
             if(!strcmp(argv[3],"media-test")){
                 click_text(lv_screen_active(),"Play");advance();assert(media_state.player.state==MEDIA_PLAYING);
                 click_text(lv_screen_active(),"Pause");advance();assert(media_state.player.state==MEDIA_PAUSED);
                 click_text(lv_screen_active(),"Setup");advance();click_text(lv_screen_active(),"Cancel");advance();
+                click_text(lv_screen_active(),"Setup");advance();
+                lv_obj_t *fields[3]={0};unsigned count=0;
+                for(unsigned i=0;i<lv_obj_get_child_count(lv_screen_active());i++){
+                    lv_obj_t *o=lv_obj_get_child(lv_screen_active(),i);
+                    if(lv_obj_check_type(o,&lv_textarea_class)){assert(count<3);fields[count++]=o;}
+                }
+                assert(count==3);lv_textarea_set_text(fields[1],"https://example.test/radio");lv_textarea_set_text(fields[2],"music");
+                click_text(lv_screen_active(),"Save");advance();assert(!strcmp(media_state.content,"https://example.test/radio"));
+                click_text(lv_screen_active(),"Start saved");advance();assert(media_state.player.state==MEDIA_PLAYING);
                 media_state.fresh=false;advance();unsigned disabled=0;
                 for(unsigned i=0;i<lv_obj_get_child_count(lv_screen_active());i++){
                     lv_obj_t *o=lv_obj_get_child(lv_screen_active(),i);
                     if(lv_obj_check_type(o,&lv_button_class)&&lv_obj_has_state(o,LV_STATE_DISABLED))disabled++;
                 }
-                assert(disabled==6);media_state.fresh=true;advance();
-                puts("PASS media UI play/pause, setup/cancel and stale-state control disabling");
+                assert(disabled==7);media_state.fresh=true;advance();
+                puts("PASS media UI selection/save/start, play/pause, cancel and seven stale controls disabled");
             }
+            if(!strcmp(argv[3],"media-setup")){click_text(lv_screen_active(),"Setup");advance();}
         }
         else if(!strcmp(argv[3],"alarms")||!strcmp(argv[3],"alarms-test")){
             alarm_state.settings.alarms[0].enabled=true;alarm_state.settings.alarms[0].weekdays=62;

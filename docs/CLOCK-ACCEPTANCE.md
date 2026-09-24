@@ -7,7 +7,7 @@ or external playback improvements.
 
 Owner expanded scope to weather/location and continued integration development.
 Home Assistant light setup/control is installed; authenticated operation is pending. Last audit2026-09-24. Installed application SHA256:
-`e30394faa7f34a651c869636793fc75af2d93d731e700749a4b86507ce55a98b`.
+`e566e433e168e42f7ecdfe231ae6ad0234dfdec59aac1e7da86727f309c83a80`.
 
 | Requirement | Evidence | Status |
 |---|---|---|
@@ -101,9 +101,16 @@ check or acoustic/power-loss acceptance. Receipt:
 `local-config/clock/offline-snooze-c782e14-runtime.log`.
 
 
-The subsequent home-layout image is now installed (hash at top). Its build/flash
+The subsequent home-layout image was installed and verified. Its build/flash
 and home-card/navigation checks passed, with unchanged eight alarms, storageESP_OK
 and RTC/system agreement. It changes presentation only; the c782e14 offline test
 above remains historical evidence for the unchanged alarm implementation.
 Receipts: home-build.log, home-flash.log, home-layout-runtime.log. Full visual polish
 remains future work after regular functionality, as reconfirmed by the owner.
+
+
+Latest installed image adds optional saved external-media selection, hash at top.
+Selection runtime receipt confirms RTC startup/agreement, storageESP_OK, exact eight
+alarm preservation and setup/cancel/home navigation. No authenticated external
+playback occurred. Offline alarm execution and settings schema are unchanged;
+prior offline tests remain scoped to their recorded images.

@@ -36,10 +36,28 @@ bool media_action_supported(const media_player_t *p,media_action_t action)
 {
     if(!p||p->state==MEDIA_OFF||p->state==MEDIA_UNKNOWN||p->state==MEDIA_UNAVAILABLE)return false;
     /* HA2026.9.3 MediaPlayerEntityFeature constants; PLAY differs from PLAY_MEDIA. */
-    const uint32_t flags[]={16,16384,1,32,1024,1024};
+    const uint32_t flags[]={16,16384,1,32,1024,1024,512};
     if((unsigned)action>=sizeof(flags)/sizeof(*flags))return false;
-    if(action>=MEDIA_QUIETER)return (p->features&1024)||((p->features&4)&&p->volume_known);
+    if(action==MEDIA_QUIETER||action==MEDIA_LOUDER)return (p->features&1024)||((p->features&4)&&p->volume_known);
     return (p->features&flags[action])!=0;
 }
 const char *media_state_name(media_state_t state)
 {const char *names[]={"Unknown","Off","On","Idle","Playing","Paused","Buffering","Unavailable"};return (unsigned)state<8?names[state]:"Unknown";}
+
+bool media_selection_valid(const char *id,const char *type)
+{
+    if(!id||!type||strlen(id)>383||strlen(type)>47)return false;
+    if(!*id||!*type)return !*id&&!*type;
+    for(const unsigned char *p=(const unsigned char *)id;*p;p++)if(*p<32||*p==127)return false;
+    for(const unsigned char *p=(const unsigned char *)type;*p;p++)
+        if(!((*p>='a'&&*p<='z')||(*p>='A'&&*p<='Z')||(*p>='0'&&*p<='9')||strchr("/_-+.",*p)))return false;
+    return true;
+}
+bool media_selection_body(const char *entity,const char *id,const char *type,char *out,size_t capacity)
+{
+    if(!out||capacity>2147483647||!media_entity_valid(entity)||!media_selection_valid(id,type)||!*id)return false;
+    cJSON *root=cJSON_CreateObject();if(!root)return false;
+    bool ok=cJSON_AddStringToObject(root,"entity_id",entity)&&cJSON_AddStringToObject(root,"media_content_id",id)&&
+        cJSON_AddStringToObject(root,"media_content_type",type)&&cJSON_PrintPreallocated(root,out,(int)capacity,false);
+    cJSON_Delete(root);return ok;
+}

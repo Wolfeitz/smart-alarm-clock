@@ -62,3 +62,7 @@ accepted local tone; external playback is not yet an alarm source.
 For Home Assistant setup without typing a long token on the touchscreen, use the
 [computer USB setup helper](HOME-ASSISTANT.md#usb-setup-from-the-computer). It offers
 light/player entity discovery and hidden token entry in your terminal.
+
+Media Setup can also save a media ID and type. **Start saved** starts that selection
+on the configured external player; **Play** resumes its existing media. Saving
+settings does not start playback. Support depends on the selected HA integration.

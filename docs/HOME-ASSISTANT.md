@@ -54,8 +54,7 @@ confirmation window. Track/volume controls display reported state, without claim
 that an accepted HTTP request proves the intended physical effect.
 
 This is manual player control only. Alarms still use the independent local speaker;
-remote alarm playback, playlist/context selection and fallback integration are not
-yet implemented. An actual token and entity are needed for live authenticated use.
+remote alarm playback and fallback integration are not yet implemented. An actual token and entity are needed for live authenticated use.
 No Pi configuration, speaker grouping or media playback was changed during build.
 
 API references: [media player actions](https://www.home-assistant.io/integrations/media_player/)
@@ -84,3 +83,28 @@ If setup fails partway through, an already-confirmed connection save can remain;
 player selection is a separate save. Saved configuration does not establish that
 a token is authorized or that a selected speaker is playing. Live state is shown
 on the clock. Credentials are not written to a computer file or echoed in output.
+
+
+## Start a saved selection
+
+Media → Setup now has optional **Media ID** and **Type** fields. Supply both or
+leave both blank for transport controls only. Use the ID/type supported by your
+existing Home Assistant player: for example, an accessible audio stream URL and
+`music`, or a provider-specific playlist ID and `playlist`. A Spotify link is not
+universally playable by every Sonos/Cast/Spotify entity; use that integration's
+supported identifier. The clock stores the selection with the player and HA server.
+It does not download or decode the stream itself. Do not put access tokens or
+credential-bearing URLs in these non-secret fields.
+
+**Start saved** explicitly invokes `media_player.play_media` and only enables for
+a fresh, available player advertising that capability. **Play** retains its resume
+meaning. Saving never starts playback. A reported playing state is shown as
+“Player playing; selection not verified”: a player already playing something else
+is not evidence that the requested selection started. Local alarms are unaffected.
+Old player preferences load with an empty selection; saving upgrades the format.
+
+Fields are bounded to383 bytes for the ID and47 for the type. The existing USB
+helper selects the player and preserves its saved selection when the same player
+is selected; use the on-device Setup fields to edit the media selection itself.
+
+Reference: [Home Assistant play specified media](https://www.home-assistant.io/actions/media_player.play_media/).

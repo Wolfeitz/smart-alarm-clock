@@ -203,3 +203,9 @@ Snooze countdown uses the alarm owner's monotonic runtime snapshot, separate fro
 persisted wall-clock deadlines used for recovery. Engine tests cover rounding,
 earliest simultaneous snooze, expiry and dismissal. The `audio-error` LVGL preview
 also asserts that Snooze shows `Rings again in 05:00` from the supplied snapshot.
+
+Saved-media checks cover version1 player migration, incomplete/oversized input,
+JSON escaping, PLAY_MEDIA capability gating, exact service body, failed-save
+retention, and distinguishing playing state from requested-selection proof.
+`media-test` now tests selection fields/save/start and seven stale controls.
+`media-setup` renders the three-field setup. No real playback is requested.

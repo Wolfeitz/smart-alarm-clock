@@ -41,7 +41,7 @@ static void show_weather(lv_event_t *e);
 static void show_ha(lv_event_t *e);
 static void show_media(lv_event_t *e);
 static bool media_view,media_editing,media_error;
-static lv_obj_t *media_name,*media_title,*media_artist,*media_info,*media_status,*media_entity,*media_controls[6];
+static lv_obj_t *media_name,*media_title,*media_artist,*media_info,*media_status,*media_entity,*media_content,*media_type,*media_controls[7];
 static bool ha_view,ha_editing,ha_error;
 static lv_obj_t *ha_name,*ha_state,*ha_status,*ha_toggle,*ha_url,*ha_entity,*ha_token;
 
@@ -342,17 +342,20 @@ static void show_ha(lv_event_t *e)
 }
 static void media_save(lv_event_t *e)
 {
-    (void)e;bool ok=media_service_configure(lv_textarea_get_text(media_entity));
-    if(ok)show_media(NULL);else lv_label_set_text(media_status,"Set up HA server/token first; check player name");
+    (void)e;bool ok=media_service_select(lv_textarea_get_text(media_entity),lv_textarea_get_text(media_content),lv_textarea_get_text(media_type));
+    if(ok)show_media(NULL);else lv_label_set_text(media_status,"Check HA setup, player and media ID/type");
 }
 static void media_setup(lv_event_t *e)
 {
     (void)e;media_snapshot_t s;media_service_snapshot(&s);reset_screen();media_editing=true;
     label(root,"External player",10,12,460,&lv_font_montserrat_20);
-    media_entity=network_field("Player",s.entity,75,95,false);
+    media_entity=network_field("Player",s.entity,46,95,false);
+    media_content=network_field("Media ID",s.content,92,383,false);
+    media_type=network_field("Type",s.content_type,138,47,false);
+    lv_textarea_set_placeholder_text(media_type,"music or playlist (optional)");
     lv_textarea_set_placeholder_text(media_entity,"media_player.bedroom");
-    media_status=label(root,"Uses your saved Home Assistant connection",10,140,460,&lv_font_montserrat_16);
-    button(root,"HA setup",150,197,180,ha_setup,NULL);
+    media_status=label(root,"Leave media ID and type blank for controls only",10,184,460,&lv_font_montserrat_16);
+    button(root,"HA setup",150,211,180,ha_setup,NULL);
     button(root,"Cancel",40,265,180,show_media,NULL);button(root,"Save",260,265,180,media_save,NULL);
     keyboard=lv_keyboard_create(root);lv_obj_set_size(keyboard,480,130);lv_obj_align(keyboard,LV_ALIGN_BOTTOM_MID,0,0);
     lv_obj_add_flag(keyboard,LV_OBJ_FLAG_HIDDEN);lv_obj_add_event_cb(keyboard,keyboard_event,LV_EVENT_ALL,NULL);
@@ -367,7 +370,8 @@ static void media_refresh(lv_event_t *e)
 static void show_media(lv_event_t *e)
 {
     (void)e;editing=false;time_editing=false;reset_screen();media_view=true;
-    label(root,"Media",10,12,315,&lv_font_montserrat_20);button(root,"Setup",350,8,115,media_setup,NULL);
+    label(root,"Media",10,12,160,&lv_font_montserrat_20);button(root,"Setup",350,8,115,media_setup,NULL);
+    media_controls[6]=button(root,"Start saved",180,8,155,media_action,(void*)MEDIA_START_SAVED);
     media_name=label(root,"Choose a player",15,60,450,&lv_font_montserrat_20);
     media_title=label(root,"",15,92,450,&lv_font_montserrat_16);media_artist=label(root,"",15,116,450,&lv_font_montserrat_16);
     lv_obj_t *one_line[]={media_name,media_title,media_artist};
@@ -382,7 +386,7 @@ static void show_media(lv_event_t *e)
     media_controls[4]=button(root,"Quieter",125,270,105,media_action,(void*)MEDIA_QUIETER);
     media_controls[5]=button(root,"Louder",240,270,105,media_action,(void*)MEDIA_LOUDER);
     button(root,"Refresh",355,270,110,media_refresh,NULL);
-    for(unsigned i=0;i<6;i++)lv_obj_add_state(media_controls[i],LV_STATE_DISABLED);
+    for(unsigned i=0;i<7;i++)lv_obj_add_state(media_controls[i],LV_STATE_DISABLED);
 }
 static void show_network(lv_event_t *e);
 static void save_network(lv_event_t *e)
@@ -520,8 +524,8 @@ void clock_ui_update(void)
         if(m.fresh&&m.player.volume_known)snprintf(info,sizeof(info),"%s  /  Volume %.0f%%",media_state_name(m.player.state),m.player.volume*100);
         else snprintf(info,sizeof(info),"%s",m.fresh?media_state_name(m.player.state):"State unavailable");
         lv_label_set_text(media_info,info);if(!media_error)lv_label_set_text(media_status,m.status);
-        for(unsigned i=0;i<6;i++){
-            if(m.configured&&m.fresh&&!m.busy&&media_action_supported(&m.player,i))lv_obj_remove_state(media_controls[i],LV_STATE_DISABLED);
+        for(unsigned i=0;i<7;i++){
+            if(m.configured&&m.fresh&&!m.busy&&media_action_supported(&m.player,i)&&(i!=MEDIA_START_SAVED||m.content[0]))lv_obj_remove_state(media_controls[i],LV_STATE_DISABLED);
             else lv_obj_add_state(media_controls[i],LV_STATE_DISABLED);
         }
         return;

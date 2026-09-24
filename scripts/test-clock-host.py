@@ -67,6 +67,6 @@ with tempfile.TemporaryDirectory(prefix="esp-link-host-") as directory:
         ], check=True, timeout=60)
         subprocess.run([binary], check=True, timeout=10)
         if name == "media_service":
-            for fault in ("mutex-failure", "queue-failure"):
+            for fault in ("mutex-failure", "queue-failure", "legacy", "selection-reload"):
                 subprocess.run([binary, fault], check=True, timeout=10)
 print("PASS host logic only; display, touch, audible sound and power loss require device checks")

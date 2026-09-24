@@ -1383,3 +1383,33 @@ deferred; neither extra documentation nor another identical build proves them.
 No firmware/board changes in this audit, no new physical test request, and goal
 not marked complete. Continue broader authorized functionality independently of
 that acceptance gap; final visual polish remains after regular functionality.
+
+## Saved external media selection (2026-09-24)
+
+Continue owner's broader functional scope while physical acceptance stays batched.
+Implement an optional bounded media ID/type saved with the player and bound to its
+HA server. Preserve version1 player preferences on migration. Add explicit Start
+saved action, gated by fresh PLAY_MEDIA capability512 (distinct from resume PLAY).
+Encode JSON safely; reject incomplete/oversized selections. HTTP200 or a reported
+playing state must not claim the requested playlist is verified. Local alarms stay
+independent; no remote alarm routing or Pi changes. Verify migration, persistence
+failure, escaped IDs, capability gating, request body, and real-LVGL setup/control
+states before installation. Do not send real playback requests during verification.
+
+Saved external selection delivered and installed. Version2 player preferences add
+bounded content ID/type; legacy version1 loads with empty selection. Explicit Start
+saved uses PLAY_MEDIA512 and safe cJSON encoding; Play remains resume. Shared
+network worker owns requests; request storage allocated with response on heap to
+avoid growing its stack by1152bytes. All host suites pass, including legacy/new
+selection reload, invalid/escaped input, action/service body, failed-save retention,
+and honest playing-state reporting. Real-LVGL media-test passes setup/save/start,
+play/pause/cancel and all7 stale controls disabled; two renders inspected.
+IDF6.1 build and app-only flash verified; SHA256:
+e566e433e168e42f7ecdfe231ae6ad0234dfdec59aac1e7da86727f309c83a80.
+On-device navigation/setup/cancel/home passed, exact8alarms unchanged, storageESP_OK,
+RTC/system within1second, heap80168..80200. No token supplied, no real media request,
+no Pi modification or power-off. Receipts: selection-host.log, selection-preview-build,
+selection-build, selection-flash and selection-runtime logs under local-config/clock.
+Live authentication/player/content behavior remains unverified; remote-alarm fallback
+is still not implemented. Owner raised open-source portability; recorded standalone
+base/optional HA boundary and current direct-HA media limitation in PROJECT.md.

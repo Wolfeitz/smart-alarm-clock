@@ -146,3 +146,15 @@ polish the bedside interface. Keep provider adapters and presentation separate s
 Home Assistant entities and later spoken weather/schedule summaries can be added
 without coupling them to alarm execution. Weather/location work may proceed while
 the remaining physical power-cycle check is pending; core offline guarantees remain.
+
+
+## Portability clarification (2026-09-24)
+
+Owner raised possible open-source distribution and users without Home Assistant.
+Standalone clock/alarm functionality remains the base product; HA is optional.
+Current weather uses its own provider and does not require HA. The implemented
+external-player control currently calls HA directly, so portable media adapters
+and removal of the personal server-address default remain public-release work.
+Do not advertise non-HA external playback as implemented. Voice/activation/morning
+briefings are possible later capabilities, not a reason to install HA or make
+local time/alarm execution depend on it. No publication or license choice requested.
