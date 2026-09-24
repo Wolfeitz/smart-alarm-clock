@@ -1134,3 +1134,29 @@ stable, weatherHTTP200731bytes. No physical interaction or full-power test neede
 Receipts: alarm-list-preview-build.log, alarm-list-build.log, alarm-list-flash.log,
 alarm-list-runtime.log. This adds normal alarm-management functionality without
 changing persistence schema or requiring another owner acceptance interruption.
+
+## Installed offline-operation check (2026-09-24)
+
+Add bounded serial diagnostics NETWORK OFF / NETWORK ON, queued to the existing
+network owner. OFF stops the board radio and suppresses reconnects; ON starts it
+and reconnects using untouched stored credentials. Mode is volatile and ordinary
+restart restores normal connection. No router/HA/shared infrastructure change.
+Use this to verify RTC/alarm scheduling, snooze/dismiss and UI while networking is
+actually off. Preserve all8 alarm records, choosing only an unused unconsumed slot
+for a temporary once alarm and restoring it. No power-off or owner interaction.
+
+Installed offline check passed: app-only flash1771536bytes verified, SHA256
+ dc90d92d80bd6126448bdb5432a89e844974067602202791e681d43e8f7250d6.
+NETWORK OFF acknowledged by owner with ESP_OK; stopped-radio interval showed
+RTC/system within1second, heap92564stable and no weather HTTP. All alarms were
+initially disabled; selected unused slot0 with consumed_date0, saved a temporary
+once alarm for next bounded RTC deadline. It triggered mask1 with persistenceESP_OK,
+entered ringing, and produced repeated AUDIO_TEST_DONE ESP_OK177152-byte blocks.
+SNOOZE produced ringing0/snoozed1; DISMISS cleared both. Restored slot0 and compared
+all8 alarm records exactly against the pre-test snapshot. NETWORK ON acknowledged
+ESP_OK; weatherHTTP200730bytes confirmed reconnection. No Wi-Fi credentials changed.
+No full-power-off or physical interaction used. Audio transmission is established,
+not a new human acoustic observation. Private receipts: offline-check-build.log,
+offline-check-flash.log, offline-alarm-runtime.log, offline-alarm-original.json.
+This strengthens current-image offline independence evidence; deferred final
+physical/power acceptance is not a gate to further development.

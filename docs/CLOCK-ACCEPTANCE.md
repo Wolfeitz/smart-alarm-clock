@@ -7,7 +7,7 @@ or external playback improvements.
 
 Owner expanded scope to weather/location and continued integration development.
 Home Assistant light setup/control is installed; authenticated operation is pending. Last audit2026-09-24. Installed application SHA256:
-`99d609f26851af785f7604452932c8a11e7408b77b37fea6f5fc8b7648d57225`.
+`dc90d92d80bd6126448bdb5432a89e844974067602202791e681d43e8f7250d6`.
 
 | Requirement | Evidence | Status |
 |---|---|---|
@@ -22,7 +22,7 @@ Home Assistant light setup/control is installed; authenticated operation is pend
 | Restart recovery | Ringing, snooze, dismissal and brightness survive MCU resets | Demonstrated |
 | Saved brightness | Owner confirmed Dim/Brighten; brightness25 survived reset, restored160 | Demonstrated |
 | Power-return startup | Owner reports powered back on and current application looks good; prior battery state disconnected | Display/application recovery observed by owner; offline RTC retention without backup power is not established |
-| Independence from Wi-Fi | RTC, engine, NVS, UI and audio remain local; HTTPS in separate lower-priority worker | Offline local example demonstrated before provisioning; online UI/RTC responsiveness verified |
+| Independence from Wi-Fi | RTC, engine, NVS, UI and audio remain local; HTTPS in separate lower-priority worker | Current image: radio stopped via SDK, RTC deadline triggered alarm, audio writes succeeded, snooze/dismiss passed; exact alarm restoration and network reconnection verified |
 | Factory recovery preserved | Private32MB factory backup and prior whole-image restoration/hash proof; factory partitions retained | Demonstrated; no further factory rewrite needed |
 
 Build/host tests cannot prove sound, physical controls or a complete power cycle.
@@ -61,3 +61,8 @@ pending; further full-power tests remain deferred by owner. Goal not complete.
 Owner correction: physical acceptance is batched after integrated functionality,
 not a prerequisite to continue development. HA update runtime/navigation checks
 passed without physical input; see WORK for installed image and evidence.
+
+Current-image offline check: NETWORK OFF returned ESP_OK, RTC scheduled the
+temporary once alarm with durable consumption; I2S writes, Snooze and Dismiss
+passed. All eight alarm records restored exactly; NETWORK ON and weatherHTTP200
+confirmed reconnect. This checks disconnected operation, not battery/power loss.

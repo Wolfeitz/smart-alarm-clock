@@ -20,3 +20,6 @@ bool weather_service_scan(void);
 bool weather_service_refresh(void);
 bool weather_service_take_time(time_t *epoch);
 const char *weather_service_timezone(void);
+
+/* Volatile diagnostic; stored credentials are never changed. */
+bool weather_service_radio(bool enabled);

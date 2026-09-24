@@ -153,3 +153,9 @@ network worker; safe snapshots and rejected commands are required. Network-start
 error handling uses checked SDK netif steps instead of the default factory, whose
 internal assertions were verified in the pinned IDF source. No physical OOM or
 radio-failure injection is claimed by these host checks.
+
+Serial `NETWORK OFF` and `NETWORK ON` commands pause/resume the board radio through
+the network worker without changing saved credentials. Require both the queued
+request acknowledgment and `NETWORK_RADIO ... status=ESP_OK`; a queued request
+alone is not proof of radio state. This diagnostic is volatile: restart restores
+normal networking. Resume after any offline test. It does not simulate power loss.

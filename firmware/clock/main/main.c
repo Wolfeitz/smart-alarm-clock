@@ -72,6 +72,8 @@ static void serial_poll(void)
                 bool ok=sscanf(line+7,"%u %c",&value,&extra)==1 && value>0 && value<=255;
                 diagnostics_printf("BRIGHT_SET accepted=%d\n",ok && alarm_service_brightness(value));
             }
+            if(!overflow && (!strcmp(line,"NETWORK OFF")||!strcmp(line,"NETWORK ON")))
+                diagnostics_printf("NETWORK_REQUEST accepted=%u\n",weather_service_radio(!strcmp(line,"NETWORK ON")));
             if(!overflow && strcmp(line,"STATE")==0){
                 alarm_snapshot_t a;alarm_service_snapshot(&a);
                 diagnostics_printf("ALARM_STATE ringing=%u snoozed=%u brightness=%u storage=%s revision=%u\n",a.ringing,a.snoozed,a.settings.brightness,esp_err_to_name(a.storage_status),a.revision);

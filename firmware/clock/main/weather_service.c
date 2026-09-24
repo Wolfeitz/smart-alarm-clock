@@ -32,7 +32,7 @@ static SemaphoreHandle_t lock;
 static QueueHandle_t commands,time_updates;
 static nvs_handle_t storage;
 static bool storage_open,radio_started;
-static atomic_bool online,available;
+static atomic_bool online,available,radio_paused;
 static atomic_int disconnect_reason;
 static char active_zone[64]="America/New_York";
 /* If lock allocation fails no worker starts, so the fallback snapshot is immutable. */
@@ -67,7 +67,7 @@ static esp_err_t save_preferences(const preferences_t *p)
 static void wifi_event(void *arg,esp_event_base_t base,int32_t id,void *data)
 {
     (void)arg;(void)data;
-    if(base==IP_EVENT&&id==IP_EVENT_STA_GOT_IP)online=true;
+    if(base==IP_EVENT&&id==IP_EVENT_STA_GOT_IP&&!radio_paused)online=true;
     if(base==WIFI_EVENT&&id==WIFI_EVENT_STA_DISCONNECTED){
         online=false;wifi_event_sta_disconnected_t *event=data;disconnect_reason=event->reason;
         diagnostics_printf("WIFI_DISCONNECTED reason=%u\n",event->reason);
@@ -196,17 +196,30 @@ static void worker(void *arg)
                 else{
                     bool changed=strcmp(prefs.zip,next.zip)!=0;prefs=next;
                     if(changed){state_lock();state.has_data=false;state_unlock();}
-                    if(command.kind==1){status("Wi-Fi saved; connecting...");connect_wifi();retry=esp_timer_get_time()+30000000;}
+                    if(command.kind==1){radio_paused=false;status("Wi-Fi saved; connecting...");connect_wifi();retry=esp_timer_get_time()+30000000;}
                     else status("Location saved; looking up weather...");
                     weather_at=0;
                 }
-            }else if(command.kind==3)scan_networks();else weather_at=0;
+            }else if(command.kind==5||command.kind==6){
+                bool enable=command.kind==6;esp_err_t result=ESP_OK;
+                if(enable){
+                    if(!radio_started){result=esp_wifi_start();if(result==ESP_OK)radio_started=true;}
+                    if(result==ESP_OK){radio_paused=false;if(prefs.ssid[0])result=connect_wifi();retry=esp_timer_get_time()+30000000;}
+                    status(result==ESP_OK?"Wi-Fi resumed":"Wi-Fi resume failed");weather_at=0;
+                }else{
+                    radio_paused=true;
+                    if(radio_started)result=esp_wifi_stop();
+                    if(result==ESP_OK){radio_started=false;online=false;status("Wi-Fi paused; clock works offline");}
+                    else{radio_paused=false;status("Wi-Fi pause failed");}
+                }
+                diagnostics_printf("NETWORK_RADIO enabled=%u status=%s\n",enable,esp_err_to_name(result));
+            }else if(command.kind==3){if(!radio_paused)scan_networks();else status("Wi-Fi paused; resume before scanning");}else weather_at=0;
             memset(&command,0,sizeof(command));state_lock();state.busy=false;state_unlock();publish();
         }
         int64_t now=esp_timer_get_time();int reason=atomic_exchange(&disconnect_reason,0);
-        if(reason&&!online){char message[96];snprintf(message,sizeof(message),"Wi-Fi connection failed (%d); check password",reason);status(message);}
+        if(reason&&!online&&!radio_paused){char message[96];snprintf(message,sizeof(message),"Wi-Fi connection failed (%d); check password",reason);status(message);}
         if(online!=was_online){was_online=online;publish();if(online){status("Wi-Fi connected");weather_at=0;}}
-        if(!online&&prefs.ssid[0]&&now>=retry){status("Wi-Fi unavailable; reconnecting...");esp_wifi_connect();retry=now+30000000;}
+        if(!radio_paused&&!online&&prefs.ssid[0]&&now>=retry){status("Wi-Fi unavailable; reconnecting...");esp_wifi_connect();retry=now+30000000;}
         ha_service_poll(online);
         if(online&&now>=weather_at){
             if(clock_valid()){bool ok=update_weather();weather_at=esp_timer_get_time()+(ok?1800000000LL:60000000);}
@@ -262,3 +275,5 @@ bool weather_service_scan(void){command_t c={.kind=3};return submit(&c);}
 bool weather_service_refresh(void){command_t c={.kind=4};return submit(&c);}
 bool weather_service_take_time(time_t *epoch){return time_updates&&xQueueReceive(time_updates,epoch,0)==pdTRUE;}
 const char *weather_service_timezone(void){return active_zone;}
+
+bool weather_service_radio(bool enabled){command_t c={.kind=enabled?6:5};return submit(&c);}
