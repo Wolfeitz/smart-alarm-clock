@@ -13,6 +13,7 @@
 static i2s_chan_handle_t tx;
 static QueueHandle_t requests;
 static atomic_bool alarm_active;
+enum { OUTPUT_VOLUME = 85, TONE_PEAK = 10000 };
 static int16_t waveform[256];
 static void play_task(void *unused)
 {
@@ -21,7 +22,7 @@ static void play_task(void *unused)
         bool alarm=atomic_load(&alarm_active);
         if(!alarm && xQueueReceive(requests,&command,pdMS_TO_TICKS(50))!=pdTRUE)continue;
         esp_err_t result=ESP_OK;size_t total=0;
-        /* Four quiet pulses, with a 10ms envelope to avoid edge clicks. */
+        /* Four brief pulses, with a 10ms envelope to avoid edge clicks. */
         for(unsigned frame=0;frame<22050*2;frame+=256){
             if(alarm && !atomic_load(&alarm_active))break;
             for(unsigned i=0;i<256;i++){
@@ -46,7 +47,7 @@ static void play_task(void *unused)
 }
 void audio_init(i2c_master_bus_handle_t bus)
 {
-    for(unsigned i=0;i<256;i++)waveform[i]=(int16_t)(5000*sinf(2.0f*3.14159265f*i/256));
+    for(unsigned i=0;i<256;i++)waveform[i]=(int16_t)(TONE_PEAK*sinf(2.0f*3.14159265f*i/256));
     i2s_chan_config_t channel=I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0,I2S_ROLE_MASTER);
     channel.auto_clear=true;
     ESP_ERROR_CHECK(i2s_new_channel(&channel,&tx,NULL));
@@ -72,7 +73,7 @@ void audio_init(i2c_master_bus_handle_t bus)
     if(!device){diagnostics_printf("AUDIO_INIT failed=device\n");return;}
     esp_codec_dev_sample_info_t sample={.sample_rate=22050,.channel=2,.bits_per_sample=16};
     int rc=esp_codec_dev_open(device,&sample);
-    if(rc==0)rc=esp_codec_dev_set_out_vol(device,55);
+    if(rc==0)rc=esp_codec_dev_set_out_vol(device,OUTPUT_VOLUME);
     if(rc!=0){diagnostics_printf("AUDIO_INIT failed=codec rc=%d\n",rc);return;}
     const uint8_t regs[]={0x00,0x01,0x09,0x12,0x31,0x32,0xfd,0xfe,0xff};
     for(unsigned i=0;i<sizeof(regs);i++){
@@ -81,7 +82,7 @@ void audio_init(i2c_master_bus_handle_t bus)
     }
     requests=xQueueCreate(1,sizeof(uint8_t));
     if(!requests || xTaskCreate(play_task,"local_audio",4096,NULL,4,NULL)!=pdPASS)abort();
-    diagnostics_printf("AUDIO_READY rate=22050 bits=16 codec=ES8311 volume=55\n");
+    diagnostics_printf("AUDIO_READY rate=22050 bits=16 codec=ES8311 volume=%d peak=%d\n",OUTPUT_VOLUME,TONE_PEAK);
 }
 bool audio_test(void)
 {

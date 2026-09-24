@@ -1,8 +1,8 @@
 # Offline clock acceptance
 
 Scope: active goal only; weather, Home Assistant and Spotify remain deferred.
-Last audit: 2026-09-23. Current delivery commit: ab10c17.
-Installed application SHA256: 095ee2246533a79c88550e54d2a9eb5c3a3bc7cccfcd013170c14c0574559c1f.
+Last audit: 2026-09-23. Latest runtime change: louder-tone adjustment after ab10c17.
+Installed application SHA256: 2605da61813ff336b16687a361d0a37a2935f3143a409a442312471ed124b0d5.
 
 | Requirement | Evidence | Status |
 |---|---|---|
@@ -12,7 +12,7 @@ Installed application SHA256: 095ee2246533a79c88550e54d2a9eb5c3a3bc7cccfcd013170
 | Local time/date entry | Set time installed; host calendar/leap/DST tests pass; RTC adapter already hardware-tested | Physical editor use pending |
 | Editable persistent alarms | Eight-slot editor installed; NVS save/reset readback preserved disabled06:43 weekdays62; exact save acknowledgment implemented | Persistence demonstrated; physical editor pending |
 | Local scheduled trigger | Once alarm triggered on physical board; consumption saved before playback | State transition demonstrated |
-| Audible local sound | ES8311 ID/readback, unmuted DAC and I2S writes succeed; user reported original test silent | NOT demonstrated; updated tone feedback pending |
+| Audible local sound | Owner confirms Test sound is audible but barely; ES8311 and I2S checks also pass | Speaker output demonstrated; usable alarm loudness pending |
 | Snooze and dismiss | Real five-minute snooze re-rang after300.01 seconds; dismissal cleared state | Scheduler demonstrated; physical buttons pending |
 | Restart recovery | Ringing, snooze, dismissal and brightness survive MCU resets | Demonstrated |
 | Saved brightness | Owner confirmed Dim/Brighten; brightness25 survived reset, restored160 | Demonstrated |

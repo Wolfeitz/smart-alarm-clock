@@ -65,9 +65,9 @@ separate acceptance gate. Logs and binaries remain private under local-config/cl
 
 Pinned esp_codec_dev1.6.2 initializes ES8311 playback, using factory-derived
 BCLK23/WS10/DOUT25, no MCLK or direct PA GPIO, 22050Hz16-bit stereo.
-Test sound (or serial SOUND) queues four quiet pulses on a separate audio task.
-No sound plays automatically on boot. Codec initialization has passed; audible
-speaker qualification is pending owner feedback. See WORK for the latest receipt.
+Test sound (or serial SOUND) queues four brief pulses on a separate audio task.
+No sound plays automatically on boot. Owner confirms audible speaker output at the initial conservative level; usable
+alarm loudness remains pending after a level increase. See WORK for the latest receipt.
 
 ## Alarms
 

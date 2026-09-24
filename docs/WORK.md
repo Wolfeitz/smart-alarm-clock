@@ -702,3 +702,20 @@ serial reconnections while waiting for the owner's physical check. No deliberate
 esptool reset or TIME command was sent. This does not pass full-power-loss or
 audible output gates. Remaining progress now depends on the requested physical
 observations; no test process remains live.
+
+## Speaker confirmed, output level adjustment
+
+Owner now hears Test sound but reports it barely audible. This establishes actual
+speaker output; loudness sufficient for an alarm remains unproven. Raise codec
+volume55 to85 and PCM peak5000 to10000 (below16-bit clipping), retaining the
+two-second four-pulse envelope,660Hz tone and task yielding. No automatic test
+sound on boot. Build/flash/readback must pass, then request owner loudness and
+distortion feedback. Physical screen/power-cycle gates remain unchanged.
+
+Louder-tone IDF build and application flash passed. Runtime reports volume85,
+peak10000, DAC volume register32=b7, CLOCK_READY, RTC/system agreement,
+storageESP_OK and retained brightness160. No automatic sound command sent.
+Image SHA256 2605da61813ff336b16687a361d0a37a2935f3143a409a442312471ed124b0d5. Evidence: louder-tone-build.log,
+louder-tone-flash.log, louder-tone-runtime.log under local-config/clock.
+Physical loudness/clarity feedback required; prior owner report proves speaker
+existence/output but not alarm-appropriate level.
