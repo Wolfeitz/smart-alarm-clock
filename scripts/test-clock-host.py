@@ -25,6 +25,15 @@ with tempfile.TemporaryDirectory(prefix="esp-link-host-") as directory:
             str(tests / (name + "_test.c")), "-o", binary,
         ], check=True, timeout=60)
         subprocess.run([binary], check=True, timeout=10)
+    binary = str(Path(directory) / "settings_store")
+    subprocess.run([
+        "cc", "-std=c11", "-D_POSIX_C_SOURCE=200809L", "-Wall", "-Wextra", "-Werror",
+        "-I" + str(tests / "storage_stubs"), "-I" + str(main),
+        *[str(main / (m + ".c")) for m in ("settings_store", "settings_codec", "alarm_engine", "display_policy")],
+        str(tests / "settings_store_test.c"), "-o", binary,
+    ], check=True, timeout=60)
+    for scenario in ("init", "open", "read", "corrupt", "write", "commit", "reload"):
+        subprocess.run([binary, scenario], check=True, timeout=10)
     cjson = root / "firmware/clock/managed_components/espressif__cjson/cJSON"
     binary = str(Path(directory) / "weather_model")
     subprocess.run([

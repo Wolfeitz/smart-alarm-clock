@@ -1272,3 +1272,21 @@ usb-setup-runtime-final.log (normal rate, pass). Computer setup instructions are
 in HOME-ASSISTANT.md. Persisted acknowledgment tests are synthetic; actual token
 acceptance/external playback remain unverified. Offline goal remains active with
 batched physical alarm-control and full-power-loss checks outstanding, as directed.
+
+## Settings storage boundary verification (2026-09-24)
+
+Previous turn delivered installed USB provisioning. Next offline-core gap: existing
+codec/recovery tests bypass settings_store.c. Exercise the production adapter with
+injected NVS failures, missing/corrupt data, and successful save/reload. Require
+safe disabled defaults on failed load, propagation of write/commit errors, no commit
+after a failed write, and exact encoded alarm/active-phase reload. These synthetic
+checks cannot establish physical NVS power-loss atomicity; no power interruption.
+
+Storage boundary verification passed all seven isolated scenarios against production
+settings_store.c. Failed init/open do not permit saves; failed/corrupt reads leave
+disabled defaults and return the error. Failed writes do not invoke commit; commit
+errors propagate. Successful save/reload preserves encoded alarm, consumed date,
+snoozed phase/deadline and brightness exactly. Invalid settings are rejected before
+another NVS write. All existing host suites also pass. No production firmware
+change, flash, board restart or physical test was performed; installed27c3bad image
+remains. This adds adapter-level evidence, not simulated physical flash atomicity.

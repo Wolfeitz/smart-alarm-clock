@@ -189,3 +189,12 @@ runner also tests the firmware setup JSON parser, including decoded NULs and inv
 tags. Tests use synthetic data and never provision a real credential. A device
 handshake and malformed/oversized message test confirms USB framing/recovery only;
 it does not establish successful authenticated Home Assistant operation.
+
+The host runner compiles production `settings_store.c` with a synthetic NVS boundary
+and runs seven isolated scenarios: initialization failure, namespace-open failure,
+read failure, corrupt stored bytes, write failure, commit failure, and save/reload.
+It checks clockcfg/clock ownership, disabled defaults after failed reads, error
+propagation, no commit after write failure, rejection of invalid settings before
+writing, and encoded equality after reloading an alarm with active snooze metadata.
+The fake NVS is not a flash emulator: these checks do not prove atomicity, wear
+behavior, or recovery from physical power loss during a write.
