@@ -23,4 +23,12 @@ with tempfile.TemporaryDirectory(prefix="esp-link-host-") as directory:
             str(tests / (name + "_test.c")), "-o", binary,
         ], check=True, timeout=60)
         subprocess.run([binary], check=True, timeout=10)
+    cjson = root / "firmware/clock/managed_components/espressif__cjson/cJSON"
+    binary = str(Path(directory) / "weather_model")
+    subprocess.run([
+        "cc", "-std=c11", "-D_POSIX_C_SOURCE=200809L", "-DCJSON_NESTING_LIMIT=16", "-Wall", "-Wextra", "-Werror",
+        "-I" + str(main), "-I" + str(cjson), str(cjson / "cJSON.c"),
+        str(main / "weather_model.c"), str(main / "timezone_rules.c"), str(tests / "weather_model_test.c"), "-lm", "-o", binary,
+    ], check=True, timeout=60)
+    subprocess.run([binary, str(tests / "fixtures/weather-location.json"), str(tests / "fixtures/weather-forecast.json")], check=True, timeout=10)
 print("PASS host logic only; display, touch, audible sound and power loss require device checks")

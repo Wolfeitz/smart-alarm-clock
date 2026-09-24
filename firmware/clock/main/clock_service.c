@@ -48,3 +48,8 @@ esp_err_t clock_set(time_t epoch)
     struct timeval tv={.tv_sec=check};if(settimeofday(&tv,NULL)!=0)return ESP_FAIL;
     synchronized=true;source="Time saved / offline";return ESP_OK;
 }
+
+esp_err_t clock_set_network(time_t epoch)
+{
+    esp_err_t err=clock_set(epoch);if(err==ESP_OK)source="Network time / RTC";return err;
+}

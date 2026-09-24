@@ -1,6 +1,11 @@
 # Work, decisions and evidence
 
-Owner: Rob. Updated: 2026-09-23. Approved bootstrap complete. Hardware readiness active: IDF6.1 display-touch installed; I2C, screen rendering and aligned touch/CLEAR verified; cold-start power/audio still outstanding.
+Owner: Rob. Updated: 2026-09-23. Working clock/weather example installed.
+Current evidence: local alarm UI/scheduler/persistence tested, quiet sound accepted,
+Wi-Fi scan and saved reconnection, live HTTPS weather and NTP/RTC sync verified.
+Manual ZIP27358 retained. Final combined firmware still needs physical overnight/
+power-loss acceptance; HA, external playback and spoken briefings are future work.
+See final dated entries below and CLOCK-ACCEPTANCE.md; earlier sections are history.
 Approval: user replied “Approved” to docs/bootstrap/PROPOSAL.md in this task.
 
 ## Bootstrap checklist
@@ -30,7 +35,7 @@ Discovery evidence and input SHA-256 values are in the approved proposal. Curren
 shell sandbox previously failed to launch with `mountinfo path is not absolute`;
 reviewed escalation worked. Do not disable global sandbox controls to fix this task.
 
-## Active bounded task: hardware readiness
+## Historical initial bounded task: hardware readiness
 
 2026-09-23: Rob supplied the precise purchased-board description from the receipt;
 recorded verbatim in PROJECT. It identifies the ESP32-C5 rounded-corner 3.5-inch IPS
@@ -865,3 +870,63 @@ using an arbitrary result. Unknown timezone leaves previous time zone unchanged.
 Network credentials use separate project-owned namespace, with Wi-Fi RAM storage
 and nvs_enable=false to preserve factory NVS. NTP updates are handed to the
 clock/UI owner for RTC writes. No shared backend needed for direct provider API.
+
+## Weather implementation and setup corrections (2026-09-23)
+
+Owner supplied ZIP27358; Open-Meteo returned Summerfield, North Carolina,
+America/New_York. Current weather and daily forecast host request also succeeded.
+Added provider-neutral validated weather model, pinned cJSON1.7.19~2 (nest limit16),
+IANA2026d future POSIX rule table, background HTTPS/Wi-Fi/NTP service and LVGL
+weather/settings screens. Host parser tests cover ambiguous ZIP, invalid/missing
+values, wrong units, stale/future responses, truncation and timezone/DST.
+First build/flash passed; app-only1745424bytes verified, clock RTC/settings boot
+and new screens observed. Factory NVS and PHY calibration writes explicitly
+turned off; private clockcfg/network namespace stores network configuration.
+
+Owner correctly rejected typed SSID and combined Wi-Fi/ZIP setup. Revised contract:
+scan nearby networks, select SSID, enter password; separate weather/location page.
+Manual ZIP always takes priority over inference. An unset location may suggest a
+ZIP from public-IP geolocation, clearly marked approximate; never send SSID/BSSID
+or Wi-Fi password to geolocation services. Existing supplied27358 is manual.
+No inference should run for this configured device. Network scan belongs to the
+background worker. Tests must verify responsive clock/alarms during scans and
+HTTP, successful network selection, persisted manual location and live weather.
+
+Owner then requested automatic ZIP suggestion only when no manual choice exists.
+Implemented strict manual precedence, separate Location page, explicit Use network
+choice, public-IP postal parser with country/format/error validation; IP lookup
+is skipped for manual27358. Approximate suggestions remain editable and Save
+location makes the choice manual. Unknown zones preserve the prior timezone.
+
+Broader GitHub/Reddit/specialist search completed and pinned sources inspected:
+REUSE-REVIEW.md records applicable examples, framework/hardware differences and
+per-file license caveats. Exact-board Waveshare examples still unavailable; nearby
+C5 2.8 weather UI entry points include an empty custom_init, so not a complete
+networking replacement. ESP-IDF station example supplied explicit WPA3 SAE mode.
+
+Board scan succeeded with6 AP records. Initial saved authentication failed202;
+owner re-entered password, then on-device snapshot became online/valid/fresh.
+Firmware restart automatically reconnected; HTTPS200 with732bytes and
+NETWORK_TIME rtc=ESP_OK observed. Owner identified password-form navigation bug;
+fixed automatic exit on successful selected-network connection and added local
+Show/Hide password. Actual clock_ui.c host regression verifies password textarea
+is removed after Connect success. No password was read back or printed.
+
+Added actual-LVGL windowless preview, inspected home/weather/network renders,
+dark theme and home weather card. Host preview is synthetic data, not hardware
+visual proof. Radio/TLS heap budget increased by disabling Wi-Fi IRAM throughput
+optimizations and using dynamic TLS buffers. Post-fetch heap ~91KiB stable;
+mid-request heartbeat observed66KiB, returned91KiB. Generic SDK logging now uses
+nonblocking diagnostic queue too, so unattended USB cannot stall radio/UI logs.
+Observed a burst of rejected synthetic taps during TLS; raised UI owner priority3
+above network2 while alarm owner remains5. Final app built/flashed/hash verified:
+1759952bytes, SHA25623d59810b8b3c866533caf1d3f80de7c339b37d672658ce9e966cbbb56787e87.
+Final restart again fetched731-byte forecastHTTP200, RTCvalid and advancing.
+
+Final priority-adjusted verification: all synthetic taps accepted during HTTPS;
+UI returned home while request ran. Second test navigated away during AP scan,
+ALARM_STATE replied with storageESP_OK and no active alarms, scan returned7 AP
+records and heap returned91128bytes. Repeated10-second heartbeats remained live.
+No new audible alarm test was run while owner was heading to bed; prior audio and
+real5-minute snooze evidence remains recorded separately. Current image's full
+power-loss reliability and physical GUI review are still unproven.

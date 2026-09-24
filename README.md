@@ -5,8 +5,9 @@ LCD 3.5-inch board described in the supplied brief and identified by Rob's recei
 (recorded in PROJECT). An RTC-backed LVGL clock now runs on the board under
 ESP-IDF6.1, with confirmed time/date, advancing seconds and touch brightness.
 Local alarm editing, scheduling, snooze/dismiss, persistence and sound now run on
-the board. Weather/location setup is the next authorized increment; see WORK for
-evidence and the remaining physical power-loss check.
+the board. Wi-Fi scanning, saved connection, network time and local weather/current
+day forecast are now verified on-device. See WORK for evidence and remaining
+physical power-loss checks.
 
 ## Start here / Operating Model Index
 
@@ -62,3 +63,6 @@ Keep credentials out of Git and logs. Use ignored local configuration for secret
 choose a concrete provisioning mechanism during firmware design. Report changes,
 commands, results, limitations and next steps in WORK. Board-specific clock build and RTC provisioning are verified; see the clock
 README and SETUP for commands and recovery.
+
+Weather setup and interfaces: [docs/WEATHER.md](docs/WEATHER.md).
+Reusable upstream projects: [docs/REUSE-REVIEW.md](docs/REUSE-REVIEW.md).

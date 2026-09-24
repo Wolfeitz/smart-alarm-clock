@@ -5,11 +5,14 @@
 #include "local_time.h"
 #include "board.h"
 #include "audio.h"
+#include "weather_service.h"
+#include "esp_system.h"
 #include "lvgl.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 static lv_obj_t *root,*time_text,*date_text,*detail,*next_text,*status,*dim_text;
+static lv_obj_t *home_place,*home_temperature,*home_forecast;
 static lv_obj_t *slot,*hours,*minutes,*repeat,*enabled,*days[7],*year,*month,*day,*edit_status,*overlay,*overlay_detail;
 static alarm_config_t draft;
 static unsigned index_selected;
@@ -17,6 +20,14 @@ static bool editing,pending,time_editing;
 static lv_obj_t *time_year,*time_month,*time_day,*time_hour,*time_minute,*time_status;
 static uint32_t pending_ticket;
 static uint8_t applied_brightness;
+static bool weather_view,network_editing,network_error,location_editing,wifi_listing,network_connecting;
+static unsigned shown_scan;
+static lv_obj_t *network_list;
+static weather_network_t shown_networks[WEATHER_NETWORK_COUNT],chosen_network;
+static lv_obj_t *weather_title,*weather_now,*weather_today,*weather_status,*zone_button;
+static lv_obj_t *network_password,*network_zip,*network_status,*keyboard;
+static void show_weather(lv_event_t *e);
+
 static lv_obj_t *label(lv_obj_t *parent,const char *text,int x,int y,int w,const lv_font_t *font)
 {
     lv_obj_t *o=lv_label_create(parent);lv_label_set_text(o,text);lv_obj_set_pos(o,x,y);lv_obj_set_width(o,w);
@@ -26,7 +37,7 @@ static lv_obj_t *label(lv_obj_t *parent,const char *text,int x,int y,int w,const
 static lv_obj_t *button(lv_obj_t *parent,const char *text,int x,int y,int w,lv_event_cb_t cb,void *data)
 {
     lv_obj_t *o=lv_button_create(parent);lv_obj_set_pos(o,x,y);lv_obj_set_size(o,w,44);
-    lv_obj_set_style_bg_color(o,lv_color_hex(0x203347),0);lv_obj_add_event_cb(o,cb,LV_EVENT_CLICKED,data);
+    lv_obj_set_style_bg_color(o,lv_color_hex(0x203347),0);lv_obj_set_style_radius(o,12,0);lv_obj_set_style_shadow_width(o,0,0);lv_obj_add_event_cb(o,cb,LV_EVENT_CLICKED,data);
     lv_obj_t *l=lv_label_create(o);lv_label_set_text(l,text);lv_obj_center(l);return o;
 }
 static void home(void);
@@ -34,6 +45,7 @@ static void show_editor(void);
 static void show_time_editor(lv_event_t *e);
 static void reset_screen(void)
 {
+    weather_view=false;network_editing=false;location_editing=false;wifi_listing=false;network_connecting=false;
     lv_obj_clean(root);lv_obj_set_style_bg_color(root,lv_color_hex(0x0b1119),0);
     lv_obj_remove_flag(root,LV_OBJ_FLAG_SCROLLABLE);
 }
@@ -126,7 +138,7 @@ static void show_time_editor(lv_event_t *e)
     if(clock_valid()){time_t now=time(NULL);localtime_r(&now,&local);}
     lv_dropdown_set_selected(time_year,local.tm_year-100);lv_dropdown_set_selected(time_month,local.tm_mon);
     lv_dropdown_set_selected(time_day,local.tm_mday-1);lv_dropdown_set_selected(time_hour,local.tm_hour);lv_dropdown_set_selected(time_minute,local.tm_min);
-    time_status=label(root,"America/New_York  /  seconds reset to 00",10,222,460,&lv_font_montserrat_16);
+    time_status=label(root,weather_service_timezone(),10,222,460,&lv_font_montserrat_16);
     button(root,"Cancel",50,260,160,go_home,NULL);button(root,"Save time",270,260,160,save_time,NULL);
 }
 static void snooze(lv_event_t *e){(void)e;alarm_service_snooze();}
@@ -134,17 +146,134 @@ static void dismiss(lv_event_t *e){(void)e;alarm_service_dismiss();}
 static void home(void)
 {
     editing=false;time_editing=false;pending=false;reset_screen();
-    date_text=label(root,"Clock",15,20,315,&lv_font_montserrat_20);
+    date_text=label(root,"Clock",18,19,310,&lv_font_montserrat_20);
+    lv_obj_set_style_text_align(date_text,LV_TEXT_ALIGN_LEFT,0);
     button(root,"Set time",350,12,115,show_time_editor,NULL);
-    time_text=label(root,"--:--",90,80,300,&lv_font_montserrat_48);
-    lv_obj_set_style_transform_pivot_x(time_text,LV_PCT(50),0);lv_obj_set_style_transform_pivot_y(time_text,LV_PCT(50),0);lv_obj_set_style_transform_scale(time_text,384,0);
-    detail=label(root,"Set time to begin",20,159,440,&lv_font_montserrat_20);
-    next_text=label(root,"No alarms enabled",20,199,440,&lv_font_montserrat_16);
-    status=label(root,"",20,227,440,&lv_font_montserrat_16);
+    time_text=label(root,"--:--",22,76,270,&lv_font_montserrat_48);
+    lv_obj_set_style_text_color(time_text,lv_color_hex(0xffd998),0);
+    lv_obj_set_style_transform_pivot_x(time_text,LV_PCT(50),0);lv_obj_set_style_transform_pivot_y(time_text,LV_PCT(50),0);lv_obj_set_style_transform_scale(time_text,320,0);
+    detail=label(root,"Set time to begin",20,143,270,&lv_font_montserrat_20);
+    next_text=label(root,"No alarms enabled",20,192,270,&lv_font_montserrat_16);
+    status=label(root,"",20,222,270,&lv_font_montserrat_16);
+    lv_obj_set_style_text_color(status,lv_color_hex(0x95a8ba),0);
+    lv_obj_t *card=button(root,"",310,74,155,show_weather,NULL);lv_obj_set_height(card,167);lv_obj_set_style_pad_all(card,0,0);
+    lv_obj_set_style_bg_color(card,lv_color_hex(0x142a35),0);lv_obj_remove_flag(card,LV_OBJ_FLAG_SCROLLABLE);
+    home_place=label(card,"Summerfield",4,12,147,&lv_font_montserrat_16);
+    lv_obj_set_height(home_place,22);lv_label_set_long_mode(home_place,LV_LABEL_LONG_DOT);
+    home_temperature=label(card,"-- F",4,45,147,&lv_font_montserrat_48);
+    lv_obj_set_style_text_color(home_temperature,lv_color_hex(0x9edbd2),0);
+    home_forecast=label(card,"Set up Wi-Fi\nfor weather",4,107,147,&lv_font_montserrat_16);
     lv_obj_t *b=button(root,"Dim",15,261,140,dim,NULL);dim_text=lv_obj_get_child(b,0);
-    button(root,"Alarms",170,261,140,go_editor,NULL);button(root,"Test sound",325,261,140,sound,NULL);
+    button(root,"Alarms",170,261,140,go_editor,NULL);button(root,"Weather",325,261,140,show_weather,NULL);
 }
-void clock_ui_init(void){root=lv_screen_active();home();}
+static void keyboard_event(lv_event_t *e)
+{
+    if(lv_event_get_code(e)==LV_EVENT_READY||lv_event_get_code(e)==LV_EVENT_CANCEL){
+        lv_obj_add_flag(keyboard,LV_OBJ_FLAG_HIDDEN);lv_keyboard_set_textarea(keyboard,NULL);
+    }
+}
+static void field_focus(lv_event_t *e)
+{
+    network_error=false;lv_obj_t *target=lv_event_get_target(e);lv_keyboard_set_textarea(keyboard,target);
+    lv_keyboard_set_mode(keyboard,location_editing?LV_KEYBOARD_MODE_NUMBER:LV_KEYBOARD_MODE_TEXT_LOWER);
+    lv_obj_remove_flag(keyboard,LV_OBJ_FLAG_HIDDEN);lv_obj_move_foreground(keyboard);
+}
+static lv_obj_t *network_field(const char *caption,const char *text,int y,unsigned max,bool secret)
+{
+    label(root,caption,8,y+12,100,&lv_font_montserrat_16);
+    lv_obj_t *o=lv_textarea_create(root);lv_obj_set_pos(o,112,y);lv_obj_set_size(o,355,42);
+    lv_textarea_set_one_line(o,true);lv_textarea_set_max_length(o,max);lv_textarea_set_password_mode(o,secret);
+    lv_textarea_set_text(o,text);lv_obj_add_event_cb(o,field_focus,LV_EVENT_CLICKED,NULL);return o;
+}
+static void show_network(lv_event_t *e);
+static void save_network(lv_event_t *e)
+{
+    (void)e;const char *password=lv_textarea_get_text(network_password);
+    bool ok=(!chosen_network.secured||strlen(password)>=8)&&weather_service_connect(chosen_network.ssid,password);
+    lv_label_set_text(network_status,ok?"Connecting...":"Enter password (8+ characters), then Connect");
+    network_error=!ok;network_connecting=ok;if(ok)lv_textarea_set_text(network_password,"");
+}
+static void show_password(lv_event_t *e)
+{
+    bool hidden=lv_textarea_get_password_mode(network_password);lv_textarea_set_password_mode(network_password,!hidden);
+    lv_obj_t *button=lv_event_get_target(e);lv_label_set_text(lv_obj_get_child(button,0),hidden?"Hide":"Show");
+}
+static void choose_network(lv_event_t *e)
+{
+    unsigned index=(unsigned)(uintptr_t)lv_event_get_user_data(e);chosen_network=shown_networks[index];
+    if(chosen_network.unsupported){lv_label_set_text(network_status,"This network's security is not supported yet");network_error=true;return;}
+    reset_screen();network_editing=true;network_error=false;
+    label(root,chosen_network.ssid,10,14,460,&lv_font_montserrat_20);
+    label(root,chosen_network.secured?"Enter your Wi-Fi password":"Open network - no password needed",10,55,460,&lv_font_montserrat_16);
+    network_password=network_field("Password","",93,63,true);
+    lv_obj_set_width(network_password,260);button(root,"Show",380,92,85,show_password,NULL);
+    if(!chosen_network.secured)lv_obj_add_state(network_password,LV_STATE_DISABLED);
+    network_status=label(root,"",10,154,460,&lv_font_montserrat_16);
+    button(root,"Back",45,264,170,show_network,NULL);button(root,"Connect",265,264,170,save_network,NULL);
+    keyboard=lv_keyboard_create(root);lv_obj_set_size(keyboard,480,130);lv_obj_align(keyboard,LV_ALIGN_BOTTOM_MID,0,0);
+    lv_obj_add_flag(keyboard,LV_OBJ_FLAG_HIDDEN);lv_obj_add_event_cb(keyboard,keyboard_event,LV_EVENT_ALL,NULL);
+}
+static void rescan(lv_event_t *e)
+{
+    (void)e;network_error=false;if(!weather_service_scan()){lv_label_set_text(network_status,"Busy - please try Scan again");network_error=true;}
+}
+static void show_network(lv_event_t *e)
+{
+    (void)e;editing=false;time_editing=false;reset_screen();network_editing=true;wifi_listing=true;network_error=false;shown_scan=~0u;
+    label(root,"Choose Wi-Fi",10,10,300,&lv_font_montserrat_20);button(root,"Scan",345,6,120,rescan,NULL);
+    network_list=lv_list_create(root);lv_obj_set_pos(network_list,12,58);lv_obj_set_size(network_list,456,150);
+    network_status=label(root,"Scanning nearby networks...",10,217,460,&lv_font_montserrat_16);
+    button(root,"Back",20,264,130,show_weather,NULL);button(root,"Test sound",165,264,145,sound,NULL);
+    button(root,"Clock",325,264,135,go_home,NULL);weather_service_scan();
+}
+static void save_location(lv_event_t *e)
+{
+    (void)e;bool ok=weather_service_location(lv_textarea_get_text(network_zip));
+    lv_label_set_text(network_status,ok?"Location saved; updating...":"Enter a 5-digit ZIP, then Save");network_error=!ok;
+}
+static void estimate_location(lv_event_t *e)
+{
+    (void)e;bool ok=weather_service_location("");network_error=!ok;
+    if(ok)lv_textarea_set_text(network_zip,"");
+    lv_label_set_text(network_status,ok?"Estimating location; check suggested ZIP":"Busy - please retry");
+}
+static void show_location(lv_event_t *e)
+{
+    (void)e;weather_snapshot_t s;weather_service_snapshot(&s);editing=false;time_editing=false;reset_screen();location_editing=true;network_error=false;
+    label(root,"Weather & time zone",10,10,290,&lv_font_montserrat_20);
+    button(root,"Use network",315,5,150,estimate_location,NULL);
+    label(root,s.manual_location?"Manual location - preserved across Wi-Fi changes":"Estimated from network - check or change ZIP",10,52,460,&lv_font_montserrat_16);
+    network_zip=network_field("US ZIP",s.zip,95,5,false);lv_textarea_set_accepted_chars(network_zip,"0123456789");
+    network_status=label(root,s.location.name,10,158,460,&lv_font_montserrat_16);
+    button(root,"Back",45,264,170,show_weather,NULL);button(root,"Save location",265,264,170,save_location,NULL);
+    keyboard=lv_keyboard_create(root);lv_obj_set_size(keyboard,480,130);lv_obj_align(keyboard,LV_ALIGN_BOTTOM_MID,0,0);
+    lv_obj_add_flag(keyboard,LV_OBJ_FLAG_HIDDEN);lv_obj_add_event_cb(keyboard,keyboard_event,LV_EVENT_ALL,NULL);
+}
+static void refresh_weather(lv_event_t *e){(void)e;weather_service_refresh();}
+static void restart_zone(lv_event_t *e)
+{
+    (void)e;alarm_snapshot_t s;alarm_service_snapshot(&s);
+    if(s.ringing||s.snoozed){lv_label_set_text(weather_status,"Dismiss active alarm before restarting");return;}
+    esp_restart();
+}
+static void show_weather(lv_event_t *e)
+{
+    (void)e;editing=false;time_editing=false;reset_screen();weather_view=true;
+    weather_title=label(root,"Local weather",15,12,315,&lv_font_montserrat_20);
+    button(root,"Refresh",350,8,115,refresh_weather,NULL);
+    weather_now=label(root,"Connect Wi-Fi to begin",15,72,450,&lv_font_montserrat_20);
+    weather_today=label(root,"Today's forecast will appear here",15,123,450,&lv_font_montserrat_16);
+    weather_status=label(root,"",15,177,450,&lv_font_montserrat_16);
+    label(root,"Open-Meteo / CC BY 4.0",15,235,290,&lv_font_montserrat_16);
+    button(root,"Clock",15,264,130,go_home,NULL);button(root,"Wi-Fi",165,264,140,show_network,NULL);button(root,"Location",325,264,140,show_location,NULL);
+    zone_button=button(root,"Apply zone",325,211,140,restart_zone,NULL);lv_obj_add_flag(zone_button,LV_OBJ_FLAG_HIDDEN);
+}
+void clock_ui_init(void)
+{
+    lv_display_t *display=lv_display_get_default();
+    lv_theme_t *theme=lv_theme_default_init(display,lv_color_hex(0x3f9c98),lv_color_hex(0xd5a565),true,&lv_font_montserrat_16);
+    lv_display_set_theme(display,theme);root=lv_screen_active();home();
+}
 void clock_ui_update(void)
 {
     alarm_snapshot_t s;alarm_service_snapshot(&s);
@@ -171,6 +300,40 @@ void clock_ui_update(void)
         }
         lv_label_set_text(overlay_detail,text);
     }
+    if(weather_view||network_editing||location_editing){
+        weather_snapshot_t w;weather_service_snapshot(&w);
+        if(network_editing||location_editing){
+            if(network_connecting&&!w.busy&&w.connected&&!strcmp(w.ssid,chosen_network.ssid)){show_weather(NULL);return;}
+            if(location_editing&&!w.manual_location&&!lv_textarea_get_text(network_zip)[0]&&w.zip[0])lv_textarea_set_text(network_zip,w.zip);
+            if(wifi_listing&&shown_scan!=w.scan_revision){
+                shown_scan=w.scan_revision;lv_obj_clean(network_list);memcpy(shown_networks,w.networks,sizeof(shown_networks));
+                for(unsigned i=0;i<w.network_count;i++){
+                    char title[100],name[33];strcpy(name,shown_networks[i].ssid);
+                    for(char *p=name;*p;p++)if((unsigned char)*p<32)*p=' ';
+                    snprintf(title,sizeof(title),"%s   %s  %s",name,shown_networks[i].rssi>-60?"Strong":shown_networks[i].rssi>-75?"Good":"Weak",shown_networks[i].secured?"Secured":"Open");
+                    lv_obj_t *b=lv_list_add_button(network_list,LV_SYMBOL_WIFI,title);lv_obj_add_event_cb(b,choose_network,LV_EVENT_CLICKED,(void*)(uintptr_t)i);
+                }
+                if(!w.network_count)lv_list_add_text(network_list,w.scanning?"Scanning...":"No networks listed. Tap Scan.");
+            }
+            if(network_error)return;
+            if(w.scanning)lv_label_set_text(network_status,"Scanning nearby networks...");
+            else if(w.busy)lv_label_set_text(network_status,"Working...");
+            else lv_label_set_text(network_status,w.status);
+            return;
+        }
+        char text[180];snprintf(text,sizeof(text),"%s  %s",w.location.name[0]?w.location.name:"ZIP",w.zip);lv_label_set_text(weather_title,text);
+        if(w.has_data){
+            snprintf(text,sizeof(text),"%.0f F  /  %s\nFeels like %.0f F",w.data.temperature,weather_condition(w.data.code),w.data.feels_like);lv_label_set_text(weather_now,text);
+            struct tm date;time_t start=w.data.day_start;localtime_r(&start,&date);char day_text[32];strftime(day_text,sizeof(day_text),"%a %b %d",&date);
+            snprintf(text,sizeof(text),"%s: %s\nHigh %.0f F   Low %.0f F   Rain %d%%",day_text,weather_condition(w.data.day_code),w.data.high,w.data.low,w.data.rain_percent);lv_label_set_text(weather_today,text);
+        }else{lv_label_set_text(weather_now,"Weather not available yet");lv_label_set_text(weather_today,"Your clock and alarms work offline");}
+        if(w.restart_for_zone)snprintf(text,sizeof(text),"%s\nApply zone restarts the clock",w.location.timezone);
+        else if(w.has_data&&!weather_fresh(&w.data,time(NULL)))snprintf(text,sizeof(text),"OUTDATED weather - reconnect to update\n%s",w.status);
+        else snprintf(text,sizeof(text),"%s\n%s",w.connected?"Wi-Fi connected":"Offline",w.status);
+        lv_obj_set_width(weather_status,w.restart_for_zone?295:450);lv_label_set_text(weather_status,text);
+        if(w.restart_for_zone)lv_obj_remove_flag(zone_button,LV_OBJ_FLAG_HIDDEN);else lv_obj_add_flag(zone_button,LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
     if(time_editing)return;
     if(editing){
         if(pending && s.save_ticket==pending_ticket){
@@ -193,6 +356,13 @@ void clock_ui_update(void)
     lv_label_set_text(next_text,b);
     lv_label_set_text(status,s.storage_status==ESP_OK?clock_source():"Settings storage error");
     lv_label_set_text(dim_text,applied_brightness<80?"Brighten":"Dim");
+    weather_snapshot_t weather;weather_service_snapshot(&weather);
+    lv_label_set_text(home_place,weather.location.name[0]?weather.location.name:"Local weather");
+    if(weather.has_data){
+        snprintf(b,sizeof(b),"%.0f°",weather.data.temperature);lv_label_set_text(home_temperature,b);
+        snprintf(b,sizeof(b),"%s\nH %.0f°  L %.0f°",weather_fresh(&weather.data,time(NULL))?weather_condition(weather.data.code):"Outdated",weather.data.high,weather.data.low);
+        lv_label_set_text(home_forecast,b);
+    }else{lv_label_set_text(home_temperature,"--°");lv_label_set_text(home_forecast,weather.connected?"Updating...":"Set up Wi-Fi\nfor weather");}
 }
 
 static void dropdown_diagnostics(const char *name,lv_obj_t *o)
@@ -205,7 +375,10 @@ static void dropdown_diagnostics(const char *name,lv_obj_t *o)
 }
 void clock_ui_diagnostics(void)
 {
-    diagnostics_printf("UI_SCREEN name=%s overlay=%u pending=%u\n",time_editing?"time":editing?"alarm":"home",overlay!=NULL,pending);
+    diagnostics_printf("UI_SCREEN name=%s overlay=%u pending=%u\n",location_editing?"location":network_editing?"network":weather_view?"weather":time_editing?"time":editing?"alarm":"home",overlay!=NULL,pending);
+    if(weather_view||network_editing||location_editing){weather_snapshot_t w;weather_service_snapshot(&w);
+        diagnostics_printf("WEATHER_STATE online=%u valid=%u fresh=%u zip=%s zone=%s status=%s\n",w.connected,w.has_data,w.has_data&&weather_fresh(&w.data,time(NULL)),w.zip,w.location.timezone,w.status);
+    }
     if(overlay)diagnostics_printf("UI_OVERLAY text=%s\n",lv_label_get_text(overlay_detail));
     if(editing){
         diagnostics_printf("UI_ALARM slot=%u enabled=%u weekdays=%u message=%s\n",index_selected,lv_obj_has_state(enabled,LV_STATE_CHECKED),draft.weekdays,lv_label_get_text(edit_status));

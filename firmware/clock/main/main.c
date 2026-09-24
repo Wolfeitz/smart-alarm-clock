@@ -16,6 +16,7 @@
 #include "audio.h"
 #include "alarm_service.h"
 #include "clock_ui.h"
+#include "weather_service.h"
 static bool test_touch;static int test_x,test_y;static uint32_t test_until;
 static uint32_t tick(void){return (uint32_t)(esp_timer_get_time()/1000);}
 static void flush(lv_display_t *d,const lv_area_t *a,uint8_t *data)
@@ -85,17 +86,18 @@ static void serial_poll(void)
 }
 void app_main(void)
 {
-    diagnostics_init();
-    board_init();clock_init(board_bus());audio_init(board_bus());alarm_service_init();
+    /* UI/RTC owner stays above HTTPS work; alarm owner remains higher still. */
+    vTaskPrioritySet(NULL,3);diagnostics_init();
+    board_init();clock_init(board_bus());audio_init(board_bus());weather_service_init();alarm_service_init();
     lv_init();lv_tick_set_cb(tick);
     lv_display_t *d=lv_display_create(480,320);lv_display_set_color_format(d,LV_COLOR_FORMAT_RGB565);
     void *buf=heap_caps_malloc(480*20*2,MALLOC_CAP_DMA);if(!buf)abort();
     lv_display_set_buffers(d,buf,NULL,480*20*2,LV_DISPLAY_RENDER_MODE_PARTIAL);lv_display_set_flush_cb(d,flush);
     lv_indev_t *input=lv_indev_create();lv_indev_set_type(input,LV_INDEV_TYPE_POINTER);lv_indev_set_read_cb(input,touch_read);
-    clock_ui_init();clock_ui_update();diagnostics_printf("CLOCK_READY lvgl=%d.%d.%d timezone=America/New_York\n",LVGL_VERSION_MAJOR,LVGL_VERSION_MINOR,LVGL_VERSION_PATCH);
+    clock_ui_init();clock_ui_update();diagnostics_printf("CLOCK_READY lvgl=%d.%d.%d timezone=%s\n",LVGL_VERSION_MAJOR,LVGL_VERSION_MINOR,LVGL_VERSION_PATCH,weather_service_timezone());
     uint32_t last=0,report=0;
     for(;;){
-        serial_poll();uint32_t now=tick();
+        serial_poll();time_t network_time;if(weather_service_take_time(&network_time))diagnostics_printf("NETWORK_TIME rtc=%s\n",esp_err_to_name(clock_set_network(network_time)));uint32_t now=tick();
         if(now-last>=1000){last=now;clock_ui_update();}
         if(now-report>=10000){
             report=now;time_t rtc_epoch=0;esp_err_t err=clock_rtc_epoch(&rtc_epoch);

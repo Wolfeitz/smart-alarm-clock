@@ -6,7 +6,10 @@ Uses the proven ST7796 component from ../display-touch/components/st7796.
 brightness toggle, alarm editor and bounded Test sound button. Eight alarm slots
 support weekday selection or an explicit once date. Settings and consumed
 occurrences persist in a dedicated NVS partition; scheduling runs independently
-of LVGL. Wi-Fi/NTP and weather are deferred.
+of LVGL. A separate network worker supplies Wi-Fi scanning, NTP/RTC sync and
+Open-Meteo weather. Weather → Wi-Fi selects a nearby network; Weather → Location
+edits the US ZIP independently. Manual location takes precedence over estimates.
+See ../../docs/WEATHER.md for setup, data interfaces and limitations.
 
 ## Build and provision
 

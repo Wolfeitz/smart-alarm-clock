@@ -113,3 +113,17 @@ Run the consolidated host suites: `python scripts/test-clock-host.py`. This incl
 local time-entry validation for leap dates, invalid dates, spring-DST gaps and the
 earlier fall-back occurrence. Physical Set time/Save time interaction remains a
 separate acceptance check.
+
+## Weather and UI previews
+
+`python scripts/test-clock-host.py` also compiles the weather parser against the
+pinned managed cJSON source, with nesting limit16. Fixtures are public weather/
+geocoding responses, not credentials. Tests reject missing/null data, wrong units,
+wrong timezone, stale/future values, ambiguous ZIPs and trailing/truncated JSON;
+manual ZIP precedence and DST rules are checked independently of LVGL.
+
+The actual LVGL UI can be rendered without hardware using the commands in
+`firmware/clock/preview/README.md`. Synthetic preview data does not prove network
+integration. On-device acceptance must include scan, connection, TLS forecast,
+time sync/RTC handoff, retry after loss, cached-data freshness and local alarm
+responsiveness while network work is active.
