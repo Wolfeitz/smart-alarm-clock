@@ -1,8 +1,8 @@
 # Offline clock acceptance
 
 Scope: active goal only; weather, Home Assistant and Spotify remain deferred.
-Last audit: 2026-09-23. Latest runtime change: louder-tone adjustment after ab10c17.
-Installed application SHA256: 2605da61813ff336b16687a361d0a37a2935f3143a409a442312471ed124b0d5.
+Last audit: 2026-09-23. Latest runtime change: full-level tone adjustment after ab10c17.
+Installed application SHA256: c1f518f8d57dc25e8b5493f9a49af8b6cff7ca9bba7ae1487a47efc92e3182f1.
 
 | Requirement | Evidence | Status |
 |---|---|---|

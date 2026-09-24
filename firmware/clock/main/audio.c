@@ -13,7 +13,7 @@
 static i2s_chan_handle_t tx;
 static QueueHandle_t requests;
 static atomic_bool alarm_active;
-enum { OUTPUT_VOLUME = 85, TONE_PEAK = 10000 };
+enum { OUTPUT_VOLUME = 100, TONE_PEAK = 20000 };
 static int16_t waveform[256];
 static void play_task(void *unused)
 {

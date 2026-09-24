@@ -719,3 +719,17 @@ Image SHA256 2605da61813ff336b16687a361d0a37a2935f3143a409a442312471ed124b0d5. E
 louder-tone-flash.log, louder-tone-runtime.log under local-config/clock.
 Physical loudness/clarity feedback required; prior owner report proves speaker
 existence/output but not alarm-appropriate level.
+
+Owner confirms volume85/peak10000 is louder and clear, but still very quiet.
+Next bounded step: volume100 (default curve0dB) and PCM peak20000. Pinned codec
+source applies approximately+3.61dB voltage compensation; this peak retains
+headroom after that compensation (about0.925 full scale). Relative programmed
+level increases approximately13.5dB; acoustic loudness remains a physical check.
+Keep two-second user-triggered test and existing envelope/yielding. If still too
+quiet, investigate amplifier/power/routing rather than exceeding this gain blindly.
+
+Full-level build and app-only flash verified. Boot confirms volume100/peak20000,
+DAC register32=c6, retained brightness160, CLOCK_READY and RTC within one second.
+No automatic test tone sent. Image SHA256 c1f518f8d57dc25e8b5493f9a49af8b6cff7ca9bba7ae1487a47efc92e3182f1.
+Evidence: full-level-build.log/full-level-flash.log/full-level-runtime.log.
+Await owner loudness/distortion check before claiming usable alarm volume.
