@@ -63,7 +63,11 @@ static void reset_screen(void)
 }
 static void go_home(lv_event_t *e){(void)e;home();}
 static void go_editor(lv_event_t *e){(void)e;index_selected=0;show_editor();}
-static void sound(lv_event_t *e){(void)e;audio_test();}
+static void sound(lv_event_t *e)
+{
+    bool accepted=audio_test();lv_obj_t *button=lv_event_get_target(e);
+    lv_label_set_text(lv_obj_get_child(button,0),accepted?"Sound queued":"Sound unavailable");
+}
 static void dim(lv_event_t *e)
 {
     (void)e;alarm_snapshot_t s;alarm_service_snapshot(&s);
@@ -385,7 +389,7 @@ void clock_ui_update(void)
     }
     if(!active && overlay){lv_obj_delete(overlay);overlay=NULL;}
     if(overlay){
-        lv_obj_t *title=lv_obj_get_child(overlay,0);lv_label_set_text(title,s.ringing?"Alarm":"Snoozed");
+        lv_obj_t *title=lv_obj_get_child(overlay,0);lv_label_set_text(title,s.ringing?(audio_status()==ESP_OK?"Alarm":"Audio error"):"Snoozed");
         char text[80];
         if(s.ringing){
             size_t n=0;n+=snprintf(text,sizeof(text),"Alarm ");
@@ -471,7 +475,7 @@ void clock_ui_update(void)
     if(next){struct tm local;localtime_r(&next,&local);strftime(b,sizeof(b),"Next: %a %I:%M %p",&local);}
     else snprintf(b,sizeof(b),"%s",clock_valid()?"No upcoming alarms":"Set time to arm alarms");
     lv_label_set_text(next_text,b);
-    lv_label_set_text(status,s.storage_status==ESP_OK?clock_source():"Settings storage error");
+    lv_label_set_text(status,audio_status()!=ESP_OK?"Local audio unavailable":s.storage_status==ESP_OK?clock_source():"Settings storage error");
     lv_label_set_text(dim_text,s.settings.display.enabled?"Display":applied_brightness<80?"Brighten":"Dim");
     weather_snapshot_t weather;weather_service_snapshot(&weather);
     lv_label_set_text(home_place,weather.location.name[0]?weather.location.name:"Local weather");
@@ -497,6 +501,7 @@ void clock_ui_diagnostics(void)
         diagnostics_printf("WEATHER_STATE online=%u valid=%u fresh=%u zip=%s zone=%s status=%s\n",w.connected,w.has_data,w.has_data&&weather_fresh(&w.data,time(NULL)),w.zip,w.location.timezone,w.status);
     }
     alarm_snapshot_t state;alarm_service_snapshot(&state);
+    diagnostics_printf("AUDIO_STATE status=%d\n",(int)audio_status());
     diagnostics_printf("DISPLAY_STATE auto=%u start=%u end=%u level=%u\n",state.settings.display.enabled,state.settings.display.start_minute,state.settings.display.end_minute,applied_brightness);
     if(overlay)diagnostics_printf("UI_OVERLAY text=%s\n",lv_label_get_text(overlay_detail));
     if(editing){

@@ -143,3 +143,7 @@ HA host checks compile the production service against synthetic queue/NVS/HTTP
 boundaries: rejected duplicate requests, state confirmation, HTTP200 without a
 change, failure expiry, authentication failure, stale/offline state, and failed
 configuration retaining the prior endpoint/entity. No real HA credentials needed.
+
+The windowless UI preview `audio-error` injects an unavailable-audio snapshot,
+checks the home warning and ringing error title, then exercises Snooze and Dismiss.
+This tests UI behavior under reported failure, not a physical codec failure.

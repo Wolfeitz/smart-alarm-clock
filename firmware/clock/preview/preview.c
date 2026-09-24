@@ -37,10 +37,12 @@ void diagnostics_printf(const char *format,...){(void)format;}
 void alarm_service_snapshot(alarm_snapshot_t *s){*s=alarm_state;}
 uint32_t alarm_service_save_tracked(unsigned i,const alarm_config_t *a){alarm_state.settings.alarms[i]=*a;alarm_state.save_ticket++;return alarm_state.save_ticket;}
 bool alarm_service_brightness(uint8_t b){alarm_state.settings.brightness=b;return true;}
-bool alarm_service_snooze(void){return true;}
-bool alarm_service_dismiss(void){return true;}
+bool alarm_service_snooze(void){alarm_state.snoozed=alarm_state.ringing;alarm_state.ringing=0;return true;}
+bool alarm_service_dismiss(void){alarm_state.ringing=0;alarm_state.snoozed=0;return true;}
 void board_brightness(bool dim){backlight_dim=dim;}
-bool audio_test(void){return true;}
+static esp_err_t audio_error;
+esp_err_t audio_status(void){return audio_error;}
+bool audio_test(void){return audio_error==ESP_OK;}
 bool clock_valid(void){return true;}
 const char *clock_source(void){return "RTC / offline";}
 esp_err_t clock_set(time_t epoch){(void)epoch;return ESP_OK;}
@@ -122,6 +124,21 @@ int main(int argc,char **argv)
         ticks+=29999;clock_ui_update();assert(!backlight_dim);ticks+=1;clock_ui_update();assert(backlight_dim);
         alarm_state.ringing=1;clock_ui_update();assert(!backlight_dim);
         puts("PASS UI night dim, immediate touch wake, expiry and ringing backlight");
+    }
+    if(argc>3&&!strcmp(argv[3],"audio-error")){
+        click_text(lv_screen_active(),"Clock");advance();audio_error=1;advance();
+        bool warning=false;
+        for(unsigned i=0;i<lv_obj_get_child_count(lv_screen_active());i++){
+            lv_obj_t *o=lv_obj_get_child(lv_screen_active(),i);
+            if(lv_obj_check_type(o,&lv_label_class)&&!strcmp(lv_label_get_text(o),"Local audio unavailable"))warning=true;
+        }
+        assert(warning);alarm_state.ringing=1;advance();
+        lv_obj_t *overlay=lv_obj_get_child(lv_layer_top(),0);assert(overlay);
+        assert(!strcmp(lv_label_get_text(lv_obj_get_child(overlay,0)),"Audio error"));
+        click_text(overlay,"Snooze 5 min");advance();assert(!alarm_state.ringing&&alarm_state.snoozed);
+        click_text(overlay,"Dismiss");advance();assert(!alarm_state.snoozed);
+        assert(lv_obj_get_child_count(lv_layer_top())==0);
+        puts("PASS audio fault visible; local snooze and dismiss remain operable");
     }
     FILE *f=fopen(argv[1],"wb");if(!f)return 3;fprintf(f,"P6\n480 320\n255\n");
     for(unsigned i=0;i<480*320;i++){uint16_t p=pixels[i];unsigned char rgb[]={((p>>11)&31)*255/31,((p>>5)&63)*255/63,(p&31)*255/31};fwrite(rgb,1,3,f);}fclose(f);return 0;

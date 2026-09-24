@@ -1057,3 +1057,31 @@ ha-flash.log, ha-runtime.log under local-config/clock. Real authenticated HA nee
 an actual token/entity; this does not block continuing unrelated application work.
 Do not request owner testing after this partial feature. Batch physical acceptance
 when functionality is integrated, per explicit owner correction.
+
+## Audio failure visibility (2026-09-24)
+
+Continuing development without physical acceptance gates. Inspection found codec
+initialization errors return silently to the clock UI, I2S setup errors abort the
+whole clock, and Test sound ignores queue failure. Acceptance for this fix: publish
+atomic audio status; failed audio initialization leaves time/UI/alarms operational
+and visibly reports unavailable audio; runtime I2S errors remain visible until a
+successful playback attempt, with bounded retries rather than a tight failure loop.
+Preserve existing waveform/volume and local snooze/dismiss. Preview injects fault
+state to verify visible warning plus operable alarm controls. Physical fault/audio
+checks remain deferred; normal build/startup is checked automatically.
+
+Audio failure visibility completed: I2S init and task/queue allocation failures
+return an unavailable-audio state instead of aborting clock startup; codec failures
+are also visible through the default failed status. Playback errors publish atomic
+status and delay1second before retry; successful playback clears the runtime error.
+Silence-buffer short writes are checked too. Home and ringing overlay expose audio
+failure; Test sound reports queue acceptance/rejection. Tone/volume unchanged.
+Actual-UI fault preview passed warning/title/Snooze/Dismiss assertions. IDF6.1 build
+passed; app-only flash verified1769888bytes, SHA256:
+54fc5e949db4c57716f1efb92609293b7519d5e629204d9ca9e05596cfeeb36c.
+Automatic USB startup check: AUDIO_READY at prior volume100/peak20000, AUDIO_STATE0,
+RTCvalid and within1second, alarm storageESP_OK, weatherHTTP200730bytes, heap88924.
+No physical test requested, no power-off performed, no new acoustic claim. Injected
+UI error is not a real codec/I2S failure test. Receipts: audio-status-build.log,
+audio-status-flash.log, audio-status-runtime.log. Development continues with final
+physical acceptance batched per owner direction.

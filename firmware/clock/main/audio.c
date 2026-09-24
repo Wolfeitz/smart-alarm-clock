@@ -13,6 +13,8 @@
 static i2s_chan_handle_t tx;
 static QueueHandle_t requests;
 static atomic_bool alarm_active;
+static atomic_int last_error=ESP_ERR_INVALID_STATE;
+esp_err_t audio_status(void){return atomic_load(&last_error);}
 enum { OUTPUT_VOLUME = 100, TONE_PEAK = 20000 };
 static int16_t waveform[256];
 static void play_task(void *unused)
@@ -40,8 +42,10 @@ static void play_task(void *unused)
         memset(pcm,0,sizeof(pcm));size_t written=0;
         for(unsigned i=0;i<8;i++){
             esp_err_t err=i2s_channel_write(tx,pcm,sizeof(pcm),&written,1000);
-            if(err!=ESP_OK){result=err;break;}
+            if(err!=ESP_OK||written!=sizeof(pcm)){result=err==ESP_OK?ESP_FAIL:err;break;}
         }
+        atomic_store(&last_error,result);
+        if(result!=ESP_OK)vTaskDelay(pdMS_TO_TICKS(1000));
         diagnostics_printf("AUDIO_TEST_DONE status=%s bytes=%u\n",esp_err_to_name(result),(unsigned)total);
     }
 }
@@ -50,14 +54,16 @@ void audio_init(i2c_master_bus_handle_t bus)
     for(unsigned i=0;i<256;i++)waveform[i]=(int16_t)(TONE_PEAK*sinf(2.0f*3.14159265f*i/256));
     i2s_chan_config_t channel=I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0,I2S_ROLE_MASTER);
     channel.auto_clear=true;
-    ESP_ERROR_CHECK(i2s_new_channel(&channel,&tx,NULL));
+    esp_err_t init=i2s_new_channel(&channel,&tx,NULL);
+    if(init!=ESP_OK){atomic_store(&last_error,init);diagnostics_printf("AUDIO_INIT failed=channel\n");return;}
     i2s_std_config_t config={
         .clk_cfg=I2S_STD_CLK_DEFAULT_CONFIG(22050),
         .slot_cfg=I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT,I2S_SLOT_MODE_STEREO),
         .gpio_cfg={.mclk=I2S_GPIO_UNUSED,.bclk=23,.ws=10,.dout=25,.din=I2S_GPIO_UNUSED},
     };
-    ESP_ERROR_CHECK(i2s_channel_init_std_mode(tx,&config));
-    ESP_ERROR_CHECK(i2s_channel_enable(tx));
+    init=i2s_channel_init_std_mode(tx,&config);
+    if(init==ESP_OK)init=i2s_channel_enable(tx);
+    if(init!=ESP_OK){atomic_store(&last_error,init);diagnostics_printf("AUDIO_INIT failed=i2s\n");return;}
     audio_codec_i2c_cfg_t control_cfg={.port=0,.addr=ES8311_CODEC_DEFAULT_ADDR,.bus_handle=bus};
     const audio_codec_ctrl_if_t *control=audio_codec_new_i2c_ctrl(&control_cfg);
     const audio_codec_gpio_if_t *gpio=audio_codec_new_gpio();
@@ -81,7 +87,9 @@ void audio_init(i2c_master_bus_handle_t bus)
         diagnostics_printf("AUDIO_REG reg=%02x value=%02x status=%d\n",regs[i],value,status);
     }
     requests=xQueueCreate(1,sizeof(uint8_t));
-    if(!requests || xTaskCreate(play_task,"local_audio",4096,NULL,4,NULL)!=pdPASS)abort();
+    if(!requests){diagnostics_printf("AUDIO_INIT failed=queue\n");return;}
+    if(xTaskCreate(play_task,"local_audio",4096,NULL,4,NULL)!=pdPASS){vQueueDelete(requests);requests=NULL;diagnostics_printf("AUDIO_INIT failed=task\n");return;}
+    atomic_store(&last_error,ESP_OK);
     diagnostics_printf("AUDIO_READY rate=22050 bits=16 codec=ES8311 volume=%d peak=%d\n",OUTPUT_VOLUME,TONE_PEAK);
 }
 bool audio_test(void)
