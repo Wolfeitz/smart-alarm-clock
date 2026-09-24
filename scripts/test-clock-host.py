@@ -47,4 +47,6 @@ with tempfile.TemporaryDirectory(prefix="esp-link-host-") as directory:
         str(main / "ha_model.c"), str(main / "ha_service.c"), str(tests / "ha_service_test.c"), "-o", binary,
     ], check=True, timeout=60)
     subprocess.run([binary], check=True, timeout=10)
+    for fault in ("mutex-failure", "queue-failure"):
+        subprocess.run([binary, fault], check=True, timeout=10)
 print("PASS host logic only; display, touch, audible sound and power loss require device checks")

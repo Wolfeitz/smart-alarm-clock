@@ -147,3 +147,9 @@ configuration retaining the prior endpoint/entity. No real HA credentials needed
 The windowless UI preview `audio-error` injects an unavailable-audio snapshot,
 checks the home warning and ringing error title, then exercises Snooze and Dismiss.
 This tests UI behavior under reported failure, not a physical codec failure.
+
+HA service checks also inject mutex/queue allocation failures and a disabled
+network worker; safe snapshots and rejected commands are required. Network-startup
+error handling uses checked SDK netif steps instead of the default factory, whose
+internal assertions were verified in the pinned IDF source. No physical OOM or
+radio-failure injection is claimed by these host checks.

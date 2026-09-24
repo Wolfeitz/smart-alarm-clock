@@ -6,6 +6,8 @@ typedef struct {
     bool configured,busy,fresh;
 } ha_snapshot_t;
 void ha_service_init(void);
+/* Network owner is unavailable; reject commands instead of leaving them queued. */
+void ha_service_disable(void);
 /* Called exclusively by the existing network worker; no second HTTP task. */
 void ha_service_poll(bool online);
 void ha_service_snapshot(ha_snapshot_t *snapshot);

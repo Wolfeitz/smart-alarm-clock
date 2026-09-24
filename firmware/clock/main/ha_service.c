@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdatomic.h>
 typedef struct {uint32_t version;char endpoint[192],entity[96],token[512];} config_t;
 typedef struct {unsigned kind;config_t config;ha_light_state_t desired;} command_t;
 static config_t config;
@@ -16,10 +17,13 @@ static SemaphoreHandle_t lock;
 static QueueHandle_t queue;
 static nvs_handle_t storage;
 static bool opened;
+static atomic_bool accepting;
 static int64_t observed,next_poll,confirm_until;
 static ha_light_state_t desired;
+static void state_lock(void){if(lock)xSemaphoreTake(lock,portMAX_DELAY);}
+static void state_unlock(void){if(lock)xSemaphoreGive(lock);}
 static void message(const char *text)
-{xSemaphoreTake(lock,portMAX_DELAY);snprintf(state.status,sizeof(state.status),"%s",text);xSemaphoreGive(lock);}
+{state_lock();snprintf(state.status,sizeof(state.status),"%s",text);state_unlock();}
 static bool config_valid(const config_t *c)
 {
     return c->version==1&&memchr(c->endpoint,0,sizeof(c->endpoint))&&memchr(c->entity,0,sizeof(c->entity))&&memchr(c->token,0,sizeof(c->token))&&
@@ -27,25 +31,28 @@ static bool config_valid(const config_t *c)
 }
 void ha_service_init(void)
 {
-    lock=xSemaphoreCreateMutex();queue=xQueueCreate(1,sizeof(command_t));if(!lock||!queue)abort();
+    lock=xSemaphoreCreateMutex();queue=xQueueCreate(1,sizeof(command_t));accepting=lock&&queue;
     if(nvs_open_from_partition("clockcfg","ha_private",NVS_READWRITE,&storage)==ESP_OK){
         opened=true;size_t n=sizeof(config);if(nvs_get_blob(storage,"config",&config,&n)!=ESP_OK||n!=sizeof(config)||!config_valid(&config))memset(&config,0,sizeof(config));
     }
     state.configured=config_valid(&config);
     if(state.configured){strcpy(state.endpoint,config.endpoint);strcpy(state.entity,config.entity);}
     else strcpy(state.endpoint,"http://192.168.1.232:8123");
+    if(!accepting){message("Home Assistant memory unavailable");return;}
     message(state.configured?"Waiting for connection":"Set up Home Assistant");
 }
 void ha_service_snapshot(ha_snapshot_t *out)
 {
-    xSemaphoreTake(lock,portMAX_DELAY);*out=state;
-    out->fresh=state.fresh&&esp_timer_get_time()-observed<30000000;xSemaphoreGive(lock);
+    state_lock();*out=state;
+    out->fresh=state.fresh&&esp_timer_get_time()-observed<30000000;state_unlock();
 }
 static bool submit(command_t *c)
 {
-    xSemaphoreTake(lock,portMAX_DELAY);if(state.busy){xSemaphoreGive(lock);return false;}state.busy=true;xSemaphoreGive(lock);
-    bool ok=xQueueSend(queue,c,0)==pdTRUE;
-    if(!ok){xSemaphoreTake(lock,portMAX_DELAY);state.busy=false;xSemaphoreGive(lock);}return ok;
+    if(!accepting)return false;
+    state_lock();
+    if(!accepting||state.busy){state_unlock();return false;}
+    bool ok=xQueueSend(queue,c,0)==pdTRUE;state.busy=ok;
+    state_unlock();return ok;
 }
 bool ha_service_configure(const char *endpoint,const char *token,const char *entity)
 {
@@ -65,14 +72,15 @@ bool ha_service_toggle(void)
     command_t c={.kind=2,.desired=s.light.state==HA_ON?HA_OFF:HA_ON};return submit(&c);
 }
 static void set_busy(bool busy)
-{xSemaphoreTake(lock,portMAX_DELAY);state.busy=busy;xSemaphoreGive(lock);}
+{state_lock();state.busy=busy;state_unlock();}
 static void failure(int code)
 {
-    xSemaphoreTake(lock,portMAX_DELAY);state.fresh=false;xSemaphoreGive(lock);
+    state_lock();state.fresh=false;state_unlock();
     message(code==401||code==403?"Access denied - check token":code==404?"Light entity not found":"Home Assistant unavailable; clock works offline");
 }
 void ha_service_poll(bool online)
 {
+    if(!accepting)return;
     command_t c={0};int64_t now=esp_timer_get_time();bool toggle=false,config_failed=false;
     if(xQueueReceive(queue,&c,0)==pdTRUE){
         if(c.kind==1){
@@ -80,12 +88,12 @@ void ha_service_poll(bool online)
             esp_err_t err=ESP_ERR_INVALID_ARG;
             if(opened&&config_valid(&c.config)){err=nvs_set_blob(storage,"config",&c.config,sizeof(c.config));if(err==ESP_OK)err=nvs_commit(storage);}
             if(err==ESP_OK){config=c.config;desired=HA_UNKNOWN;confirm_until=0;
-                xSemaphoreTake(lock,portMAX_DELAY);state.configured=true;state.fresh=false;state.light=(ha_light_t){0};
-                strcpy(state.endpoint,config.endpoint);strcpy(state.entity,config.entity);xSemaphoreGive(lock);message("Saved; reading light state...");
+                state_lock();state.configured=true;state.fresh=false;state.light=(ha_light_t){0};
+                strcpy(state.endpoint,config.endpoint);strcpy(state.entity,config.entity);state_unlock();message("Saved; reading light state...");
             }else{config_failed=true;message("Setup not saved - check URL, token and light");}
         }else if(c.kind==2){toggle=true;desired=c.desired;}
         next_poll=0;memset(&c,0,sizeof(c));
-        xSemaphoreTake(lock,portMAX_DELAY);state.busy=false;xSemaphoreGive(lock);
+        state_lock();state.busy=false;state_unlock();
     }
     if(config_failed||!config_valid(&config))return;
     if(!online){failure(-1);desired=HA_UNKNOWN;confirm_until=0;return;}
@@ -104,7 +112,7 @@ void ha_service_poll(bool online)
     int code=network_http_request(url,config.token,NULL,response,12289,&size);ha_light_t light;
     if(code!=200){failure(code);goto done;}
     if(!ha_parse_light(response,size,config.entity,&light)){failure(-1);goto done;}
-    xSemaphoreTake(lock,portMAX_DELAY);state.light=light;observed=esp_timer_get_time();state.fresh=true;xSemaphoreGive(lock);
+    state_lock();state.light=light;observed=esp_timer_get_time();state.fresh=true;state_unlock();
     if(desired!=HA_UNKNOWN){
         if(light.state==desired){desired=HA_UNKNOWN;confirm_until=0;message("Light state confirmed");}
         else if(esp_timer_get_time()>=confirm_until){desired=HA_UNKNOWN;confirm_until=0;message("Change not confirmed by Home Assistant");}
@@ -114,4 +122,11 @@ void ha_service_poll(bool online)
         desired=HA_UNKNOWN;confirm_until=0;message("Change not confirmed by Home Assistant");
     }
     set_busy(false);free(response);next_poll=esp_timer_get_time()+(desired!=HA_UNKNOWN?1000000:10000000);
+}
+
+void ha_service_disable(void)
+{
+    accepting=false;
+    state_lock();state.busy=false;state.fresh=false;state_unlock();
+    message("Network unavailable; clock works offline");
 }

@@ -5,6 +5,7 @@
 #include "diagnostics.h"
 #include "clock_service.h"
 #include "esp_wifi.h"
+#include "esp_wifi_default.h"
 #include "esp_event.h"
 #include "esp_netif.h"
 #include "esp_netif_sntp.h"
@@ -34,15 +35,18 @@ static bool storage_open,radio_started;
 static atomic_bool online,available;
 static atomic_int disconnect_reason;
 static char active_zone[64]="America/New_York";
+/* If lock allocation fails no worker starts, so the fallback snapshot is immutable. */
+static void state_lock(void){if(lock)xSemaphoreTake(lock,portMAX_DELAY);}
+static void state_unlock(void){if(lock)xSemaphoreGive(lock);}
 static void status(const char *message)
-{xSemaphoreTake(lock,portMAX_DELAY);snprintf(state.status,sizeof(state.status),"%s",message);xSemaphoreGive(lock);}
+{state_lock();snprintf(state.status,sizeof(state.status),"%s",message);state_unlock();}
 static void publish(void)
 {
-    xSemaphoreTake(lock,portMAX_DELAY);state.location=prefs.location;
+    state_lock();state.location=prefs.location;
     state.manual_location=prefs.version==1;
     strcpy(state.ssid,prefs.ssid);strcpy(state.zip,prefs.zip);state.connected=online;
     state.restart_for_zone=prefs.location.timezone[0]&&strcmp(active_zone,prefs.location.timezone)!=0;
-    xSemaphoreGive(lock);
+    state_unlock();
 }
 static bool valid_preferences(const preferences_t *p)
 {
@@ -75,7 +79,13 @@ static esp_err_t radio_init(void)
 {
     esp_err_t err=esp_netif_init();if(err!=ESP_OK)return err;
     err=esp_event_loop_create_default();if(err!=ESP_OK)return err;
-    if(!esp_netif_create_default_wifi_sta())return ESP_ERR_NO_MEM;
+    /* The convenience factory asserts on allocation/attach failure. Networking
+     * is optional, so use the same SDK steps with explicit error handling. */
+    esp_netif_config_t netif_config=ESP_NETIF_DEFAULT_WIFI_STA();
+    esp_netif_t *station=esp_netif_new(&netif_config);if(!station)return ESP_ERR_NO_MEM;
+    err=esp_netif_attach_wifi_station(station);
+    if(err==ESP_OK)err=esp_wifi_set_default_wifi_sta_handlers();
+    if(err!=ESP_OK){esp_netif_destroy_default_wifi(station);return err;}
     wifi_init_config_t config=WIFI_INIT_CONFIG_DEFAULT();config.nvs_enable=false;
     err=esp_wifi_init(&config);if(err!=ESP_OK)return err;
     err=esp_wifi_set_storage(WIFI_STORAGE_RAM);if(err!=ESP_OK)return err;
@@ -135,13 +145,13 @@ static bool update_weather(void)
     weather_data_t data;
     if(!fetch(url,json,&size)){status("Weather unavailable; cached data retained");goto done;}
     if(!weather_parse_forecast(json,size,time(NULL),prefs.location.timezone,&data)){status("Weather response invalid or outdated");goto done;}
-    xSemaphoreTake(lock,portMAX_DELAY);state.data=data;state.has_data=true;xSemaphoreGive(lock);
+    state_lock();state.data=data;state.has_data=true;state_unlock();
     status("Weather updated");ok=true;
  done:free(json);return ok;
 }
 static void scan_networks(void)
 {
-    xSemaphoreTake(lock,portMAX_DELAY);state.scanning=true;xSemaphoreGive(lock);
+    state_lock();state.scanning=true;state_unlock();
     status("Scanning for nearby Wi-Fi...");
     wifi_scan_config_t scan={.show_hidden=false,.scan_type=WIFI_SCAN_TYPE_ACTIVE,.scan_time.active={.min=30,.max=90}};
     esp_err_t err=esp_wifi_scan_start(&scan,true);
@@ -149,7 +159,7 @@ static void scan_networks(void)
     if(!records)err=ESP_ERR_NO_MEM;
     if(err==ESP_OK)err=esp_wifi_scan_get_ap_records(&count,records);
     if(err!=ESP_OK)esp_wifi_clear_ap_list();
-    xSemaphoreTake(lock,portMAX_DELAY);state.network_count=0;
+    state_lock();state.network_count=0;
     if(err==ESP_OK)for(unsigned i=0;i<count&&state.network_count<WEATHER_NETWORK_COUNT;i++){
         char name[33]={0};memcpy(name,records[i].ssid,32);if(!name[0])continue;
         bool duplicate=false;for(unsigned j=0;j<state.network_count;j++)if(!strcmp(name,state.networks[j].ssid))duplicate=true;
@@ -159,14 +169,14 @@ static void scan_networks(void)
         wifi_auth_mode_t mode=records[i].authmode;
         n->unsupported=mode!=WIFI_AUTH_OPEN&&mode!=WIFI_AUTH_WPA2_PSK&&mode!=WIFI_AUTH_WPA_WPA2_PSK&&mode!=WIFI_AUTH_WPA3_PSK&&mode!=WIFI_AUTH_WPA2_WPA3_PSK;
     }
-    state.scanning=false;state.scan_revision++;xSemaphoreGive(lock);free(records);
+    state.scanning=false;state.scan_revision++;state_unlock();free(records);
     status(err==ESP_OK?"Select your Wi-Fi network":"Scan unavailable; tap Scan again");
     diagnostics_printf("WIFI_SCAN result=%s count=%u\n",esp_err_to_name(err),err==ESP_OK?count:0);
 }
 static void worker(void *arg)
 {
     (void)arg;esp_err_t radio=radio_init();
-    if(radio!=ESP_OK){available=false;status("Wi-Fi initialization failed; clock works offline");vTaskDelete(NULL);return;}
+    if(radio!=ESP_OK){available=false;state_lock();state.busy=false;state_unlock();ha_service_disable();status("Wi-Fi initialization failed; clock works offline");vTaskDelete(NULL);return;}
     int64_t retry=0,weather_at=0;bool was_online=false;
     if(prefs.ssid[0]){status("Connecting to Wi-Fi...");connect_wifi();retry=esp_timer_get_time()+30000000;}
     else status("Set up Wi-Fi to get local weather");
@@ -185,13 +195,13 @@ static void worker(void *arg)
                 if(save_preferences(&next)!=ESP_OK)status("Save failed; previous settings retained");
                 else{
                     bool changed=strcmp(prefs.zip,next.zip)!=0;prefs=next;
-                    if(changed){xSemaphoreTake(lock,portMAX_DELAY);state.has_data=false;xSemaphoreGive(lock);}
+                    if(changed){state_lock();state.has_data=false;state_unlock();}
                     if(command.kind==1){status("Wi-Fi saved; connecting...");connect_wifi();retry=esp_timer_get_time()+30000000;}
                     else status("Location saved; looking up weather...");
                     weather_at=0;
                 }
             }else if(command.kind==3)scan_networks();else weather_at=0;
-            memset(&command,0,sizeof(command));xSemaphoreTake(lock,portMAX_DELAY);state.busy=false;xSemaphoreGive(lock);publish();
+            memset(&command,0,sizeof(command));state_lock();state.busy=false;state_unlock();publish();
         }
         int64_t now=esp_timer_get_time();int reason=atomic_exchange(&disconnect_reason,0);
         if(reason&&!online){char message[96];snprintf(message,sizeof(message),"Wi-Fi connection failed (%d); check password",reason);status(message);}
@@ -207,7 +217,7 @@ static void worker(void *arg)
 void weather_service_init(void)
 {
     lock=xSemaphoreCreateMutex();commands=xQueueCreate(1,sizeof(command_t));time_updates=xQueueCreate(1,sizeof(time_t));
-    if(!lock||!commands||!time_updates)abort();
+
     prefs=(preferences_t){.version=1,.zip="27358",.location={.zip="27358",.name="Summerfield",.region="North Carolina",.timezone="America/New_York",.latitude=36.20875,.longitude=-79.90476}};
     esp_err_t err=nvs_flash_init_partition("clockcfg");
     if(err==ESP_OK)err=nvs_open_from_partition("clockcfg","network",NVS_READWRITE,&storage);
@@ -220,19 +230,21 @@ void weather_service_init(void)
     }
     const char *rule=timezone_rule(active_zone);if(rule){setenv("TZ",rule,1);tzset();}
     ha_service_init();publish();status("Starting weather service...");
+    if(!lock||!commands||!time_updates){
+        status("Network memory unavailable; clock works offline");ha_service_disable();return;
+    }
     available=true;
-    if(xTaskCreate(worker,"weather",8192,NULL,2,NULL)!=pdPASS){available=false;status("Weather task unavailable; clock works offline");}
+    if(xTaskCreate(worker,"weather",8192,NULL,2,NULL)!=pdPASS){available=false;ha_service_disable();status("Weather task unavailable; clock works offline");}
 }
 void weather_service_snapshot(weather_snapshot_t *out)
-{xSemaphoreTake(lock,portMAX_DELAY);*out=state;out->connected=online;xSemaphoreGive(lock);}
+{state_lock();*out=state;out->connected=online;state_unlock();}
 static bool submit(command_t *c)
 {
     if(!available)return false;
-    xSemaphoreTake(lock,portMAX_DELAY);
-    if(state.busy){xSemaphoreGive(lock);return false;}
-    state.busy=true;xSemaphoreGive(lock);
-    bool ok=xQueueSend(commands,c,0)==pdTRUE;
-    if(!ok){xSemaphoreTake(lock,portMAX_DELAY);state.busy=false;xSemaphoreGive(lock);}return ok;
+    state_lock();
+    if(!available||state.busy){state_unlock();return false;}
+    bool ok=xQueueSend(commands,c,0)==pdTRUE;state.busy=ok;
+    state_unlock();return ok;
 }
 bool weather_service_connect(const char *ssid,const char *password)
 {
@@ -248,5 +260,5 @@ bool weather_service_location(const char *zip)
 }
 bool weather_service_scan(void){command_t c={.kind=3};return submit(&c);}
 bool weather_service_refresh(void){command_t c={.kind=4};return submit(&c);}
-bool weather_service_take_time(time_t *epoch){return xQueueReceive(time_updates,epoch,0)==pdTRUE;}
+bool weather_service_take_time(time_t *epoch){return time_updates&&xQueueReceive(time_updates,epoch,0)==pdTRUE;}
 const char *weather_service_timezone(void){return active_zone;}

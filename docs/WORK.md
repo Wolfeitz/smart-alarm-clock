@@ -1085,3 +1085,29 @@ No physical test requested, no power-off performed, no new acoustic claim. Injec
 UI error is not a real codec/I2S failure test. Receipts: audio-status-build.log,
 audio-status-flash.log, audio-status-runtime.log. Development continues with final
 physical acceptance batched per owner direction.
+
+## Network startup failure isolation (2026-09-24)
+
+Inspection of pinned IDF6.1 wifi_default.c showed the convenience station factory
+asserts on netif allocation and ESP_ERROR_CHECKs attach/handler setup. Application
+weather/HA queue allocations also abort. Replace those optional-network fatal
+paths with checked failures and immutable unavailable snapshots when resources
+cannot be created. Reject commands when no worker can consume them, including HA
+when radio/task startup fails. Preserve persisted timezone loading before alarms.
+Acceptance: build and normal startup; host injection of HA mutex/queue failure and
+worker disable proves safe snapshots/rejected commands; no physical test required.
+
+Network isolation fix installed: checked netif allocation/attach/default handlers
+replace the aborting SDK convenience factory. Weather and HA optional allocation
+failures now expose safe unavailable snapshots, reject commands and leave local
+startup intact. Network worker startup/radio failures also disable HA submissions;
+queue submission rechecks availability under the state lock to avoid stranded busy
+state during startup failure. Saved timezone still loads before the alarm owner.
+All10 host suites plus mutex/queue-failure scenarios pass; IDF6.1 build passes.
+App-only flash verified1769664bytes; SHA256:
+787d304942a3005102f75276436854e2e4fc177055157547ad4fc55598c3b322.
+Normal hardware boot: audio ready/status0, RTCvalid within1second, clock home,
+alarm storageESP_OK, weatherHTTP200731bytes, heap88936. No power-off or physical
+interaction requested. Host failures cover HA resource/worker behavior, not real
+radio or whole-device OOM injection. Receipts: network-isolation-build.log,
+network-isolation-flash.log, network-isolation-runtime.log.

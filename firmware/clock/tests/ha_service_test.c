@@ -12,14 +12,14 @@ static int64_t now;
 static unsigned requests,posts;
 static int code=200,storage_error;
 static const char *remote="off";
-static bool apply=true,queued;
+static bool apply=true,queued,fail_mutex,fail_queue;
 static size_t queue_size,stored_size;
 static char queue_data[2048],stored[2048];
 int64_t esp_timer_get_time(void){return now;}
-QueueHandle_t xQueueCreate(unsigned count,size_t size){assert(count==1&&size<sizeof(queue_data));queue_size=size;return queue_data;}
+QueueHandle_t xQueueCreate(unsigned count,size_t size){assert(count==1&&size<sizeof(queue_data));queue_size=size;return fail_queue?NULL:queue_data;}
 int xQueueSend(QueueHandle_t q,const void *value,unsigned timeout){(void)q;(void)timeout;if(queued)return 0;memcpy(queue_data,value,queue_size);queued=true;return 1;}
 int xQueueReceive(QueueHandle_t q,void *value,unsigned timeout){(void)q;(void)timeout;if(!queued)return 0;memcpy(value,queue_data,queue_size);queued=false;return 1;}
-SemaphoreHandle_t xSemaphoreCreateMutex(void){return (void *)1;}
+SemaphoreHandle_t xSemaphoreCreateMutex(void){return fail_mutex?NULL:(void *)1;}
 int xSemaphoreTake(SemaphoreHandle_t s,unsigned timeout){(void)s;(void)timeout;return 1;}
 int xSemaphoreGive(SemaphoreHandle_t s){(void)s;return 1;}
 esp_err_t nvs_open_from_partition(const char *p,const char *ns,int mode,nvs_handle_t *h){assert(!strcmp(p,"clockcfg")&&!strcmp(ns,"ha_private"));(void)mode;*h=1;return 0;}
@@ -33,8 +33,16 @@ int network_http_request(const char *url,const char *token,const char *body,char
     *size=snprintf(buffer,capacity,"{\"entity_id\":\"light.bedside\",\"state\":\"%s\"}",remote);return code;
 }
 static ha_snapshot_t snapshot(void){ha_snapshot_t s;ha_service_snapshot(&s);return s;}
-int main(void)
+int main(int argc,char **argv)
 {
+    if(argc>1){
+        fail_mutex=!strcmp(argv[1],"mutex-failure");fail_queue=!strcmp(argv[1],"queue-failure");
+        ha_service_init();ha_service_poll(true);assert(!requests);
+        assert(strstr(snapshot().status,"memory unavailable"));
+        assert(!ha_service_refresh());
+        assert(!ha_service_configure("http://host","synthetic-test-token","light.bedside"));
+        puts("PASS unavailable HA resources preserve safe snapshots and reject commands");return 0;
+    }
     ha_service_init();ha_service_poll(true);assert(!requests&&!snapshot().configured);
     assert(ha_service_configure("http://192.168.1.232:8123","synthetic-test-token","light.bedside"));
     assert(!ha_service_refresh()); /* bounded queue / operation */
@@ -59,5 +67,7 @@ int main(void)
     assert(ha_service_configure("http://192.168.1.232:8123","synthetic-test-token","light.other"));ha_service_poll(true);
     assert(requests==count&&!strcmp(snapshot().entity,"light.bedside"));
     assert(strstr(snapshot().status,"not saved"));
+    ha_service_disable();assert(!snapshot().busy&&!snapshot().fresh);
+    assert(!ha_service_refresh()&&!ha_service_toggle());ha_service_poll(true);assert(requests==count);
     puts("PASS HA owner: persistence, queue, confirmation, HTTP200 without change, failure expiry, auth, stale and offline state");
 }
