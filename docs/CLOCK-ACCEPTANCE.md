@@ -91,3 +91,11 @@ buffering, not measured acoustic stop latency; each driver write has a1000ms tim
 The owner has accepted the current audible tone level, but final physical control
 and full-power-loss behavior remain unverified. No further physical test is
 requested here: the owner's batching/no-power-off instruction remains in force.
+
+Current-image offline check on c782e14 subsequently passed: SDK acknowledged radio
+off, the RTC deadline triggered a temporary once alarm with persistenceESP_OK,
+I2S transmission completed, Snooze/Dismiss changed local phases, and all eight
+alarm records were restored exactly. Radio-on acknowledgment and weatherHTTP200
+confirmed reconnection. This is not a repeat of the five-minute snooze-duration
+check or acoustic/power-loss acceptance. Receipt:
+`local-config/clock/offline-snooze-c782e14-runtime.log`.

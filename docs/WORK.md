@@ -1326,3 +1326,18 @@ and identified exactly what the c782e14 installation receipts establish. Physica
 alarm controls and full-power-loss behavior remain unproved and owner-deferred;
 this audit does not satisfy the full goal or justify marking it complete. No board
 restart, flash, physical test request, or HA/Pi change in this audit.
+
+## Installed-image offline verification (2026-09-24)
+
+c782e14 tested with existing bounded offline test in a separately named private
+copy, preserving earlier receipts. All8 alarms initially disabled; unused slot0
+consumed_date0 selected. NETWORK OFF returned ESP_OK. RTC/system stayed within
+1second, offline heap85164stable, and no weatherHTTP appeared during stopped-radio
+interval. Temporary once alarm triggered mask1 with persistenceESP_OK; I2S wrote
+177152bytes successfully. SNOOZE changed ringing1 to snoozed1; DISMISS cleared both.
+Restored original slot0, compared all8 records exactly, NETWORK ON returned ESP_OK,
+and weatherHTTP200731bytes verified reconnection. Test exited0. No power-off,
+credential changes, physical input or new acoustic claim. Current-image offline
+independence is now directly evidenced; five-minute snooze duration and full-power
+recovery remain covered only by their separately scoped historical/pending evidence.
+Receipts: offline-snooze-c782e14-runtime.log and original.json under local-config/clock.
