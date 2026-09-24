@@ -16,6 +16,7 @@
 #include "audio.h"
 #include "alarm_service.h"
 #include "clock_ui.h"
+static bool test_touch;static int test_x,test_y;static uint32_t test_until;
 static uint32_t tick(void){return (uint32_t)(esp_timer_get_time()/1000);}
 static void flush(lv_display_t *d,const lv_area_t *a,uint8_t *data)
 {
@@ -24,7 +25,11 @@ static void flush(lv_display_t *d,const lv_area_t *a,uint8_t *data)
 }
 static void touch_read(lv_indev_t *i,lv_indev_data_t *d)
 {
-    (void)i;int x,y;bool pressed=board_touch(&x,&y);
+    (void)i;int x,y;bool pressed;
+    if(test_touch){
+        x=test_x;y=test_y;pressed=(int32_t)(test_until-tick())>0;
+        if(!pressed)test_touch=false;
+    }else pressed=board_touch(&x,&y);
     d->state=pressed?LV_INDEV_STATE_PRESSED:LV_INDEV_STATE_RELEASED;
     if(pressed){d->point.x=x;d->point.y=y;}
 }
@@ -36,6 +41,12 @@ static void serial_poll(void)
         if(b[i]=='\r')continue;
         if(b[i]=='\n'){
             line[n]=0;
+            if(!overflow && strcmp(line,"UI")==0)clock_ui_diagnostics();
+            if(!overflow && strncmp(line,"TAP ",4)==0){
+                int x,y;char extra;bool ok=!test_touch && sscanf(line+4,"%d %d %c",&x,&y,&extra)==2 && x>=0 && x<480 && y>=0 && y<320;
+                if(ok){test_x=x;test_y=y;test_until=tick()+120;test_touch=true;}
+                diagnostics_printf("UI_TAP accepted=%d\n",ok);
+            }
             if(!overflow && strncmp(line,"TIME ",5)==0){
                 char *end;errno=0;long long value=strtoll(line+5,&end,10);
                 esp_err_t err=ESP_ERR_INVALID_ARG;

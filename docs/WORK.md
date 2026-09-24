@@ -798,3 +798,70 @@ valid/current time, codec100/peak20000, brightness160, storageESP_OK, idle alarm
 state and CLOCK_READY. No TIME correction was necessary. Evidence restore.log
 and restored-runtime.log under local-config/clock/factory-comparison.
 CURRENT BOARD: our bedside clock again, with the accepted interim local volume.
+
+## Complete working local example: UI integration verification
+
+Owner requests continued implementation to a working example. Keep accepted audio
+level and original local-first scope. Next acceptance: exercise actual LVGL input,
+editor callbacks, persistent saves, local time save, and alarm overlay controls on
+the board through bounded USB test taps, rather than bypassing UI with ALARM/SNOOZE
+commands. A diagnostic UI snapshot reports screen/control state; this is evidence
+of widget/callback behavior, not a substitute for physical touchscreen or visual
+readability. Synthetic input stays on the existing UI owner task, validates display
+bounds, uses press/release events, and rejects overlapping taps. No network control.
+Preserve disabled/user alarm settings and restore current time after tests.
+
+USB-driven LVGL test passed Set time navigation, alarm-minute dropdown selection,
+on-screen Save→home transition and reopen/persisted value26. Prior slot0 disabled
+20:25daily configuration restored. Found consumed-date editing bug: a newly chosen
+time after today's trigger remained suppressed. Fix contract: changed time or
+recurrence/date defines a new schedule and clears consumption; unchanged schedule
+(including simple disable/enable) retains duplicate protection. Ignore obsolete
+once_date when both schedules repeat. Regression must demonstrate new same-day
+trigger and unchanged re-enable suppression, not just field assignment.
+
+Complete on-device UI workflow passed (ui-flow-summary.log/ui-flow.log): synthetic
+press/release through LVGL opened the actual alarm editor, selected a new minute,
+enabled the slot, pressed Save and verified NVS-owned settings. Real scheduled
+minute triggered ringing; visible Snooze then Dismiss buttons changed owner-task
+state and removed overlay. Original disabled slot0 20:25daily restored.
+Earlier UI console also exercised Set time→Save time→home and RTC reflected the
+selected minute. Time subsequently synchronized through TIME for exact test timing.
+This verifies real UI event routing, persistence, scheduling and controls on the
+board; physical touch alignment was confirmed earlier, while current full-power
+loss remains a separate uncompleted check.
+
+Remaining usability addition for the local example: show time remaining while
+snoozed and identify active alarm number(s); keep large existing controls and
+100ms independent scheduler. Countdown is derived from saved UTC deadline, which
+the alarm service rebases on wall-clock correction; it does not drive scheduling.
+
+Final local-example test passed after countdown addition: UI_OVERLAY Alarm1,
+snoozed countdown04:59, Snooze/Dismiss transitions and original alarm restoration.
+Evidence ui-example-summary.log/ui-example.log; build/flash passed. Installed image
+SHA256 3abb1c7ec149d0b95e8a2bdda7926bb0f24660c4178004dd0a08cb6b67aeb81a. Host suites pass, including rescheduling regression.
+Read-only USB topology inspection found board at1-1.2 but no uhubctl and no writable
+hub power control; no USB power state changed. Physical power-loss remains pending.
+
+## Expanded owner scope: location, weather, polish and extensibility
+
+Owner explicitly requests local weather and today's forecast, location setup
+(prefer ZIP) that also selects timezone, polished appearance after functionality,
+and clean addition points for Home Assistant and later spoken weather/schedules.
+Weather is now authorized next work, despite earlier phase deferral. Preserve
+local alarm behavior and treat external playback/voice as later integrations.
+First location/forecast provider: Open-Meteo official geocoding supports postal
+codes and country filtering and returns IANA timezone. Forecast supports current
+temperature/feels-like/condition and daily high/low/precipitation probability.
+ZIP requested from owner; no credentials requested in chat. Wi-Fi will be entered
+on-device, stored separately from non-secret settings, never logged.
+Interfaces before code: provider adapter→validated weather snapshot (timestamp,
+units, location, condition, daily forecast, freshness); UI observes snapshots;
+background network task owns bounded HTTPS requests/retry, never calls LVGL/RTC.
+Persist location and POSIX DST rules corresponding to returned IANA timezone so
+timezone remains correct offline; do not store only today's UTC offset.
+Unknown/multiple locations require selection/confirmation rather than silently
+using an arbitrary result. Unknown timezone leaves previous time zone unchanged.
+Network credentials use separate project-owned namespace, with Wi-Fi RAM storage
+and nvs_enable=false to preserve factory NVS. NTP updates are handed to the
+clock/UI owner for RTC writes. No shared backend needed for direct provider API.

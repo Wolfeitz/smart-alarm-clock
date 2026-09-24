@@ -137,3 +137,12 @@ the desired bedside alarm loudness. Retain local sound at this level; possible
 future upgrades include a replacement speaker or external Sonos/Spotify playback.
 External playback remains subject to independent local fallback and later
 integration scope; this decision does not claim reliable remote playback.
+
+## Expanded working-example scope (2026-09-23)
+
+Owner authorizes location setup (ZIP/postal code), current weather and today's
+forecast, with timezone derived from the selected location. After functionality,
+polish the bedside interface. Keep provider adapters and presentation separate so
+Home Assistant entities and later spoken weather/schedule summaries can be added
+without coupling them to alarm execution. Weather/location work may proceed while
+the remaining physical power-cycle check is pending; core offline guarantees remain.

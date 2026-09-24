@@ -30,3 +30,5 @@ void alarm_dismiss(alarm_engine_t *engine);
 void alarm_cancel(alarm_engine_t *engine,unsigned index);
 /* Earliest future valid local occurrence; zero if none. Handles DST ambiguity. */
 time_t alarm_next(const alarm_config_t alarms[ALARM_COUNT],time_t now);
+/* A new schedule may ring again today; toggling enable alone cannot duplicate it. */
+alarm_config_t alarm_merge_edit(const alarm_config_t *old,const alarm_config_t *requested);

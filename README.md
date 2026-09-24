@@ -4,7 +4,9 @@ A local-first bedside alarm clock project targeting the Waveshare ESP32-C5 Touch
 LCD 3.5-inch board described in the supplied brief and identified by Rob's receipt
 (recorded in PROJECT). An RTC-backed LVGL clock now runs on the board under
 ESP-IDF6.1, with confirmed time/date, advancing seconds and touch brightness.
-Alarm/audio/network features remain unfinished; see WORK for evidence and gates.
+Local alarm editing, scheduling, snooze/dismiss, persistence and sound now run on
+the board. Weather/location setup is the next authorized increment; see WORK for
+evidence and the remaining physical power-loss check.
 
 ## Start here / Operating Model Index
 

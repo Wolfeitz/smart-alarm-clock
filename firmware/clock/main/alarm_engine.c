@@ -83,3 +83,12 @@ time_t alarm_next(const alarm_config_t alarms[ALARM_COUNT],time_t now)
     }
     return best;
 }
+
+alarm_config_t alarm_merge_edit(const alarm_config_t *old,const alarm_config_t *requested)
+{
+    alarm_config_t result=*requested;
+    bool same=old->hour==requested->hour && old->minute==requested->minute && old->weekdays==requested->weekdays &&
+        (requested->weekdays || old->once_date==requested->once_date);
+    result.consumed_date=same?old->consumed_date:0;
+    return result;
+}

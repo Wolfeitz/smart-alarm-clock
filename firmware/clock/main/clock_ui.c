@@ -1,4 +1,5 @@
 #include "clock_ui.h"
+#include "diagnostics.h"
 #include "alarm_service.h"
 #include "clock_service.h"
 #include "local_time.h"
@@ -9,7 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 static lv_obj_t *root,*time_text,*date_text,*detail,*next_text,*status,*dim_text;
-static lv_obj_t *slot,*hours,*minutes,*repeat,*enabled,*days[7],*year,*month,*day,*edit_status,*overlay;
+static lv_obj_t *slot,*hours,*minutes,*repeat,*enabled,*days[7],*year,*month,*day,*edit_status,*overlay,*overlay_detail;
 static alarm_config_t draft;
 static unsigned index_selected;
 static bool editing,pending,time_editing;
@@ -153,10 +154,23 @@ void clock_ui_update(void)
         overlay=lv_obj_create(lv_layer_top());lv_obj_set_size(overlay,460,230);lv_obj_center(overlay);
         lv_obj_set_style_bg_color(overlay,lv_color_hex(0x142c40),0);lv_obj_remove_flag(overlay,LV_OBJ_FLAG_SCROLLABLE);
         label(overlay,"Alarm",0,12,420,&lv_font_montserrat_48);
+        overlay_detail=label(overlay,"",0,86,420,&lv_font_montserrat_20);
         button(overlay,"Snooze 5 min",5,140,195,snooze,NULL);button(overlay,"Dismiss",215,140,195,dismiss,NULL);
     }
     if(!active && overlay){lv_obj_delete(overlay);overlay=NULL;}
-    if(overlay){lv_obj_t *title=lv_obj_get_child(overlay,0);lv_label_set_text(title,s.ringing?"Alarm":"Snoozed");}
+    if(overlay){
+        lv_obj_t *title=lv_obj_get_child(overlay,0);lv_label_set_text(title,s.ringing?"Alarm":"Snoozed");
+        char text[80];
+        if(s.ringing){
+            size_t n=0;n+=snprintf(text,sizeof(text),"Alarm ");
+            for(unsigned i=0;i<ALARM_COUNT;i++)if(s.ringing&(1u<<i))n+=snprintf(text+n,sizeof(text)-n,"%s%u",n>6?", ":"",i+1);
+        }else{
+            uint32_t next=0;for(unsigned i=0;i<ALARM_COUNT;i++)if((s.snoozed&(1u<<i)) && (!next || s.settings.deadline[i]<next))next=s.settings.deadline[i];
+            int64_t remaining=(int64_t)next-time(NULL);if(remaining<0)remaining=0;
+            snprintf(text,sizeof(text),"Rings again in %02u:%02u",(unsigned)(remaining/60),(unsigned)(remaining%60));
+        }
+        lv_label_set_text(overlay_detail,text);
+    }
     if(time_editing)return;
     if(editing){
         if(pending && s.save_ticket==pending_ticket){
@@ -179,4 +193,27 @@ void clock_ui_update(void)
     lv_label_set_text(next_text,b);
     lv_label_set_text(status,s.storage_status==ESP_OK?clock_source():"Settings storage error");
     lv_label_set_text(dim_text,applied_brightness<80?"Brighten":"Dim");
+}
+
+static void dropdown_diagnostics(const char *name,lv_obj_t *o)
+{
+    diagnostics_printf("UI_SELECT name=%s selected=%u open=%u\n",name,(unsigned)lv_dropdown_get_selected(o),lv_dropdown_is_open(o));
+    if(lv_dropdown_is_open(o)){
+        lv_obj_t *list=lv_dropdown_get_list(o);lv_area_t area;lv_obj_get_coords(list,&area);
+        diagnostics_printf("UI_LIST name=%s x1=%ld y1=%ld x2=%ld y2=%ld scroll=%ld\n",name,(long)area.x1,(long)area.y1,(long)area.x2,(long)area.y2,(long)lv_obj_get_scroll_y(list));
+    }
+}
+void clock_ui_diagnostics(void)
+{
+    diagnostics_printf("UI_SCREEN name=%s overlay=%u pending=%u\n",time_editing?"time":editing?"alarm":"home",overlay!=NULL,pending);
+    if(overlay)diagnostics_printf("UI_OVERLAY text=%s\n",lv_label_get_text(overlay_detail));
+    if(editing){
+        diagnostics_printf("UI_ALARM slot=%u enabled=%u weekdays=%u message=%s\n",index_selected,lv_obj_has_state(enabled,LV_STATE_CHECKED),draft.weekdays,lv_label_get_text(edit_status));
+        dropdown_diagnostics("slot",slot);dropdown_diagnostics("hour",hours);dropdown_diagnostics("minute",minutes);dropdown_diagnostics("repeat",repeat);
+        if(lv_dropdown_get_selected(repeat)==1){dropdown_diagnostics("year",year);dropdown_diagnostics("month",month);dropdown_diagnostics("day",day);}
+    }else if(time_editing){
+        dropdown_diagnostics("year",time_year);dropdown_diagnostics("month",time_month);dropdown_diagnostics("day",time_day);
+        dropdown_diagnostics("hour",time_hour);dropdown_diagnostics("minute",time_minute);
+        diagnostics_printf("UI_MESSAGE text=%s\n",lv_label_get_text(time_status));
+    }
 }

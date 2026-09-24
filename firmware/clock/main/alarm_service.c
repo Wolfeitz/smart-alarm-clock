@@ -38,7 +38,7 @@ static void run(void *unused)
                 clock_settings_t next=settings;
                 if(restored)alarm_capture(&next,&engine,now,ms);
                 if(c.kind==1){
-                    c.alarm.consumed_date=engine.alarms[c.index].consumed_date;
+                    c.alarm=alarm_merge_edit(&engine.alarms[c.index],&c.alarm);
                     next.alarms[c.index]=c.alarm;next.phase[c.index]=0;next.deadline[c.index]=0;
                 }else next.brightness=c.brightness;
                 storage=settings_store_save(&next);

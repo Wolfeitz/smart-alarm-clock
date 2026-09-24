@@ -42,5 +42,13 @@ int main(void)
     e=daily(1,30);time_t first=at(2026,11,1,1,30,0,1),second=at(2026,11,1,1,30,0,0);
     assert(alarm_next(e.alarms,first-1)==first);assert(alarm_next(e.alarms,first+1)==second);
     e.alarms[0].consumed_date=20261101;assert(alarm_next(e.alarms,first+1)==at(2026,11,2,1,30,0,-1));
+    e=daily(7,30);assert(alarm_tick(&e,now,true,0)==1);alarm_dismiss(&e);
+    alarm_config_t edit=e.alarms[0];edit.enabled=false;
+    e.alarms[0]=alarm_merge_edit(&e.alarms[0],&edit);edit.enabled=true;
+    e.alarms[0]=alarm_merge_edit(&e.alarms[0],&edit);assert(alarm_tick(&e,now,true,10)==0);
+    edit.minute=35;e.alarms[0]=alarm_merge_edit(&e.alarms[0],&edit);
+    assert(alarm_tick(&e,now+300,true,20)==1);alarm_dismiss(&e);
+    edit=e.alarms[0];edit.once_date=20260925;
+    e.alarms[0]=alarm_merge_edit(&e.alarms[0],&edit);assert(alarm_tick(&e,now+300,true,30)==0);
     puts("PASS alarm triggers, invalid time, weekdays/once, grace window, DST, duplicates, snooze, dismiss, timeout, simultaneous alarms");
 }
