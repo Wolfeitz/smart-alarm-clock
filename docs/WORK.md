@@ -1313,3 +1313,16 @@ The reused navigation helper also overwrote media-runtime.log with this run; the
 older media-runtime receipt is no longer independently available at that path.
 New countdown behavior is verified in host/runtime-model and actual-LVGL preview,
 not a new five-minute physical snooze test. Full-power-loss checks remain deferred.
+
+## Offline completion-evidence audit (2026-09-24)
+
+Previous turn made concrete progress by installing the monotonic snooze correction.
+Reviewed local audio cancellation and acceptance scope. Alarm playback polls its
+active flag each256-frame block; SDK default DMA capacity is6x240frames at22050Hz.
+These are code-derived bounds on generated/buffered content, not acoustic timing
+proof; blocking writes have1000ms timeout. No speculative audio modification made.
+Corrected CLOCK-ACCEPTANCE historical results mislabeled as current-image tests,
+and identified exactly what the c782e14 installation receipts establish. Physical
+alarm controls and full-power-loss behavior remain unproved and owner-deferred;
+this audit does not satisfy the full goal or justify marking it complete. No board
+restart, flash, physical test request, or HA/Pi change in this audit.

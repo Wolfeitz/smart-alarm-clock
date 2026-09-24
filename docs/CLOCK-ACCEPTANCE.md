@@ -22,7 +22,7 @@ Home Assistant light setup/control is installed; authenticated operation is pend
 | Restart recovery | Ringing, snooze, dismissal and brightness survive MCU resets | Demonstrated |
 | Saved brightness | Owner confirmed Dim/Brighten; brightness25 survived reset, restored160 | Demonstrated |
 | Power-return startup | Owner reports powered back on and current application looks good; prior battery state disconnected | Display/application recovery observed by owner; offline RTC retention without backup power is not established |
-| Independence from Wi-Fi | RTC, engine, NVS, UI and audio remain local; HTTPS in separate lower-priority worker | Current image: radio stopped via SDK, RTC deadline triggered alarm, audio writes succeeded, snooze/dismiss passed; exact alarm restoration and network reconnection verified |
+| Independence from Wi-Fi | RTC, engine, NVS, UI and audio remain local; HTTPS in separate lower-priority worker | Earlier offline-check image: radio stopped via SDK, RTC deadline triggered alarm, audio writes succeeded, snooze/dismiss passed; exact alarm restoration and network reconnection verified |
 | Factory recovery preserved | Private32MB factory backup and prior whole-image restoration/hash proof; factory partitions retained | Demonstrated; no further factory rewrite needed |
 
 Build/host tests cannot prove sound, physical controls or a complete power cycle.
@@ -62,13 +62,32 @@ Owner correction: physical acceptance is batched after integrated functionality,
 not a prerequisite to continue development. HA update runtime/navigation checks
 passed without physical input; see WORK for installed image and evidence.
 
-Current-image offline check: NETWORK OFF returned ESP_OK, RTC scheduled the
+Historical offline-check image: NETWORK OFF returned ESP_OK, RTC scheduled the
 temporary once alarm with durable consumption; I2S writes, Snooze and Dismiss
 passed. All eight alarm records restored exactly; NETWORK ON and weatherHTTP200
 confirmed reconnect. This checks disconnected operation, not battery/power loss.
 
-Combined UI stability on current image:20navigation cycles/240transitions across
+Historical navigation-soak image:20navigation cycles/240transitions across
 settings/display/HA/setup/alarms/editor/home passed, preserving all eight alarm
 records.25RTC heartbeats remained within2seconds; observed heap88728..89028bytes
 with no net early-to-late loss. Timestamped receipt and reproducible command are
 in WORK/TESTING. This bounded test does not establish indefinite uptime.
+
+
+## Latest installed-image scope (2026-09-24, c782e14)
+
+The installed image hash above corresponds to the monotonic snooze-countdown fix.
+Its receipts are `snooze-build.log`, `snooze-flash.log`, and `snooze-runtime.log`
+under local-config/clock. That run proves verified application flash, RTC startup,
+RTC/system agreement within one second, storageESP_OK, unchanged eight alarm
+records and settings/media/setup/cancel/home navigation. It does not repeat all
+historical offline-trigger, five-minute snooze, MCU-recovery or navigation-soak
+checks. Host and real-LVGL preview checks cover the new countdown calculation.
+
+Audio cancellation review: the running alarm checks its active flag before each
+256-frame block at22050Hz (about11.6ms of generated audio). The pinned SDK defaults
+to six240-frame DMA buffers (about65.3ms of capacity). These describe software
+buffering, not measured acoustic stop latency; each driver write has a1000ms timeout.
+The owner has accepted the current audible tone level, but final physical control
+and full-power-loss behavior remain unverified. No further physical test is
+requested here: the owner's batching/no-power-off instruction remains in force.
