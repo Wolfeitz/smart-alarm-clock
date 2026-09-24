@@ -1160,3 +1160,24 @@ not a new human acoustic observation. Private receipts: offline-check-build.log,
 offline-check-flash.log, offline-alarm-runtime.log, offline-alarm-original.json.
 This strengthens current-image offline independence evidence; deferred final
 physical/power acceptance is not a gate to further development.
+
+## Combined screen stability check (2026-09-24)
+
+Previous turn progressed current-image offline proof and exact restoration. Next
+bounded check exercises12 navigation transitions per cycle across home/settings/
+night settings/HA/setup/alarm overview/editor, using only Cancel/back and no saves.
+Record20cycles, heartbeat/RTC agreement, heap range and exact8-alarm preservation.
+Abort on active/enabled alarms, crash, wrong screen or changed settings. This is
+an automated combined-feature check, not another owner physical acceptance request.
+Add reproducible script with private timestamped receipts and bounded iterations.
+
+Combined navigation soak passed20cycles/240screen transitions, with exact8-alarm
+records unchanged after every cycle and final home screen restored.25valid RTC
+heartbeats stayed within2seconds of system time. Heap88728..89028bytes;
+early/late maxima88768/89028, no net loss observed in this bounded run. Receipt:
+local-config/clock/navigation-soak-20260924-104659.log. No firmware update, settings
+save, audio request, full-power-off or physical interaction performed. Added the
+reproducible navigation script and concise USER-GUIDE linked from README; Python
+compile and documentation verifier pass. This is combined UI stability evidence,
+not unlimited-uptime or full-power-loss proof. Deferred physical checks remain
+batched; no new request to the owner.

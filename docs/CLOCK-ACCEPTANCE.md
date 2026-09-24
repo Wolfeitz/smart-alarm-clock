@@ -66,3 +66,9 @@ Current-image offline check: NETWORK OFF returned ESP_OK, RTC scheduled the
 temporary once alarm with durable consumption; I2S writes, Snooze and Dismiss
 passed. All eight alarm records restored exactly; NETWORK ON and weatherHTTP200
 confirmed reconnect. This checks disconnected operation, not battery/power loss.
+
+Combined UI stability on current image:20navigation cycles/240transitions across
+settings/display/HA/setup/alarms/editor/home passed, preserving all eight alarm
+records.25RTC heartbeats remained within2seconds; observed heap88728..89028bytes
+with no net early-to-late loss. Timestamped receipt and reproducible command are
+in WORK/TESTING. This bounded test does not establish indefinite uptime.

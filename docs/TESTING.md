@@ -159,3 +159,19 @@ the network worker without changing saved credentials. Require both the queued
 request acknowledgment and `NETWORK_RADIO ... status=ESP_OK`; a queued request
 alone is not proof of radio state. This diagnostic is volatile: restart restores
 normal networking. Resume after any offline test. It does not simulate power loss.
+
+Combined navigation stability check (board attached, no alarms enabled):
+
+```sh
+/home/rob/.espressif/tools/python/v6.1/venv/bin/python scripts/check-clock-navigation.py \
+  --port /dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:BD:A3:E3:52:74-if00 \
+  --cycles 20
+```
+
+This opens USB (which can reset this board), then repeatedly visits settings,
+night settings, HA/setup, alarm overview/editor and home. It uses Cancel/back only,
+never Save, sound, erase or power-off. It checks all eight alarm records, idle alarm
+state, RTC agreement, crash output and heap samples. More than8KiB early-to-late
+heap loss fails as suspicious; a pass is a bounded stability observation, not proof
+of unlimited uptime or absence of all leaks. Timestamped receipts are private under
+`local-config/clock`. Do not run while a user alarm is enabled or active.

@@ -9,6 +9,8 @@ the board. Wi-Fi scanning, saved connection, network time and local weather/curr
 day forecast are now verified on-device. See WORK for evidence and remaining
 physical power-loss checks.
 
+Daily controls: [Using the clock](docs/USER-GUIDE.md).
+
 ## Start here / Operating Model Index
 
 - [Project guidance](AGENTS.md): Codex entry point and working boundaries.
