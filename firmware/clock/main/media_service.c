@@ -1,6 +1,6 @@
 #include "media_service.h"
 #include "diagnostics.h"
-#include "ha_service.h"
+#include "media_backend.h"
 #include "esp_timer.h"
 #include "nvs.h"
 #include "freertos/FreeRTOS.h"
@@ -27,7 +27,7 @@ static void take(void){if(lock)xSemaphoreTake(lock,portMAX_DELAY);}
 static void give(void){if(lock)xSemaphoreGive(lock);}
 static void message(const char *s){take();snprintf(state.status,sizeof(state.status),"%s",s);give();}
 static bool valid(const preferences_t *p)
-{return p->version==2&&memchr(p->content,0,sizeof(p->content))&&memchr(p->content_type,0,sizeof(p->content_type))&&media_selection_valid(p->content,p->content_type)&&memchr(p->entity,0,sizeof(p->entity))&&memchr(p->endpoint,0,sizeof(p->endpoint))&&media_entity_valid(p->entity)&&ha_endpoint_valid(p->endpoint);}
+{return p->version==2&&memchr(p->content,0,sizeof(p->content))&&memchr(p->content_type,0,sizeof(p->content_type))&&media_selection_valid(p->content,p->content_type)&&memchr(p->entity,0,sizeof(p->entity))&&memchr(p->endpoint,0,sizeof(p->endpoint))&&media_backend_target_valid(p->entity)&&media_backend_identity_valid(p->endpoint);}
 void media_service_init(void)
 {
     lock=xSemaphoreCreateMutex();queue=xQueueCreate(1,sizeof(command_t));accepting=lock&&queue;
@@ -55,9 +55,9 @@ bool media_service_configure(const char *entity)
 {return media_service_configure_tagged(entity,0);}
 static bool configure(const char *entity,const char *content,const char *type,uint32_t tag)
 {
-    if(!media_entity_valid(entity)||!media_selection_valid(content,type))return false;
-    ha_snapshot_t h;ha_service_snapshot(&h);if(!h.configured)return false;
-    command_t c={.kind=1,.tag=tag,.prefs={.version=2}};strcpy(c.prefs.endpoint,h.endpoint);strcpy(c.prefs.entity,entity);
+    if(!media_backend_target_valid(entity)||!media_selection_valid(content,type))return false;
+    media_backend_config_t h;media_backend_config(&h);if(!h.configured)return false;
+    command_t c={.kind=1,.tag=tag,.prefs={.version=2}};strcpy(c.prefs.endpoint,h.identity);strcpy(c.prefs.entity,entity);
     strcpy(c.prefs.content,content);strcpy(c.prefs.content_type,type);return submit(&c);
 }
 bool media_service_select(const char *entity,const char *content,const char *type)
@@ -73,61 +73,46 @@ bool media_service_action(media_action_t action)
 {
     media_snapshot_t s;media_service_snapshot(&s);if(!s.fresh||!media_action_supported(&s.player,action)||(action==MEDIA_START_SAVED&&!s.content[0]))return false;
     command_t c={.kind=2,.action=action};strcpy(c.prefs.entity,s.entity);
-    ha_snapshot_t h;ha_service_snapshot(&h);strcpy(c.prefs.endpoint,h.endpoint);return submit(&c);
+    media_backend_config_t h;media_backend_config(&h);strcpy(c.prefs.endpoint,h.identity);return submit(&c);
 }
 static void unavailable(int code)
-{take();state.fresh=false;give();message(code==401||code==403?"Home Assistant access denied":code==404?"Player entity not found":"Player unavailable; local alarms still work");}
+{take();state.fresh=false;give();message(code==MEDIA_BACKEND_DENIED?"Player access denied":code==MEDIA_BACKEND_NOT_FOUND?"Player entity not found":"Player unavailable; local alarms still work");}
 void media_service_poll(bool online)
 {
     if(!accepting)return;
     command_t c={0};bool received=xQueueReceive(queue,&c,0)==pdTRUE;
-    ha_snapshot_t h;ha_service_snapshot(&h);
+    media_backend_config_t h;media_backend_config(&h);
     if(received){
         take();state.busy=false;give();next_poll=0;
         if(c.kind==1){
             esp_err_t err=ESP_ERR_INVALID_ARG;
-            if(opened&&h.configured&&!strcmp(h.endpoint,c.prefs.endpoint)&&valid(&c.prefs)){
+            if(opened&&h.configured&&!strcmp(h.identity,c.prefs.endpoint)&&valid(&c.prefs)){
                 err=nvs_set_blob(storage,"player",&c.prefs,sizeof(c.prefs));if(err==ESP_OK)err=nvs_commit(storage);
             }
             if(c.tag)diagnostics_printf("SETUP_MEDIA tag=%lu saved=%u\n",(unsigned long)c.tag,err==ESP_OK);
-            if(err!=ESP_OK){message("Player not saved; check HA setup and storage");next_poll=esp_timer_get_time()+10000000;return;}
+            if(err!=ESP_OK){message("Player not saved; check connection and storage");next_poll=esp_timer_get_time()+10000000;return;}
             prefs=c.prefs;expected=MEDIA_UNKNOWN;deadline=0;selection_pending=false;
             take();state.configured=true;state.fresh=false;memset(&state.player,0,sizeof(state.player));strcpy(state.entity,prefs.entity);strcpy(state.content,prefs.content);strcpy(state.content_type,prefs.content_type);give();
         }
     }
     if(!valid(&prefs))return;
-    if(!h.configured||strcmp(prefs.endpoint,h.endpoint)){unavailable(-1);message("Set up this player for the current HA server");expected=MEDIA_UNKNOWN;return;}
+    if(!h.configured||strcmp(prefs.endpoint,h.identity)){unavailable(-1);message("Set up this player for the current connection");expected=MEDIA_UNKNOWN;return;}
     if(!online){unavailable(-1);expected=MEDIA_UNKNOWN;return;}
     int64_t now=esp_timer_get_time();if(now<next_poll)return;
     take();state.busy=true;give();
-    char *response=malloc(12289+1152);if(!response){unavailable(-1);goto done;}
-    char path[164];char *body=response+12289;size_t size=0;
     if(received&&c.kind==2){
         media_snapshot_t current;media_service_snapshot(&current);
         if(strcmp(c.prefs.endpoint,prefs.endpoint)||strcmp(c.prefs.entity,prefs.entity)||!current.fresh||!media_action_supported(&current.player,c.action)||(c.action==MEDIA_START_SAVED&&!prefs.content[0])){
             message("Player changed or state expired; refresh first");goto done;
         }
-        const char *actions[]={"media_previous_track","media_play","media_pause","media_next_track","volume_down","volume_up","play_media"};
-        const char *action=actions[c.action];
-        snprintf(body,1152,"{\"entity_id\":\"%s\"}",prefs.entity);
-        if((c.action==MEDIA_QUIETER||c.action==MEDIA_LOUDER)&&!(current.player.features&1024)){
-            action="volume_set";double v=current.player.volume+(c.action==MEDIA_LOUDER?.05:-.05);if(v<0)v=0;if(v>1)v=1;
-            snprintf(body,1152,"{\"entity_id\":\"%s\",\"volume_level\":%.3f}",prefs.entity,v);
-        }
-        if(c.action==MEDIA_START_SAVED&&!media_selection_body(prefs.entity,prefs.content,prefs.content_type,body,1152)){
-            message("Saved selection could not be encoded");goto done;
-        }
-        snprintf(path,sizeof(path),"/api/services/media_player/%s",action);
-        int code=ha_service_request(path,body,response,12289,&size);
-        if(code!=200){unavailable(code);expected=MEDIA_UNKNOWN;goto done;}
+        int code=media_backend_action(prefs.entity,c.action,&current.player,prefs.content,prefs.content_type);
+        if(code!=MEDIA_BACKEND_OK){unavailable(code);expected=MEDIA_UNKNOWN;goto done;}
         selection_pending=c.action==MEDIA_START_SAVED;
         expected=(c.action==MEDIA_PLAY||selection_pending)?MEDIA_PLAYING:c.action==MEDIA_PAUSE?MEDIA_PAUSED:MEDIA_UNKNOWN;
         deadline=esp_timer_get_time()+10000000;message("Request accepted; reading actual player state");
     }
-    snprintf(path,sizeof(path),"/api/states/%s",prefs.entity);
-    int code=ha_service_request(path,NULL,response,12289,&size);media_player_t player;
-    if(code!=200){unavailable(code);goto done;}
-    if(!media_parse(response,size,prefs.entity,&player)){unavailable(-1);goto done;}
+    media_player_t player;int code=media_backend_read(prefs.entity,&player);
+    if(code!=MEDIA_BACKEND_OK){unavailable(code);goto done;}
     take();state.player=player;state.fresh=true;observed=esp_timer_get_time();give();
     if(expected!=MEDIA_UNKNOWN){
         if(player.state==expected){expected=MEDIA_UNKNOWN;message(selection_pending?"Player playing; selection not verified":"Playback state confirmed");selection_pending=false;}
@@ -136,5 +121,5 @@ void media_service_poll(bool online)
  done:
     if(expected!=MEDIA_UNKNOWN&&esp_timer_get_time()>=deadline){expected=MEDIA_UNKNOWN;message("Playback change not confirmed");}
     next_poll=esp_timer_get_time()+(expected!=MEDIA_UNKNOWN?1000000:10000000);
-    free(response);take();state.busy=false;give();
+    take();state.busy=false;give();
 }

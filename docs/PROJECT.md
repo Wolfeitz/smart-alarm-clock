@@ -152,9 +152,9 @@ the remaining physical power-cycle check is pending; core offline guarantees rem
 
 Owner raised possible open-source distribution and users without Home Assistant.
 Standalone clock/alarm functionality remains the base product; HA is optional.
-Current weather uses its own provider and does not require HA. The implemented
-external-player control currently calls HA directly, so portable media adapters
-and removal of the personal server-address default remain public-release work.
+Current weather uses its own provider and does not require HA. The external-player owner now uses a backend interface, with HA as the only
+shipping implementation. Additional media adapters and removal of the personal
+server-address default remain public-release work.
 Do not advertise non-HA external playback as implemented. Voice/activation/morning
 briefings are possible later capabilities, not a reason to install HA or make
 local time/alarm execution depend on it. No publication or license choice requested.

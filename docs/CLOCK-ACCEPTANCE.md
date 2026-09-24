@@ -7,7 +7,7 @@ or external playback improvements.
 
 Owner expanded scope to weather/location and continued integration development.
 Home Assistant light setup/control is installed; authenticated operation is pending. Last audit2026-09-24. Installed application SHA256:
-`e566e433e168e42f7ecdfe231ae6ad0234dfdec59aac1e7da86727f309c83a80`.
+`6fe15e5c75758f327d9c8b07448a7be21e3705ec704056cae17c0572c96b2d96`.
 
 | Requirement | Evidence | Status |
 |---|---|---|
@@ -109,8 +109,15 @@ Receipts: home-build.log, home-flash.log, home-layout-runtime.log. Full visual p
 remains future work after regular functionality, as reconfirmed by the owner.
 
 
-Latest installed image adds optional saved external-media selection, hash at top.
+The saved-selection image added optional external-media selection.
 Selection runtime receipt confirms RTC startup/agreement, storageESP_OK, exact eight
 alarm preservation and setup/cancel/home navigation. No authenticated external
 playback occurred. Offline alarm execution and settings schema are unchanged;
 prior offline tests remain scoped to their recorded images.
+
+
+Latest installed image separates the HA media backend from generic player ownership.
+Its backend-runtime.log verifies RTC startup/agreement, storageESP_OK, all eight
+alarm records unchanged and media/setup/cancel/home navigation. Backend-host.log
+includes a synthetic non-HA backend test, not real non-HA playback. No offline alarm
+code or settings layout changed; physical acceptance remains batched.

@@ -22,7 +22,7 @@ bool ha_service_configure(const char *url,const char *token,const char *entity){
 bool ha_service_toggle(void){ha_state.light.state=ha_state.light.state==HA_ON?HA_OFF:HA_ON;return true;}
 bool ha_service_refresh(void){return true;}
 static media_snapshot_t media_state={.entity="media_player.bedroom",.configured=true,.fresh=true,
-    .player={.state=MEDIA_PAUSED,.name="Bedroom speaker",.title="Example track",.artist="Example artist",.features=16949,.volume=.35,.volume_known=true},.status="Showing reported player state"};
+    .player={.state=MEDIA_PAUSED,.name="Bedroom speaker",.title="Example track",.artist="Example artist",.capabilities=127,.volume=.35,.volume_known=true},.status="Showing reported player state"};
 void media_service_snapshot(media_snapshot_t *s){*s=media_state;}
 bool media_service_configure(const char *entity){snprintf(media_state.entity,sizeof(media_state.entity),"%s",entity);return true;}
 bool media_service_select(const char *entity,const char *content,const char *type){if(!media_selection_valid(content,type))return false;strcpy(media_state.content,content);strcpy(media_state.content_type,type);return media_service_configure(entity);}

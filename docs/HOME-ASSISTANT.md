@@ -108,3 +108,18 @@ helper selects the player and preserves its saved selection when the same player
 is selected; use the on-device Setup fields to edit the media selection itself.
 
 Reference: [Home Assistant play specified media](https://www.home-assistant.io/actions/media_player.play_media/).
+
+## Optional adapter boundary
+
+The media owner now calls `media_backend.h` for connection identity, target
+validation, state reads and actions. It owns queues, saved selection, freshness
+and confirmation without including HA headers or knowing REST paths/JSON fields.
+`media_ha.c` implements that interface, translates HA feature flags into generic
+control capabilities, and uses the HA credential owner. The UI sees only generic
+capabilities. HTTP work remains on the existing network worker.
+
+HA is currently the only shipping media backend, selected by the build. This is
+not a runtime plugin selector, and no direct Sonos/Spotify backend is implemented.
+An alternate-backend host test links the production owner without HA/HTTP/JSON,
+using a different identity/target format; it demonstrates the interface boundary,
+not an actual second integration. Existing HA settings retain their format.

@@ -1413,3 +1413,28 @@ selection-build, selection-flash and selection-runtime logs under local-config/c
 Live authentication/player/content behavior remains unverified; remote-alarm fallback
 is still not implemented. Owner raised open-source portability; recorded standalone
 base/optional HA boundary and current direct-HA media limitation in PROJECT.md.
+
+## Optional media adapter boundary (2026-09-24)
+
+Replace the media owner's direct HA dependency with a small backend interface for
+configuration identity, target validation, state reads and actions. Keep queue,
+persistence, freshness and confirmation in the owner; HA adapter owns JSON/REST,
+feature-number translation and credential-owner access. Publish generic action
+capabilities to UI. Retain existing player preferences and actual behavior, with
+one HA implementation today; do not claim a non-HA player backend exists yet.
+Acceptance: existing production service tests through the HA adapter, generic
+capability tests, actual-LVGL preview and firmware build; local alarm modules unchanged.
+
+Media adapter separation installed. Generic media_model/service contain no HA
+headers, REST paths, JSON parsing or HA feature constants. media_ha.c owns those
+and accesses credentials only through ha_service. Owner retains queue/NVS/freshness/
+confirmation; existing preference layouts preserved. An alternate backend test
+links the real owner/model without HA/HTTP/JSON and exercises configure/read/play/
+pause/offline using non-HA identity/target strings. All host suites and real-LVGL
+media-test pass. HA remains the only shipping backend; no runtime plugin selector
+or direct Spotify/Sonos backend is claimed. Offline alarm modules unchanged.
+IDF6.1 build/app-only flash1785328bytes verified; SHA256:
+6fe15e5c75758f327d9c8b07448a7be21e3705ec704056cae17c0572c96b2d96.
+On-device navigation passed, all8 alarms unchanged, RTC/system agree, storageESP_OK,
+heap80148..80160. No playback or Pi changes. Receipts: backend-host.log,
+backend-preview-build.log, backend-build.log, backend-flash.log, backend-runtime.log.

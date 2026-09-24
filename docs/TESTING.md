@@ -209,3 +209,10 @@ JSON escaping, PLAY_MEDIA capability gating, exact service body, failed-save
 retention, and distinguishing playing state from requested-selection proof.
 `media-test` now tests selection fields/save/start and seven stale controls.
 `media-setup` renders the three-field setup. No real playback is requested.
+
+`media_backend_test.c` links the production media owner and generic model without
+HA, HTTP or JSON, using a synthetic backend with `test:local` connection identity
+and `speaker/bedroom` target. It verifies configure/read/play/pause confirmation and
+offline rejection. HA-specific parser/service tests still run through the real HA
+adapter, including persisted selection migration and failures. This proves a code
+boundary, not an implemented non-HA device integration.
