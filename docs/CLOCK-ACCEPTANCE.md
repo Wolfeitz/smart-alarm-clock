@@ -6,7 +6,7 @@ the clear local tone provisionally; desired alarm loudness may need later hardwa
 or external playback improvements.
 
 Owner expanded scope to weather/location; Home Assistant and Spotify remain future
-integrations. Last audit2026-09-23. Installed application SHA256:
+integrations. Last audit2026-09-24. Installed application SHA256:
 `ec31e7d815448459c8e74d2c553fc383d2c341759f8b4fab9e31a2224a166128`.
 
 | Requirement | Evidence | Status |
@@ -39,3 +39,21 @@ from unanswered requests or from this checklist.
 Owner defers further full power-off tests until regular functionality is complete.
 Scheduled night mode is installed; interval/wake/migration host checks pass.
 The current UI remains a proof of concept; visual redesign is deferred.
+
+## Current evidence refresh (2026-09-24)
+
+Rechecked the retained night-mode binary SHA256 against the installed-image receipt;
+it matches the hash above. No new flash or board reset was performed during this
+audit. Historical recovery-fourth-summary.log explicitly reports ringing, snooze,
+brightness and dismissal reset checks; snooze-duration-summary.log covers the real
+five-minute interval. These receipts apply to the recorded firmware revisions,
+not a new physical test of every path on today's image.
+
+The consolidated host runner now also executes alarm_restart_test.c. It crosses
+production engine → capture → encode → decode → restore boundaries, verifying
+once-alarm consumption, remaining ring/snooze duration, exact120-second recovery
+grace, rejection at121 seconds, implausible future deadlines, invalid wall time
+during running snooze, and durable dismissal. All eight host suites pass. This
+closes a host integration coverage gap; it does not establish physical power-loss
+behavior or NVS writes interrupted by power loss. Physical alarm controls remain
+pending; further full-power tests remain deferred by owner. Goal not complete.

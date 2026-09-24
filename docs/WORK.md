@@ -972,3 +972,51 @@ loaded enabled schedule from NVS successfully. WeatherHTTPS200 remained function
 No full power-off tests were performed. Physical night brightness perception and
 long unattended behavior remain unverified. Test receipt: night-ui-check.log;
 build/flash receipts: night-build.log and night-flash.log.
+
+## Next functional slice: Home Assistant light adapter (2026-09-24)
+
+Continuing regular functionality without a milestone stop. Read-only discovery
+found no HA-named container or8123 listener on this workstation; asked for existing
+HA URL, not credentials. No shared stack changes/installations authorized or made.
+Official REST/light docs checked. Contract before implementation: configure endpoint,
+secret token and one light entity; GET actual state, explicit turn_on/turn_off POST,
+then re-read state. No optimistic success or HTTP-only confirmation. Reject invalid
+entity/endpoint/header input; bounded response/timeouts; no token/body logging.
+Serialize integration HTTP with weather on the same network worker to preserve
+heap and alarm/UI priority. Integration unavailable must leave local clock intact.
+Setup requires device-side secret entry; no token in chat/source/examples.
+
+Owner clarified HA is already running on a dedicated Pi and explicitly prohibits
+installing Home Assistant. Use existing origin http://192.168.1.232:8123; supplied
+/homestead-command/home is its dashboard route, not an API prefix. Read-only
+unauthenticated GET /api/ returned HTTP401 on2026-09-24, establishing reachability
+and required authentication, not authenticated integration success. Do not install
+HA or modify the Pi configuration. Token must stay out of chat and logs.
+
+## Offline goal continuation audit (2026-09-24)
+
+Previous turn made progress by verifying the existing HA endpoint without modifying
+it. Renewed goal directs attention to offline acceptance; unfinished HA edits remain
+uninstalled. Owner prohibition on further full power-off tests remains in force.
+Audit found separate engine/codec/recovery tests, but no complete scheduled-trigger
+to encoded-settings to restarted-engine test. Add that integration regression using
+production modules: once-alarm consumption, active ring recovery, persisted snooze,
+exact120-second expiry grace, stale/future rejection and durable dismissal. This
+is simulated storage/restart evidence, not NVS atomicity or hardware power proof.
+Physical alarm-editor/Snooze/Dismiss check requested without unplugging.
+
+Audit result: all8 host suites pass, including new encoded restart integration.
+Re-read retained reset/snooze/night receipts and verified current local binary
+SHA256 matches night installation receipt. No board writes, resets, new firmware
+installation or full-power tests performed. Updated CLOCK-ACCEPTANCE/TESTING with
+precise evidence limits. Physical controls and deferred power-loss checks prevent
+claiming full goal completion; software-driven checks do not substitute for them.
+
+Recovery preservation revalidated2026-09-24: full factory-flash.bin SHA256 remains
+a963c18040b476d61ec4dc8f630f1b1e38c5b61cc69f6c530a8a7c6676d302ab,
+matching the original recovery receipt. No device operation performed. Previous
+goal turn made progress through encoded restart regression and acceptance audit.
+Physical-control confirmation is still unanswered and full-power testing remains
+owner-deferred; this is the second consecutive resumed goal turn encountering
+that completion blocker. Offline regression/evidence work is saved separately
+from unfinished integration source. No Git remote exists for publication.

@@ -13,6 +13,7 @@ suites = {
     "local_time": ["local_time"],
     "alarm_engine": ["alarm_engine"],
     "settings_codec": ["alarm_engine", "settings_codec", "display_policy"],
+    "alarm_restart": ["alarm_engine", "settings_codec", "alarm_recovery", "display_policy"],
     "alarm_recovery": ["alarm_engine", "settings_codec", "alarm_recovery", "display_policy"],
 }
 with tempfile.TemporaryDirectory(prefix="esp-link-host-") as directory:

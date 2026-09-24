@@ -134,3 +134,7 @@ fixtures verify version1/2 migration to version3, preserving active snooze deadl
 consumed date and manual brightness. The windowless `night-test` exercises the real
 UI's touch-wake and ringing-brightness path. Full-power-off checks are deferred by
 owner until regular functionality is complete; do not request or run them meanwhile.
+
+The host runner also tests a complete encoded-settings alarm restart path in
+`alarm_restart_test.c`, including once consumption, snooze expiry boundaries and
+dismissal. Simulated byte persistence does not prove NVS power-failure atomicity.
