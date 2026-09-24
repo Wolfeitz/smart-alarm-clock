@@ -7,7 +7,7 @@ or external playback improvements.
 
 Owner expanded scope to weather/location and continued integration development.
 Home Assistant light setup/control is installed; authenticated operation is pending. Last audit2026-09-24. Installed application SHA256:
-`0506972d800f56648ce0bb1a789e0ca57548b8b9c6698bbba85aa6fdd893eed8`.
+`e30394faa7f34a651c869636793fc75af2d93d731e700749a4b86507ce55a98b`.
 
 | Requirement | Evidence | Status |
 |---|---|---|
@@ -76,7 +76,7 @@ in WORK/TESTING. This bounded test does not establish indefinite uptime.
 
 ## Latest installed-image scope (2026-09-24, c782e14)
 
-The installed image hash above corresponds to the monotonic snooze-countdown fix.
+The prior c782e14 image corresponds to the monotonic snooze-countdown fix.
 Its receipts are `snooze-build.log`, `snooze-flash.log`, and `snooze-runtime.log`
 under local-config/clock. That run proves verified application flash, RTC startup,
 RTC/system agreement within one second, storageESP_OK, unchanged eight alarm
@@ -99,3 +99,11 @@ alarm records were restored exactly. Radio-on acknowledgment and weatherHTTP200
 confirmed reconnection. This is not a repeat of the five-minute snooze-duration
 check or acoustic/power-loss acceptance. Receipt:
 `local-config/clock/offline-snooze-c782e14-runtime.log`.
+
+
+The subsequent home-layout image is now installed (hash at top). Its build/flash
+and home-card/navigation checks passed, with unchanged eight alarms, storageESP_OK
+and RTC/system agreement. It changes presentation only; the c782e14 offline test
+above remains historical evidence for the unchanged alarm implementation.
+Receipts: home-build.log, home-flash.log, home-layout-runtime.log. Full visual polish
+remains future work after regular functionality, as reconfirmed by the owner.

@@ -249,17 +249,24 @@ static void dismiss(lv_event_t *e){(void)e;alarm_service_dismiss();}
 static void home(void)
 {
     editing=false;time_editing=false;pending=false;reset_screen();
-    date_text=label(root,"Clock",18,19,310,&lv_font_montserrat_20);
+    date_text=label(root,"Clock",18,24,310,&lv_font_montserrat_16);
+    lv_obj_set_style_text_color(date_text,lv_color_hex(0xb2bdc9),0);
     lv_obj_set_style_text_align(date_text,LV_TEXT_ALIGN_LEFT,0);
     button(root,"Settings",350,12,115,show_settings,NULL);
-    time_text=label(root,"--:--",22,76,270,&lv_font_montserrat_48);
+    time_text=label(root,"--:--",22,75,270,&lv_font_montserrat_48);
     lv_obj_set_style_text_color(time_text,lv_color_hex(0xffd998),0);
-    lv_obj_set_style_transform_pivot_x(time_text,LV_PCT(50),0);lv_obj_set_style_transform_pivot_y(time_text,LV_PCT(50),0);lv_obj_set_style_transform_scale(time_text,320,0);
-    detail=label(root,"Set time to begin",20,143,270,&lv_font_montserrat_20);
-    next_text=label(root,"No alarms enabled",20,192,270,&lv_font_montserrat_16);
-    status=label(root,"",20,222,270,&lv_font_montserrat_16);
+    lv_obj_set_style_transform_pivot_x(time_text,LV_PCT(50),0);lv_obj_set_style_transform_pivot_y(time_text,LV_PCT(50),0);lv_obj_set_style_transform_scale(time_text,432,0);
+    detail=label(root,"Set time to begin",20,150,270,&lv_font_montserrat_16);
+    lv_obj_set_style_text_color(detail,lv_color_hex(0xb2bdc9),0);
+    lv_obj_t *alarm_card=button(root,"",15,178,280,show_alarms,NULL);
+    lv_obj_set_height(alarm_card,54);lv_obj_set_style_pad_all(alarm_card,0,0);
+    lv_obj_set_style_bg_color(alarm_card,lv_color_hex(0x152535),0);
+    lv_obj_t *caption=label(alarm_card,"NEXT ALARM",8,5,264,&lv_font_montserrat_16);
+    lv_obj_set_style_text_color(caption,lv_color_hex(0xd5a565),0);
+    next_text=label(alarm_card,"No alarms enabled",8,28,264,&lv_font_montserrat_16);
+    status=label(root,"",15,237,450,&lv_font_montserrat_16);
     lv_obj_set_style_text_color(status,lv_color_hex(0x95a8ba),0);
-    lv_obj_t *card=button(root,"",310,74,155,show_weather,NULL);lv_obj_set_height(card,167);lv_obj_set_style_pad_all(card,0,0);
+    lv_obj_t *card=button(root,"",310,74,155,show_weather,NULL);lv_obj_set_height(card,158);lv_obj_set_style_pad_all(card,0,0);
     lv_obj_set_style_bg_color(card,lv_color_hex(0x142a35),0);lv_obj_remove_flag(card,LV_OBJ_FLAG_SCROLLABLE);
     home_place=label(card,"Summerfield",4,12,147,&lv_font_montserrat_16);
     lv_obj_set_height(home_place,22);lv_label_set_long_mode(home_place,LV_LABEL_LONG_DOT);
@@ -582,7 +589,7 @@ void clock_ui_update(void)
         strftime(b,sizeof(b),"%p   :%S   %Z",&local);lv_label_set_text(detail,b);
     }
     time_t next=clock_valid()?alarm_next(s.settings.alarms,time(NULL)):0;
-    if(next){struct tm local;localtime_r(&next,&local);strftime(b,sizeof(b),"Next: %a %I:%M %p",&local);}
+    if(next){struct tm local;localtime_r(&next,&local);strftime(b,sizeof(b),"%a %I:%M %p",&local);}
     else snprintf(b,sizeof(b),"%s",clock_valid()?"No upcoming alarms":"Set time to arm alarms");
     lv_label_set_text(next_text,b);
     lv_label_set_text(status,audio_status()!=ESP_OK?"Local audio unavailable":s.storage_status==ESP_OK?clock_source():"Settings storage error");

@@ -1341,3 +1341,28 @@ credential changes, physical input or new acoustic claim. Current-image offline
 independence is now directly evidenced; five-minute snooze duration and full-power
 recovery remain covered only by their separately scoped historical/pending evidence.
 Receipts: offline-snooze-c782e14-runtime.log and original.json under local-config/clock.
+
+## Bedside home hierarchy (2026-09-24)
+
+Owner requested substantial presentation improvement after core functionality and
+continued work while physical tests remain batched. Begin with home hierarchy:
+larger time, a distinct tappable next-alarm card, quieter date/time-source details,
+and secondary weather. Preserve existing top/bottom navigation hit areas and all
+alarm behavior. Render populated/offline home and run actual-UI navigation/night
+checks before build/install. This is an incremental home improvement, not a claim
+that complete interface redesign or final physical acceptance is finished.
+
+Owner reconfirmed during this work: complete regular functionality first, then
+continue substantially improving appearance. This home layout is only a first
+pass. Final visual work must cover typography, weather graphics, spacing, colors,
+and consistent alarm/settings screens; do not treat it as completed design polish.
+
+First home-layout pass installed: larger time, quieter date/detail, tappable next
+alarm card and secondary weather; bottom/top navigation positions preserved.
+Actual LVGL populated/offline renders inspected; night behavior and alarm editor
+preview checks pass. IDF6.1 build/app-only flash verified. SHA256:
+e30394faa7f34a651c869636793fc75af2d93d731e700749a4b86507ce55a98b.
+Device test opens next-alarm card, returns home and traverses existing settings/
+media/setup/cancel paths; all8 alarm records unchanged. StorageESP_OK, RTC/system
+agree, heap81328..81364. No power-off or physical input. Receipts: home-preview-build,
+home-build, home-flash, home-layout-runtime logs. Screenshots inspected from /tmp.
