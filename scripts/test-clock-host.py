@@ -33,4 +33,18 @@ with tempfile.TemporaryDirectory(prefix="esp-link-host-") as directory:
         str(main / "weather_model.c"), str(main / "timezone_rules.c"), str(tests / "weather_model_test.c"), "-lm", "-o", binary,
     ], check=True, timeout=60)
     subprocess.run([binary, str(tests / "fixtures/weather-location.json"), str(tests / "fixtures/weather-forecast.json")], check=True, timeout=10)
+    binary = str(Path(directory) / "ha_model")
+    subprocess.run([
+        "cc", "-std=c11", "-DCJSON_NESTING_LIMIT=16", "-Wall", "-Wextra", "-Werror",
+        "-I" + str(main), "-I" + str(cjson), str(cjson / "cJSON.c"),
+        str(main / "ha_model.c"), str(tests / "ha_model_test.c"), "-o", binary,
+    ], check=True, timeout=60)
+    subprocess.run([binary], check=True, timeout=10)
+    binary = str(Path(directory) / "ha_service")
+    subprocess.run([
+        "cc", "-std=c11", "-DCJSON_NESTING_LIMIT=16", "-Wall", "-Wextra", "-Werror",
+        "-I" + str(tests / "ha_stubs"), "-I" + str(main), "-I" + str(cjson), str(cjson / "cJSON.c"),
+        str(main / "ha_model.c"), str(main / "ha_service.c"), str(tests / "ha_service_test.c"), "-o", binary,
+    ], check=True, timeout=60)
+    subprocess.run([binary], check=True, timeout=10)
 print("PASS host logic only; display, touch, audible sound and power loss require device checks")

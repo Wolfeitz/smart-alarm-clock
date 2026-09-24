@@ -1,4 +1,6 @@
 #include "weather_service.h"
+#include "network_http.h"
+#include "ha_service.h"
 #include "timezone_rules.h"
 #include "diagnostics.h"
 #include "clock_service.h"
@@ -98,27 +100,10 @@ static esp_err_t connect_wifi(void)
     if(!radio_started){err=esp_wifi_start();if(err!=ESP_OK)return err;radio_started=true;}
     return esp_wifi_connect();
 }
-typedef struct {char *data;size_t size;bool overflow;int64_t deadline;} response_t;
-static esp_err_t http_event(esp_http_client_event_t *event)
-{
-    response_t *r=event->user_data;
-    if(esp_timer_get_time()>r->deadline)return ESP_ERR_TIMEOUT;
-    if(event->event_id==HTTP_EVENT_ON_DATA){
-        if(event->data_len<0||r->size+(size_t)event->data_len>WEATHER_JSON_LIMIT){r->overflow=true;return ESP_FAIL;}
-        memcpy(r->data+r->size,event->data,event->data_len);r->size+=event->data_len;r->data[r->size]=0;
-    }
-    return ESP_OK;
-}
 static bool fetch(const char *url,char *buffer,size_t *size)
 {
-    response_t response={.data=buffer,.deadline=esp_timer_get_time()+20000000};
-    esp_http_client_config_t config={.url=url,.crt_bundle_attach=esp_crt_bundle_attach,.timeout_ms=8000,
-        .event_handler=http_event,.user_data=&response,.disable_auto_redirect=true,.buffer_size=1024};
-    esp_http_client_handle_t client=esp_http_client_init(&config);if(!client)return false;
-    esp_err_t err=esp_http_client_perform(client);int http=esp_http_client_get_status_code(client);
-    bool ok=err==ESP_OK&&http==200&&!response.overflow;*size=response.size;
-    diagnostics_printf("WEATHER_HTTP status=%d result=%s bytes=%u\n",http,esp_err_to_name(err),(unsigned)response.size);
-    esp_http_client_cleanup(client);return ok;
+    int status=network_http_request(url,NULL,NULL,buffer,WEATHER_JSON_LIMIT+1,size);
+    diagnostics_printf("WEATHER_HTTP status=%d bytes=%u\n",status,(unsigned)*size);return status==200;
 }
 static bool update_weather(void)
 {
@@ -212,6 +197,7 @@ static void worker(void *arg)
         if(reason&&!online){char message[96];snprintf(message,sizeof(message),"Wi-Fi connection failed (%d); check password",reason);status(message);}
         if(online!=was_online){was_online=online;publish();if(online){status("Wi-Fi connected");weather_at=0;}}
         if(!online&&prefs.ssid[0]&&now>=retry){status("Wi-Fi unavailable; reconnecting...");esp_wifi_connect();retry=now+30000000;}
+        ha_service_poll(online);
         if(online&&now>=weather_at){
             if(clock_valid()){bool ok=update_weather();weather_at=esp_timer_get_time()+(ok?1800000000LL:60000000);}
             else{status("Waiting for network time...");weather_at=now+5000000;}
@@ -233,7 +219,7 @@ void weather_service_init(void)
         if(nvs_get_str(storage,"fallback_zone",prior,&length)==ESP_OK&&timezone_rule(prior))strcpy(active_zone,prior);
     }
     const char *rule=timezone_rule(active_zone);if(rule){setenv("TZ",rule,1);tzset();}
-    publish();status("Starting weather service...");
+    ha_service_init();publish();status("Starting weather service...");
     available=true;
     if(xTaskCreate(worker,"weather",8192,NULL,2,NULL)!=pdPASS){available=false;status("Weather task unavailable; clock works offline");}
 }

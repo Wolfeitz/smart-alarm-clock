@@ -6,6 +6,7 @@
 #include "board.h"
 #include "audio.h"
 #include "weather_service.h"
+#include "ha_service.h"
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "lvgl.h"
@@ -34,6 +35,9 @@ static weather_network_t shown_networks[WEATHER_NETWORK_COUNT],chosen_network;
 static lv_obj_t *weather_title,*weather_now,*weather_today,*weather_status,*zone_button;
 static lv_obj_t *network_password,*network_zip,*network_status,*keyboard;
 static void show_weather(lv_event_t *e);
+static void show_ha(lv_event_t *e);
+static bool ha_view,ha_editing,ha_error;
+static lv_obj_t *ha_name,*ha_state,*ha_status,*ha_toggle,*ha_url,*ha_entity,*ha_token;
 
 static lv_obj_t *label(lv_obj_t *parent,const char *text,int x,int y,int w,const lv_font_t *font)
 {
@@ -52,7 +56,7 @@ static void show_editor(void);
 static void show_time_editor(lv_event_t *e);
 static void reset_screen(void)
 {
-    settings_view=false;display_editing=false;display_pending=false;
+    settings_view=false;display_editing=false;display_pending=false;ha_view=false;ha_editing=false;ha_error=false;
     weather_view=false;network_editing=false;location_editing=false;wifi_listing=false;network_connecting=false;
     lv_obj_clean(root);lv_obj_set_style_bg_color(root,lv_color_hex(0x0b1119),0);
     lv_obj_remove_flag(root,LV_OBJ_FLAG_SCROLLABLE);
@@ -94,6 +98,7 @@ static void show_settings(lv_event_t *e)
     label(root,"Settings",10,15,460,&lv_font_montserrat_20);
     button(root,"Time & date",80,75,320,show_time_editor,NULL);
     button(root,"Display & night mode",80,135,320,show_display,NULL);
+    button(root,"Home Assistant",80,195,320,show_ha,NULL);
     button(root,"Clock",150,260,180,go_home,NULL);
 }
 static void save_display(lv_event_t *e)
@@ -228,6 +233,51 @@ static lv_obj_t *network_field(const char *caption,const char *text,int y,unsign
     lv_textarea_set_one_line(o,true);lv_textarea_set_max_length(o,max);lv_textarea_set_password_mode(o,secret);
     lv_textarea_set_text(o,text);lv_obj_add_event_cb(o,field_focus,LV_EVENT_CLICKED,NULL);return o;
 }
+static void ha_save(lv_event_t *e)
+{
+    (void)e;bool ok=ha_service_configure(lv_textarea_get_text(ha_url),lv_textarea_get_text(ha_token),lv_textarea_get_text(ha_entity));
+    ha_error=!ok;
+    if(ok){lv_textarea_set_text(ha_token,"");show_ha(NULL);}
+    else lv_label_set_text(ha_status,"Check URL / light entity, or try again when idle");
+}
+static void ha_setup(lv_event_t *e)
+{
+    (void)e;ha_snapshot_t s;ha_service_snapshot(&s);reset_screen();ha_editing=true;
+    label(root,"Home Assistant setup",10,5,460,&lv_font_montserrat_20);
+    ha_url=network_field("Server",s.endpoint,34,191,false);
+    ha_entity=network_field("Light",s.entity,80,95,false);
+    ha_token=network_field("Token","",126,511,true);
+    lv_textarea_set_password_show_time(ha_token,0);
+    lv_textarea_set_placeholder_text(ha_entity,"light.bedside");
+    lv_textarea_set_placeholder_text(ha_token,s.configured?"Blank keeps saved token":"Long-lived access token");
+    ha_status=label(root,"Use the server address, without a dashboard path",10,181,460,&lv_font_montserrat_16);
+    button(root,"Cancel",40,260,180,show_ha,NULL);button(root,"Save",260,260,180,ha_save,NULL);
+    keyboard=lv_keyboard_create(root);lv_obj_set_size(keyboard,480,130);lv_obj_align(keyboard,LV_ALIGN_BOTTOM_MID,0,0);
+    lv_obj_add_flag(keyboard,LV_OBJ_FLAG_HIDDEN);lv_obj_add_event_cb(keyboard,keyboard_event,LV_EVENT_ALL,NULL);
+}
+static void ha_switch(lv_event_t *e)
+{
+    (void)e;ha_error=!ha_service_toggle();
+    if(ha_error)lv_label_set_text(ha_status,"Wait for a fresh light state, then try again");
+}
+static void ha_refresh(lv_event_t *e)
+{
+    (void)e;ha_error=!ha_service_refresh();
+    if(ha_error)lv_label_set_text(ha_status,"Request in progress");
+}
+static void show_ha(lv_event_t *e)
+{
+    (void)e;editing=false;time_editing=false;reset_screen();ha_view=true;
+    label(root,"Home Assistant",10,12,320,&lv_font_montserrat_20);
+    button(root,"Setup",350,8,115,ha_setup,NULL);
+    ha_name=label(root,"Bedside light",15,75,450,&lv_font_montserrat_20);
+    ha_state=label(root,"Not connected",15,110,450,&lv_font_montserrat_20);
+    ha_status=label(root,"",15,165,450,&lv_font_montserrat_16);
+    button(root,"Back",15,260,140,show_settings,NULL);
+    ha_toggle=button(root,"Turn on",170,260,140,ha_switch,NULL);
+    lv_obj_add_state(ha_toggle,LV_STATE_DISABLED);
+    button(root,"Refresh",325,260,140,ha_refresh,NULL);
+}
 static void show_network(lv_event_t *e);
 static void save_network(lv_event_t *e)
 {
@@ -355,6 +405,17 @@ void clock_ui_update(void)
         }
         return;
     }
+    if(ha_editing)return;
+    if(ha_view){
+        ha_snapshot_t h;ha_service_snapshot(&h);
+        lv_label_set_text(ha_name,h.light.name[0]?h.light.name:h.entity[0]?h.entity:"Choose a light in Setup");
+        lv_label_set_text(ha_state,!h.configured?"Not configured":!h.fresh?"State unavailable":h.light.state==HA_ON?"On":h.light.state==HA_OFF?"Off":"Unavailable");
+        if(!ha_error)lv_label_set_text(ha_status,h.status);
+        lv_label_set_text(lv_obj_get_child(ha_toggle,0),h.light.state==HA_ON?"Turn off":"Turn on");
+        if(h.configured&&h.fresh&&!h.busy&&(h.light.state==HA_ON||h.light.state==HA_OFF))lv_obj_remove_state(ha_toggle,LV_STATE_DISABLED);
+        else lv_obj_add_state(ha_toggle,LV_STATE_DISABLED);
+        return;
+    }
     if(settings_view)return;
     if(weather_view||network_editing||location_editing){
         weather_snapshot_t w;weather_service_snapshot(&w);
@@ -431,7 +492,7 @@ static void dropdown_diagnostics(const char *name,lv_obj_t *o)
 }
 void clock_ui_diagnostics(void)
 {
-    diagnostics_printf("UI_SCREEN name=%s overlay=%u pending=%u\n",display_editing?"display":settings_view?"settings":location_editing?"location":network_editing?"network":weather_view?"weather":time_editing?"time":editing?"alarm":"home",overlay!=NULL,pending);
+    diagnostics_printf("UI_SCREEN name=%s overlay=%u pending=%u\n",ha_editing?"ha_setup":ha_view?"ha":display_editing?"display":settings_view?"settings":location_editing?"location":network_editing?"network":weather_view?"weather":time_editing?"time":editing?"alarm":"home",overlay!=NULL,pending);
     if(weather_view||network_editing||location_editing){weather_snapshot_t w;weather_service_snapshot(&w);
         diagnostics_printf("WEATHER_STATE online=%u valid=%u fresh=%u zip=%s zone=%s status=%s\n",w.connected,w.has_data,w.has_data&&weather_fresh(&w.data,time(NULL)),w.zip,w.location.timezone,w.status);
     }

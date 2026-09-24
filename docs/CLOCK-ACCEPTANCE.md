@@ -5,9 +5,9 @@ current/day forecast, network time/RTC sync and dark home/weather UI. Owner acce
 the clear local tone provisionally; desired alarm loudness may need later hardware
 or external playback improvements.
 
-Owner expanded scope to weather/location; Home Assistant and Spotify remain future
-integrations. Last audit2026-09-24. Installed application SHA256:
-`ec31e7d815448459c8e74d2c553fc383d2c341759f8b4fab9e31a2224a166128`.
+Owner expanded scope to weather/location and continued integration development.
+Home Assistant light setup/control is installed; authenticated operation is pending. Last audit2026-09-24. Installed application SHA256:
+`04e749a08a00cb0809a73fe1f13de353a1ad2dbb14f5692917fbd35757ce9a0b`.
 
 | Requirement | Evidence | Status |
 |---|---|---|
@@ -43,7 +43,7 @@ The current UI remains a proof of concept; visual redesign is deferred.
 ## Current evidence refresh (2026-09-24)
 
 Rechecked the retained night-mode binary SHA256 against the installed-image receipt;
-it matches the hash above. No new flash or board reset was performed during this
+it matched the night-mode installation receipt (ec31e7d8…). No new flash or board reset was performed during this
 audit. Historical recovery-fourth-summary.log explicitly reports ringing, snooze,
 brightness and dismissal reset checks; snooze-duration-summary.log covers the real
 five-minute interval. These receipts apply to the recorded firmware revisions,
@@ -57,3 +57,7 @@ during running snooze, and durable dismissal. All eight host suites pass. This
 closes a host integration coverage gap; it does not establish physical power-loss
 behavior or NVS writes interrupted by power loss. Physical alarm controls remain
 pending; further full-power tests remain deferred by owner. Goal not complete.
+
+Owner correction: physical acceptance is batched after integrated functionality,
+not a prerequisite to continue development. HA update runtime/navigation checks
+passed without physical input; see WORK for installed image and evidence.

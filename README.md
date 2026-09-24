@@ -66,3 +66,5 @@ README and SETUP for commands and recovery.
 
 Weather setup and interfaces: [docs/WEATHER.md](docs/WEATHER.md).
 Reusable upstream projects: [docs/REUSE-REVIEW.md](docs/REUSE-REVIEW.md).
+
+Home Assistant connection and credential handling: [docs/HOME-ASSISTANT.md](docs/HOME-ASSISTANT.md).

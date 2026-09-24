@@ -3,12 +3,23 @@
 #include "clock_ui.h"
 #include "alarm_service.h"
 #include "weather_service.h"
+#include "ha_service.h"
 #include "clock_service.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 #include <assert.h>
+static ha_snapshot_t ha_state={.endpoint="http://192.168.1.232:8123",.status="Set up Home Assistant"};
+void ha_service_snapshot(ha_snapshot_t *s){*s=ha_state;}
+bool ha_service_configure(const char *url,const char *token,const char *entity){
+    assert(!strcmp(token,"synthetic-preview-token"));
+    snprintf(ha_state.endpoint,sizeof(ha_state.endpoint),"%s",url);
+    snprintf(ha_state.entity,sizeof(ha_state.entity),"%s",entity);
+    ha_state.configured=true;ha_state.fresh=true;ha_state.light.state=HA_OFF;return true;
+}
+bool ha_service_toggle(void){ha_state.light.state=ha_state.light.state==HA_ON?HA_OFF:HA_ON;return true;}
+bool ha_service_refresh(void){return true;}
 static uint16_t pixels[480*320];
 static uint32_t ticks;
 static bool has_weather,backlight_dim;
@@ -67,7 +78,28 @@ int main(int argc,char **argv)
     static uint16_t buffer[480*40];lv_display_set_buffers(d,buffer,NULL,sizeof(buffer),LV_DISPLAY_RENDER_MODE_PARTIAL);lv_display_set_flush_cb(d,flush);
     clock_ui_init();advance();
     if(argc>3){
-        if(!strcmp(argv[3],"display")){click_text(lv_screen_active(),"Settings");advance();click_text(lv_screen_active(),"Display & night mode");advance();}
+        if(!strcmp(argv[3],"ha")||!strcmp(argv[3],"ha-setup")||!strcmp(argv[3],"ha-test")){
+            click_text(lv_screen_active(),"Settings");advance();click_text(lv_screen_active(),"Home Assistant");advance();
+            if(strcmp(argv[3],"ha")){
+                click_text(lv_screen_active(),"Setup");advance();
+                if(!strcmp(argv[3],"ha-test")){
+                    lv_obj_t *fields[3]={0};unsigned n=0;
+                    for(unsigned i=0;i<lv_obj_get_child_count(lv_screen_active());i++){
+                        lv_obj_t *o=lv_obj_get_child(lv_screen_active(),i);
+                        if(lv_obj_check_type(o,&lv_textarea_class)){assert(n<3);fields[n++]=o;}
+                    }
+                    assert(n==3&&lv_textarea_get_password_mode(fields[2]));
+                    lv_textarea_set_text(fields[1],"light.bedside");lv_textarea_set_text(fields[2],"synthetic-preview-token");
+                    click_text(lv_screen_active(),"Save");advance();
+                    assert(ha_state.configured&&ha_state.light.state==HA_OFF);
+                    click_text(lv_screen_active(),"Turn on");advance();assert(ha_state.light.state==HA_ON);
+                    click_text(lv_screen_active(),"Turn off");advance();assert(ha_state.light.state==HA_OFF);
+                    for(unsigned i=0;i<lv_obj_get_child_count(lv_screen_active());i++)assert(!lv_obj_check_type(lv_obj_get_child(lv_screen_active(),i),&lv_textarea_class));
+                    puts("PASS HA setup secret field, save exit and observed-state toggle UI");
+                }
+            }
+        }
+        else if(!strcmp(argv[3],"display")){click_text(lv_screen_active(),"Settings");advance();click_text(lv_screen_active(),"Display & night mode");advance();}
         else {click_text(lv_screen_active(),"Weather");advance();}
         if(!strcmp(argv[3],"wifi")||!strcmp(argv[3],"connect")){
             click_text(lv_screen_active(),"Wi-Fi");advance();

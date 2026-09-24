@@ -1020,3 +1020,40 @@ Physical-control confirmation is still unanswered and full-power testing remains
 owner-deferred; this is the second consecutive resumed goal turn encountering
 that completion blocker. Offline regression/evidence work is saved separately
 from unfinished integration source. No Git remote exists for publication.
+
+Third consecutive resumed goal audit2026-09-24: same remaining blocker confirmed.
+Prior turn made progress by revalidating recovery bytes and committing tests; no
+physical-control answer or revised power-test authorization has arrived. Current
+acceptance record does not prove full power-loss behavior or final physical alarm
+controls. Available software checks cannot supply that evidence. Mark goal blocked
+on physical confirmation and deferred power tests, not complete. Installed image
+is unchanged; no additional reset/flash or HA installation performed.
+
+## Owner correction: continue development, batch physical acceptance (2026-09-24)
+
+Owner explicitly rejects physical testing as a gate between partial features.
+Continue authorized application development, including existing-Pi Home Assistant
+integration; batch extensive physical acceptance after functional integration.
+The older goal's integration deferral no longer governs this development sequence.
+Do not repeatedly request partial-feature checks. No HA installation, Pi changes,
+or full power-off testing. Finish device setup and observed light-state controls,
+host/service failure checks, preview and firmware build before identifying genuine
+external credential needs. Existing independent local alarm behavior is retained.
+
+HA light adapter delivered2026-09-24: Settings → Home Assistant → Setup/control,
+owner-provided Pi address prefilled, immediate masked token, private NVS, actual
+entity GET and explicit on/off POST followed by confirmation. Shared bounded HTTP
+worker keeps network out of UI/alarm owners. Host service tests cover queued work,
+HTTP200 with unchanged state, confirmation timeout even when later reads fail,
+auth/offline/stale state, blank-token endpoint binding and failed config retention.
+All10 host suites pass. Actual LVGL ha-test passes; setup render inspected.
+IDF6.1 build passes, app1769664bytes; app-only flash verified. Installed SHA256:
+04e749a08a00cb0809a73fe1f13de353a1ad2dbb14f5692917fbd35757ce9a0b.
+Automated on-device navigation passed home/settings/ha/ha_setup/back/home. RTCvalid,
+clock/RTC within1second, alarm storageESP_OK, weatherHTTP200731bytes, heap88924
+stable across observed heartbeats. No credentials entered, no light command sent,
+no Pi configuration changes and no full power-off testing. Receipts: ha-build.log,
+ha-flash.log, ha-runtime.log under local-config/clock. Real authenticated HA needs
+an actual token/entity; this does not block continuing unrelated application work.
+Do not request owner testing after this partial feature. Batch physical acceptance
+when functionality is integrated, per explicit owner correction.

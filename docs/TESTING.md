@@ -138,3 +138,8 @@ owner until regular functionality is complete; do not request or run them meanwh
 The host runner also tests a complete encoded-settings alarm restart path in
 `alarm_restart_test.c`, including once consumption, snooze expiry boundaries and
 dismissal. Simulated byte persistence does not prove NVS power-failure atomicity.
+
+HA host checks compile the production service against synthetic queue/NVS/HTTP
+boundaries: rejected duplicate requests, state confirmation, HTTP200 without a
+change, failure expiry, authentication failure, stale/offline state, and failed
+configuration retaining the prior endpoint/entity. No real HA credentials needed.
