@@ -1457,3 +1457,19 @@ edit failure preserves the original07:00 alarm and matching failure ticket; a
 subsequent08:00 edit succeeds and is persisted. All existing host suites pass.
 Only test/docs changed; no flash, reset, credentials or user settings touched.
 This closes owner-loop fault coverage, not physical power-loss/acoustic acceptance.
+
+## Offline-goal completion audit and dependency (2026-09-24)
+
+Rechecked repository state, installed-image hash against installation receipt, and
+backend-runtime evidence. Offline clock features are implemented; sound/display/
+touch have owner observations, while scheduling, persistence, MCU recovery and
+network-independent execution have the scoped device/host receipts above. Latest
+owner-task fault tests add storage-failure coverage without a firmware change.
+The physical-control/full-power-loss acceptance gap has remained across successive
+goal continuations and is explicitly owner-deferred until combined functionality
+is ready. No new independent software defect or required offline-core implementation
+step is identified by this audit. Another duplicate test or audit cannot prove
+those physical outcomes. The narrow offline goal is therefore blocked on deferred
+acceptance, not complete. Preserve the installed application and no-power-off
+instruction. Broader project work (remote-alarm behavior and final visual polish)
+is still unfinished and is not claimed complete by this goal audit.
