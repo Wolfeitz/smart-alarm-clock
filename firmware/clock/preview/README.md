@@ -31,3 +31,14 @@ local-config/clock/preview-build/clock_preview /tmp/night-check.ppm weather nigh
 The latter asserts immediate touch wake,30-second expiry and ringing priority
 through actual clock_ui callbacks with a stubbed backlight; it is not a physical
 brightness measurement.
+
+Alarm overview and edit/cancel navigation check:
+
+```sh
+local-config/clock/preview-build/clock_preview /tmp/alarms.ppm weather alarms
+local-config/clock/preview-build/clock_preview /tmp/alarms-test.ppm weather alarms-test
+```
+
+The latter selects Alarm8, changes its hour through the actual editor, saves and
+returns to the overview, verifies the other seven slots remain unchanged, and
+checks Cancel navigation. Preview persistence is synthetic, not an NVS test.

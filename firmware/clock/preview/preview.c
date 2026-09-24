@@ -80,7 +80,30 @@ int main(int argc,char **argv)
     static uint16_t buffer[480*40];lv_display_set_buffers(d,buffer,NULL,sizeof(buffer),LV_DISPLAY_RENDER_MODE_PARTIAL);lv_display_set_flush_cb(d,flush);
     clock_ui_init();advance();
     if(argc>3){
-        if(!strcmp(argv[3],"ha")||!strcmp(argv[3],"ha-setup")||!strcmp(argv[3],"ha-test")){
+        if(!strcmp(argv[3],"alarms")||!strcmp(argv[3],"alarms-test")){
+            alarm_state.settings.alarms[0].enabled=true;alarm_state.settings.alarms[0].weekdays=62;
+            click_text(lv_screen_active(),"Alarms");advance();
+            lv_obj_t *list=lv_obj_get_child(lv_screen_active(),1);assert(lv_obj_get_child_count(list)==ALARM_COUNT);
+            if(!strcmp(argv[3],"alarms-test")){
+                alarm_config_t before[ALARM_COUNT];memcpy(before,alarm_state.settings.alarms,sizeof(before));
+                lv_obj_send_event(lv_obj_get_child(list,7),LV_EVENT_CLICKED,NULL);advance();
+                lv_obj_t *hour=NULL;unsigned dropdowns=0;
+                for(unsigned i=0;i<lv_obj_get_child_count(lv_screen_active());i++){
+                    lv_obj_t *o=lv_obj_get_child(lv_screen_active(),i);
+                    if(lv_obj_check_type(o,&lv_dropdown_class)){if(dropdowns++==1)hour=o;}
+                }
+                assert(hour);lv_dropdown_set_selected(hour,9);click_text(lv_screen_active(),"Save");advance();
+                assert(alarm_state.settings.alarms[7].hour==9);
+                assert(!memcmp(before,alarm_state.settings.alarms,7*sizeof(alarm_config_t)));
+                list=lv_obj_get_child(lv_screen_active(),1);assert(lv_obj_get_child_count(list)==ALARM_COUNT);
+                lv_obj_send_event(lv_obj_get_child(list,0),LV_EVENT_CLICKED,NULL);advance();
+                click_text(lv_screen_active(),"Cancel");advance();
+                assert(!memcmp(before,alarm_state.settings.alarms,7*sizeof(alarm_config_t)));
+                assert(lv_obj_get_child_count(lv_obj_get_child(lv_screen_active(),1))==ALARM_COUNT);
+                puts("PASS alarm overview: eight rows, slot8 save, other slots preserved, cancel return");
+            }
+        }
+        else if(!strcmp(argv[3],"ha")||!strcmp(argv[3],"ha-setup")||!strcmp(argv[3],"ha-test")){
             click_text(lv_screen_active(),"Settings");advance();click_text(lv_screen_active(),"Home Assistant");advance();
             if(strcmp(argv[3],"ha")){
                 click_text(lv_screen_active(),"Setup");advance();

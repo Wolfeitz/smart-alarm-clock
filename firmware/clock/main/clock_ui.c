@@ -18,7 +18,9 @@ static lv_obj_t *home_place,*home_temperature,*home_forecast;
 static lv_obj_t *slot,*hours,*minutes,*repeat,*enabled,*days[7],*year,*month,*day,*edit_status,*overlay,*overlay_detail;
 static alarm_config_t draft;
 static unsigned index_selected;
-static bool editing,pending,time_editing;
+static bool editing,pending,time_editing,alarm_list_view;
+static lv_obj_t *alarm_rows[ALARM_COUNT];
+static void show_alarms(lv_event_t *e);
 static lv_obj_t *time_year,*time_month,*time_day,*time_hour,*time_minute,*time_status;
 static uint32_t pending_ticket;
 static uint8_t applied_brightness;
@@ -56,13 +58,46 @@ static void show_editor(void);
 static void show_time_editor(lv_event_t *e);
 static void reset_screen(void)
 {
-    settings_view=false;display_editing=false;display_pending=false;ha_view=false;ha_editing=false;ha_error=false;
+    alarm_list_view=false;settings_view=false;display_editing=false;display_pending=false;ha_view=false;ha_editing=false;ha_error=false;
     weather_view=false;network_editing=false;location_editing=false;wifi_listing=false;network_connecting=false;
     lv_obj_clean(root);lv_obj_set_style_bg_color(root,lv_color_hex(0x0b1119),0);
     lv_obj_remove_flag(root,LV_OBJ_FLAG_SCROLLABLE);
 }
 static void go_home(lv_event_t *e){(void)e;home();}
-static void go_editor(lv_event_t *e){(void)e;index_selected=0;show_editor();}
+static void select_alarm(lv_event_t *e)
+{index_selected=(unsigned)(uintptr_t)lv_event_get_user_data(e);show_editor();}
+static void update_alarm_rows(const alarm_snapshot_t *s)
+{
+    for(unsigned i=0;i<ALARM_COUNT;i++){
+        const alarm_config_t *a=&s->settings.alarms[i];char schedule[64]={0},text[128];
+        if(!a->weekdays)snprintf(schedule,sizeof(schedule),"Once: %04u-%02u-%02u",(unsigned)(a->once_date/10000),(unsigned)(a->once_date/100%100),(unsigned)(a->once_date%100));
+        else if(a->weekdays==127)strcpy(schedule,"Every day");
+        else if(a->weekdays==62)strcpy(schedule,"Weekdays");
+        else if(a->weekdays==65)strcpy(schedule,"Weekends");
+        else{
+            const char *names[]={"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};size_t n=0;
+            for(unsigned d=0;d<7;d++)if(a->weekdays&(1u<<d))n+=snprintf(schedule+n,sizeof(schedule)-n,"%s%s",n?" ":"",names[d]);
+        }
+        snprintf(text,sizeof(text),"%u   %02u:%02u   %s\n%s",i+1,a->hour,a->minute,a->enabled?"ON":"OFF",schedule);
+        lv_label_set_text(alarm_rows[i],text);
+    }
+}
+static void show_alarms(lv_event_t *e)
+{
+    (void)e;editing=false;time_editing=false;pending=false;reset_screen();alarm_list_view=true;
+    label(root,"Alarms",15,12,450,&lv_font_montserrat_20);
+    lv_obj_t *list=lv_obj_create(root);lv_obj_set_pos(list,15,52);lv_obj_set_size(list,450,198);
+    lv_obj_set_style_pad_all(list,6,0);lv_obj_set_style_border_width(list,0,0);
+    lv_obj_set_style_bg_color(list,lv_color_hex(0x0b1119),0);
+    lv_obj_set_scroll_dir(list,LV_DIR_VER);
+    for(unsigned i=0;i<ALARM_COUNT;i++){
+        lv_obj_t *row=button(list,"",0,i*72,422,select_alarm,(void *)(uintptr_t)i);lv_obj_set_height(row,64);
+        alarm_rows[i]=lv_obj_get_child(row,0);lv_obj_set_width(alarm_rows[i],394);
+        lv_obj_set_style_text_align(alarm_rows[i],LV_TEXT_ALIGN_LEFT,0);lv_obj_center(alarm_rows[i]);
+    }
+    button(root,"Clock",150,261,180,go_home,NULL);
+    alarm_snapshot_t s;alarm_service_snapshot(&s);update_alarm_rows(&s);
+}
 static void sound(lv_event_t *e)
 {
     bool accepted=audio_test();lv_obj_t *button=lv_event_get_target(e);
@@ -166,7 +201,7 @@ static void show_editor(void)
     lv_dropdown_set_selected(year,date/10000-2000);lv_dropdown_set_selected(month,date/100%100-1);lv_dropdown_set_selected(day,date%100-1);
     lv_obj_add_event_cb(repeat,repeat_changed,LV_EVENT_VALUE_CHANGED,NULL);repeat_changed(NULL);
     edit_status=label(root,"24-hour time  /  select days or a date",15,211,450,&lv_font_montserrat_16);
-    button(root,"Cancel",50,260,160,go_home,NULL);button(root,"Save",270,260,160,save,NULL);
+    button(root,"Cancel",50,260,160,show_alarms,NULL);button(root,"Save",270,260,160,save,NULL);
 }
 static void save_time(lv_event_t *e)
 {
@@ -216,7 +251,7 @@ static void home(void)
     lv_obj_set_style_text_color(home_temperature,lv_color_hex(0x9edbd2),0);
     home_forecast=label(card,"Set up Wi-Fi\nfor weather",4,107,147,&lv_font_montserrat_16);
     lv_obj_t *b=button(root,"Dim",15,261,140,dim,NULL);dim_text=lv_obj_get_child(b,0);
-    button(root,"Alarms",170,261,140,go_editor,NULL);button(root,"Weather",325,261,140,show_weather,NULL);
+    button(root,"Alarms",170,261,140,show_alarms,NULL);button(root,"Weather",325,261,140,show_weather,NULL);
 }
 static void keyboard_event(lv_event_t *e)
 {
@@ -409,6 +444,7 @@ void clock_ui_update(void)
         }
         return;
     }
+    if(alarm_list_view){update_alarm_rows(&s);return;}
     if(ha_editing)return;
     if(ha_view){
         ha_snapshot_t h;ha_service_snapshot(&h);
@@ -459,7 +495,7 @@ void clock_ui_update(void)
     if(editing){
         if(pending && s.save_ticket==pending_ticket){
             pending=false;
-            if(s.save_status==ESP_OK)home();
+            if(s.save_status==ESP_OK)show_alarms(NULL);
             else lv_label_set_text(edit_status,"Save failed - settings unchanged");
         }
         return;
@@ -496,7 +532,7 @@ static void dropdown_diagnostics(const char *name,lv_obj_t *o)
 }
 void clock_ui_diagnostics(void)
 {
-    diagnostics_printf("UI_SCREEN name=%s overlay=%u pending=%u\n",ha_editing?"ha_setup":ha_view?"ha":display_editing?"display":settings_view?"settings":location_editing?"location":network_editing?"network":weather_view?"weather":time_editing?"time":editing?"alarm":"home",overlay!=NULL,pending);
+    diagnostics_printf("UI_SCREEN name=%s overlay=%u pending=%u\n",alarm_list_view?"alarms":ha_editing?"ha_setup":ha_view?"ha":display_editing?"display":settings_view?"settings":location_editing?"location":network_editing?"network":weather_view?"weather":time_editing?"time":editing?"alarm":"home",overlay!=NULL,pending);
     if(weather_view||network_editing||location_editing){weather_snapshot_t w;weather_service_snapshot(&w);
         diagnostics_printf("WEATHER_STATE online=%u valid=%u fresh=%u zip=%s zone=%s status=%s\n",w.connected,w.has_data,w.has_data&&weather_fresh(&w.data,time(NULL)),w.zip,w.location.timezone,w.status);
     }

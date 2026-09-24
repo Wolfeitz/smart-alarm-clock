@@ -1111,3 +1111,26 @@ alarm storageESP_OK, weatherHTTP200731bytes, heap88936. No power-off or physical
 interaction requested. Host failures cover HA resource/worker behavior, not real
 radio or whole-device OOM injection. Receipts: network-isolation-build.log,
 network-isolation-flash.log, network-isolation-runtime.log.
+
+## Alarm overview (2026-09-24)
+
+Next regular offline workflow: replace home Alarms opening slot1 directly with a
+scrollable eight-alarm overview. Show time, enabled state and recurrence/date;
+select a row to edit that slot. Save returns only after the existing persistence
+acknowledgment; Cancel returns without saving. Keep current editor controls and
+local alarm overlay. Acceptance: actual LVGL preview selects/edits slot8, verifies
+other slots unchanged and return-to-list on Save/Cancel; render check, build and
+automatic device navigation. No new settings schema or physical acceptance gate.
+
+Alarm overview installed: eight scrollable rows show24-hour time, ON/OFF and
+weekday/once-date summary; each opens its corresponding editor. Acknowledged Save
+and Cancel return to the overview. Existing dropdown remains available within the
+editor. Host actual-UI slot8 edit/save, seven other slots preserved, Cancel return
+passed;480x320 render inspected. IDF6.1 build and app-only flash verified1770704
+bytes, SHA25699d609f26851af785f7604452932c8a11e7408b77b37fea6f5fc8b7648d57225.
+On-device automated home/alarms/editor/cancel/alarms/home passed. All8 saved alarm
+records compared identical before/after; storageESP_OK, RTC/systemequal, heap88892
+stable, weatherHTTP200731bytes. No physical interaction or full-power test needed.
+Receipts: alarm-list-preview-build.log, alarm-list-build.log, alarm-list-flash.log,
+alarm-list-runtime.log. This adds normal alarm-management functionality without
+changing persistence schema or requiring another owner acceptance interruption.
