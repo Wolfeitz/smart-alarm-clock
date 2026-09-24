@@ -25,6 +25,7 @@ uint32_t alarm_date(const struct tm *local);
 /* Returns a bitmask of occurrences consumed: persist before starting sound. */
 uint8_t alarm_tick(alarm_engine_t *engine,time_t epoch,bool valid,uint64_t mono_ms);
 uint8_t alarm_ringing(const alarm_engine_t *engine);
+uint32_t alarm_snooze_seconds(const alarm_engine_t *engine,uint64_t mono_ms);
 void alarm_snooze(alarm_engine_t *engine,uint64_t mono_ms);
 void alarm_dismiss(alarm_engine_t *engine);
 void alarm_cancel(alarm_engine_t *engine,unsigned index);

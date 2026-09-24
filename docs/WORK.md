@@ -1290,3 +1290,26 @@ snoozed phase/deadline and brightness exactly. Invalid settings are rejected bef
 another NVS write. All existing host suites also pass. No production firmware
 change, flash, board restart or physical test was performed; installed27c3bad image
 remains. This adds adapter-level evidence, not simulated physical flash atomicity.
+
+## Monotonic snooze countdown (2026-09-24)
+
+Storage-failure messages already exist in editor/home. Review found snooze UI derives
+remaining seconds from persisted wall-clock deadlines while execution uses monotonic
+time. Publish remaining seconds from the alarm owner's runtime instead; keep wall
+clock deadlines solely for restart recovery. Acceptance: ceiling at partial seconds,
+earliest simultaneous snooze, zero after expiry/dismissal, countdown independent of
+wall-clock changes, actual UI renders supplied remaining time. No settings migration.
+
+Monotonic countdown installed: host engine boundaries and actual-LVGL Snooze05:00
+assertion pass; all host suites pass. Initial preview build exposed a nonexistent
+test helper; replaced with actual overlay-label assertion and rebuild passed.
+IDF6.1 build/application-only flash1780800bytes verified; SHA256:
+0506972d800f56648ce0bb1a789e0ca57548b8b9c6698bbba85aa6fdd893eed8.
+On-device startup uses RTC, system/RTC within1second, storageESP_OK, heap81512stable;
+automated settings/media/setup/cancel/home navigation preserves all8 alarm records.
+No power-off or physical test request. Receipts: snooze-preview-build.log,
+snooze-build.log, snooze-flash.log and snooze-runtime.log under local-config/clock.
+The reused navigation helper also overwrote media-runtime.log with this run; the
+older media-runtime receipt is no longer independently available at that path.
+New countdown behavior is verified in host/runtime-model and actual-LVGL preview,
+not a new five-minute physical snooze test. Full-power-loss checks remain deferred.

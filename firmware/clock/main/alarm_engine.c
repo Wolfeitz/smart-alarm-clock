@@ -92,3 +92,14 @@ alarm_config_t alarm_merge_edit(const alarm_config_t *old,const alarm_config_t *
     result.consumed_date=same?old->consumed_date:0;
     return result;
 }
+
+uint32_t alarm_snooze_seconds(const alarm_engine_t *e,uint64_t ms)
+{
+    uint64_t remaining=UINT64_MAX;
+    for(unsigned i=0;i<ALARM_COUNT;i++)if(e->runtime[i].phase==ALARM_SNOOZED){
+        uint64_t delta=e->runtime[i].deadline_ms>ms?e->runtime[i].deadline_ms-ms:0;
+        if(delta<remaining)remaining=delta;
+    }
+    if(remaining==UINT64_MAX)return 0;
+    return (uint32_t)(remaining/1000+(remaining%1000!=0));
+}

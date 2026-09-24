@@ -44,7 +44,7 @@ void diagnostics_printf(const char *format,...){(void)format;}
 void alarm_service_snapshot(alarm_snapshot_t *s){*s=alarm_state;}
 uint32_t alarm_service_save_tracked(unsigned i,const alarm_config_t *a){alarm_state.settings.alarms[i]=*a;alarm_state.save_ticket++;return alarm_state.save_ticket;}
 bool alarm_service_brightness(uint8_t b){alarm_state.settings.brightness=b;return true;}
-bool alarm_service_snooze(void){alarm_state.snoozed=alarm_state.ringing;alarm_state.ringing=0;return true;}
+bool alarm_service_snooze(void){alarm_state.snooze_seconds=300;alarm_state.snoozed=alarm_state.ringing;alarm_state.ringing=0;return true;}
 bool alarm_service_dismiss(void){alarm_state.ringing=0;alarm_state.snoozed=0;return true;}
 void board_brightness(bool dim){backlight_dim=dim;}
 static esp_err_t audio_error;
@@ -180,7 +180,7 @@ int main(int argc,char **argv)
         assert(warning);alarm_state.ringing=1;advance();
         lv_obj_t *overlay=lv_obj_get_child(lv_layer_top(),0);assert(overlay);
         assert(!strcmp(lv_label_get_text(lv_obj_get_child(overlay,0)),"Audio error"));
-        click_text(overlay,"Snooze 5 min");advance();assert(!alarm_state.ringing&&alarm_state.snoozed);
+        click_text(overlay,"Snooze 5 min");advance();assert(!alarm_state.ringing&&alarm_state.snoozed);assert(!strcmp(lv_label_get_text(lv_obj_get_child(overlay,1)),"Rings again in 05:00"));
         click_text(overlay,"Dismiss");advance();assert(!alarm_state.snoozed);
         assert(lv_obj_get_child_count(lv_layer_top())==0);
         puts("PASS audio fault visible; local snooze and dismiss remain operable");

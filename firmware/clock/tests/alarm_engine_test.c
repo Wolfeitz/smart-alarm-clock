@@ -50,5 +50,16 @@ int main(void)
     assert(alarm_tick(&e,now+300,true,20)==1);alarm_dismiss(&e);
     edit=e.alarms[0];edit.once_date=20260925;
     e.alarms[0]=alarm_merge_edit(&e.alarms[0],&edit);assert(alarm_tick(&e,now+300,true,30)==0);
+    alarm_engine_t countdown={0};
+    assert(alarm_snooze_seconds(&countdown,0)==0);
+    countdown.runtime[0]=(alarm_runtime_t){ALARM_RINGING,999};
+    alarm_snooze(&countdown,500);
+    assert(alarm_snooze_seconds(&countdown,500)==300);
+    assert(alarm_snooze_seconds(&countdown,501)==300);
+    assert(alarm_snooze_seconds(&countdown,1500)==299);
+    countdown.runtime[1]=(alarm_runtime_t){ALARM_SNOOZED,2500};
+    assert(alarm_snooze_seconds(&countdown,1501)==1);
+    assert(alarm_snooze_seconds(&countdown,2500)==0);
+    alarm_dismiss(&countdown);assert(alarm_snooze_seconds(&countdown,0)==0);
     puts("PASS alarm triggers, invalid time, weekdays/once, grace window, DST, duplicates, snooze, dismiss, timeout, simultaneous alarms");
 }

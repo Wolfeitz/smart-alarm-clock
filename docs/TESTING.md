@@ -198,3 +198,8 @@ propagation, no commit after write failure, rejection of invalid settings before
 writing, and encoded equality after reloading an alarm with active snooze metadata.
 The fake NVS is not a flash emulator: these checks do not prove atomicity, wear
 behavior, or recovery from physical power loss during a write.
+
+Snooze countdown uses the alarm owner's monotonic runtime snapshot, separate from
+persisted wall-clock deadlines used for recovery. Engine tests cover rounding,
+earliest simultaneous snooze, expiry and dismissal. The `audio-error` LVGL preview
+also asserts that Snooze shows `Rings again in 05:00` from the supplied snapshot.

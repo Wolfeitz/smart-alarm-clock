@@ -490,8 +490,7 @@ void clock_ui_update(void)
             size_t n=0;n+=snprintf(text,sizeof(text),"Alarm ");
             for(unsigned i=0;i<ALARM_COUNT;i++)if(s.ringing&(1u<<i))n+=snprintf(text+n,sizeof(text)-n,"%s%u",n>6?", ":"",i+1);
         }else{
-            uint32_t next=0;for(unsigned i=0;i<ALARM_COUNT;i++)if((s.snoozed&(1u<<i)) && (!next || s.settings.deadline[i]<next))next=s.settings.deadline[i];
-            int64_t remaining=(int64_t)next-time(NULL);if(remaining<0)remaining=0;
+            uint32_t remaining=s.snooze_seconds;
             snprintf(text,sizeof(text),"Rings again in %02u:%02u",(unsigned)(remaining/60),(unsigned)(remaining%60));
         }
         lv_label_set_text(overlay_detail,text);

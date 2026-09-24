@@ -4,6 +4,7 @@
 typedef struct {
     clock_settings_t settings;
     uint8_t ringing,snoozed;
+    uint32_t snooze_seconds;
     esp_err_t storage_status;
     unsigned revision;
     uint32_t save_ticket;

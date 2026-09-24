@@ -75,7 +75,7 @@ static void run(void *unused)
         }
         audio_alarm(ringing!=0);
         xSemaphoreTake(lock,portMAX_DELAY);
-        published=(alarm_snapshot_t){.settings=settings,.ringing=ringing,.snoozed=snoozed,.storage_status=storage,.revision=revision,.save_ticket=save_ticket,.save_status=save_status};
+        published=(alarm_snapshot_t){.settings=settings,.ringing=ringing,.snoozed=snoozed,.snooze_seconds=alarm_snooze_seconds(&engine,ms),.storage_status=storage,.revision=revision,.save_ticket=save_ticket,.save_status=save_status};
         xSemaphoreGive(lock);
         vTaskDelay(pdMS_TO_TICKS(100));
     }
