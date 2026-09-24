@@ -1366,3 +1366,20 @@ Device test opens next-alarm card, returns home and traverses existing settings/
 media/setup/cancel paths; all8 alarm records unchanged. StorageESP_OK, RTC/system
 agree, heap81328..81364. No power-off or physical input. Receipts: home-preview-build,
 home-build, home-flash, home-layout-runtime logs. Screenshots inspected from /tmp.
+
+## Remaining functional scope audit (2026-09-24)
+
+Previous turn installed a first-pass home layout and recorded owner's explicit
+functionality-first/final-polish-later preference. Inspected current HA/media APIs
+and guide: manual player transport/volume exists, but selecting/starting a media
+context and remote-alarm fallback do not. Those remain broader application work;
+no claim of a completed Spotify/external-speaker alarm is justified. Live HA access
+also remains unverified without user-provided credentials through the private setup
+path. Existing Pi configuration remains outside authorization.
+
+The narrower persisted offline-clock goal still lacks batched physical control
+and full-power-loss acceptance, as recorded in CLOCK-ACCEPTANCE. These are owner-
+deferred; neither extra documentation nor another identical build proves them.
+No firmware/board changes in this audit, no new physical test request, and goal
+not marked complete. Continue broader authorized functionality independently of
+that acceptance gap; final visual polish remains after regular functionality.
