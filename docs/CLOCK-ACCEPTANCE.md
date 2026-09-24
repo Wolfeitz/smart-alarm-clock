@@ -1,5 +1,10 @@
 # Offline clock acceptance
 
+**Temporary diagnostic state:** factory demo is installed for the owner-requested
+music-volume comparison. Exact clock boot/table/app and settings snapshots are
+preserved under local-config/clock/factory-comparison. Restore the clock after
+comparison; this temporary state does not fulfill the installed-clock goal.
+
 Scope: active goal only; weather, Home Assistant and Spotify remain deferred.
 Last audit: 2026-09-23. Latest runtime change: full-level tone adjustment after ab10c17.
 Installed application SHA256: c1f518f8d57dc25e8b5493f9a49af8b6cff7ca9bba7ae1487a47efc92e3182f1.

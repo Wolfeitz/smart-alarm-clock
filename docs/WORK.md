@@ -733,3 +733,50 @@ DAC register32=c6, retained brightness160, CLOCK_READY and RTC within one second
 No automatic test tone sent. Image SHA256 c1f518f8d57dc25e8b5493f9a49af8b6cff7ca9bba7ae1487a47efc92e3182f1.
 Evidence: full-level-build.log/full-level-flash.log/full-level-runtime.log.
 Await owner loudness/distortion check before claiming usable alarm volume.
+
+## Amplifier/power diagnosis after audible but inadequate tone
+
+Owner confirms full-normal-volume tone is easy to hear but far below alarm loudness.
+Compare recovered factory audio controls (bit5 low before stop, high on playback)
+and PMU configuration. Current startup already sets bit5 high and uses the same
+expander direction polarity; no missing high-level enable identified yet.
+Add read-only diagnostic evidence at boot: expander command4 physical pin sample,
+AXP2101 ID03 and rail configuration90..99, codec output/system registers.
+No PMU writes, gain increases or factory rollback. Build/flash acceptance: display,
+RTC and current settings retained; report exact bytes without equating configured
+voltage with measured supply voltage or loudness.
+
+Audio-power diagnostic runtime: expander physical inputs23 (bit5 high),
+AXP ID03=4a,90=ff,91=01,92=1c,93=1c,94=19,95=0d,96=07,97=17,98=0e,99=00.
+Codec00=80,01=bf,09=0c,0d=01,0e=02,12=00,13=10,14=1a,31=00,32=c6,37=08.
+All reads success. ALDO2 configuration agrees with factory3300mV setting;
+actual amplifier VCC/net topology cannot be established without schematic or
+measurement. No PMU changes made and no absent enable found.
+Next bounded acoustic test: Test sound plays660,1320,2200,3300Hz in ascending
+order at the SAME amplitude/codec level and envelope, still two seconds total.
+Alarm playback remains660Hz until owner comparison. This tests speaker frequency
+response; it is a hypothesis, not a claim that the speaker is defective/limited.
+
+Owner proposes checking original demo music; proceeding with reversible acoustic
+comparison. Vendor Instructions-For-Use confirms built-in SPIFFS MP3 and Settings
+Sound volume control (no SD required for that track). Capture live0..0xa06000
+before switch; extract exact current boot/table and entire application partition
+for restoration. Factory image SHA256 reverified against original receipt.
+Temporary factory write only0x2000..0x8fff and0x20000..0x501fff; clockcfg at
+0xa00000..0xa05fff stays untouched. No whole-flash erase/restore. Restore exact
+current clock snapshot after owner compares music at increased demo volume.
+The ascending-pitch build completed but was NOT installed; factory comparison
+takes precedence. Current saved clock is the audio-power diagnostic build.
+
+Factory comparison installed successfully: hashes verified for boot/table slice
+and factory app partition. Live backup size10510336 bytes; original factory NVS,
+assets and storage byte-match immutable factory backup. Clock recovery slices
+and hashes are in private local-config/clock/factory-comparison/snapshot-receipt.json;
+restore-clock.py verifies hashes before writing only saved boot/table+app.
+Factory runtime reached app_main, Init PMU SUCCESS and ALDO2 enabled3300mV.
+Owner asked to raise Settings→Sound gradually then play Music and compare volume.
+CURRENT BOARD: temporary factory demo, NOT bedside clock. Clockcfg remains
+untouched. Restore the exact saved clock after this physical comparison; do not
+leave the factory demo as the final goal delivery. Original clock RTC may be
+changed by factory code; validate/provision time if necessary after restoration.
+No assumption of factory loudness until owner reports it.

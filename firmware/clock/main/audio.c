@@ -75,7 +75,7 @@ void audio_init(i2c_master_bus_handle_t bus)
     int rc=esp_codec_dev_open(device,&sample);
     if(rc==0)rc=esp_codec_dev_set_out_vol(device,OUTPUT_VOLUME);
     if(rc!=0){diagnostics_printf("AUDIO_INIT failed=codec rc=%d\n",rc);return;}
-    const uint8_t regs[]={0x00,0x01,0x09,0x12,0x31,0x32,0xfd,0xfe,0xff};
+    const uint8_t regs[]={0x00,0x01,0x09,0x0d,0x0e,0x12,0x13,0x14,0x31,0x32,0x37,0xfd,0xfe,0xff};
     for(unsigned i=0;i<sizeof(regs);i++){
         uint8_t value=0;int status=control->read_reg(control,regs[i],1,&value,1);
         diagnostics_printf("AUDIO_REG reg=%02x value=%02x status=%d\n",regs[i],value,status);

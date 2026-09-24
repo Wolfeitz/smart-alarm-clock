@@ -47,6 +47,19 @@ void board_init(void)
     }
     vTaskDelay(pdMS_TO_TICKS(200));
     diagnostics_printf("BOARD_RESET_DONE touch_probe=%s\n",esp_err_to_name(i2c_master_probe(bus,0x38,100)));
+    /* Read-only power/audio evidence. Command4 is the factory pin-input read. */
+    uint8_t read_cmd=4,pins=0;
+    esp_err_t read_status=i2c_master_transmit_receive(expander,&read_cmd,1,&pins,1,100);
+    diagnostics_printf("AUDIO_EXPANDER pins=%02x status=%s\n",pins,esp_err_to_name(read_status));
+    i2c_master_dev_handle_t pmu=NULL;dc.device_address=0x34;
+    if(i2c_master_bus_add_device(bus,&dc,&pmu)==ESP_OK){
+        const uint8_t registers[]={0x03,0x90,0x91,0x92,0x93,0x94,0x95,0x96,0x97,0x98,0x99};
+        for(unsigned i=0;i<sizeof(registers);i++){
+            uint8_t value=0;read_status=i2c_master_transmit_receive(pmu,&registers[i],1,&value,1,100);
+            diagnostics_printf("AUDIO_POWER reg=%02x value=%02x status=%s\n",registers[i],value,esp_err_to_name(read_status));
+        }
+        ESP_ERROR_CHECK(i2c_master_bus_rm_device(pmu));
+    }
     spi_bus_config_t spi={.mosi_io_num=7,.miso_io_num=2,.sclk_io_num=6,
         .quadwp_io_num=-1,.quadhd_io_num=-1,.max_transfer_sz=W*20*2};
     ESP_ERROR_CHECK(spi_bus_initialize(SPI2_HOST,&spi,SPI_DMA_CH_AUTO));
