@@ -1,4 +1,5 @@
 #include "media_service.h"
+#include "diagnostics.h"
 #include "ha_service.h"
 #include "esp_timer.h"
 #include "nvs.h"
@@ -10,7 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 typedef struct {uint32_t version;char endpoint[192],entity[96];} preferences_t;
-typedef struct {unsigned kind;media_action_t action;preferences_t prefs;} command_t;
+typedef struct {unsigned kind;uint32_t tag;media_action_t action;preferences_t prefs;} command_t;
 static preferences_t prefs;
 static media_snapshot_t state;
 static SemaphoreHandle_t lock;
@@ -47,10 +48,12 @@ static bool submit(command_t *c)
     bool ok=xQueueSend(queue,c,0)==pdTRUE;state.busy=ok;give();return ok;
 }
 bool media_service_configure(const char *entity)
+{return media_service_configure_tagged(entity,0);}
+bool media_service_configure_tagged(const char *entity,uint32_t tag)
 {
     if(!media_entity_valid(entity))return false;
     ha_snapshot_t h;ha_service_snapshot(&h);if(!h.configured)return false;
-    command_t c={.kind=1,.prefs={.version=1}};strcpy(c.prefs.endpoint,h.endpoint);strcpy(c.prefs.entity,entity);return submit(&c);
+    command_t c={.kind=1,.tag=tag,.prefs={.version=1}};strcpy(c.prefs.endpoint,h.endpoint);strcpy(c.prefs.entity,entity);return submit(&c);
 }
 bool media_service_refresh(void){command_t c={.kind=3};return submit(&c);}
 bool media_service_action(media_action_t action)
@@ -73,6 +76,7 @@ void media_service_poll(bool online)
             if(opened&&h.configured&&!strcmp(h.endpoint,c.prefs.endpoint)&&valid(&c.prefs)){
                 err=nvs_set_blob(storage,"player",&c.prefs,sizeof(c.prefs));if(err==ESP_OK)err=nvs_commit(storage);
             }
+            if(c.tag)diagnostics_printf("SETUP_MEDIA tag=%lu saved=%u\n",(unsigned long)c.tag,err==ESP_OK);
             if(err!=ESP_OK){message("Player not saved; check HA setup and storage");next_poll=esp_timer_get_time()+10000000;return;}
             prefs=c.prefs;expected=MEDIA_UNKNOWN;deadline=0;
             take();state.configured=true;state.fresh=false;memset(&state.player,0,sizeof(state.player));strcpy(state.entity,prefs.entity);give();

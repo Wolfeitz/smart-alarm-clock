@@ -17,6 +17,9 @@
 #include "alarm_service.h"
 #include "clock_ui.h"
 #include "weather_service.h"
+#include "ha_service.h"
+#include "media_service.h"
+#include "setup_model.h"
 static bool test_touch;static int test_x,test_y;static uint32_t test_until;
 static uint32_t tick(void){return (uint32_t)(esp_timer_get_time()/1000);}
 static void flush(lv_display_t *d,const lv_area_t *a,uint8_t *data)
@@ -36,12 +39,27 @@ static void touch_read(lv_indev_t *i,lv_indev_data_t *d)
 }
 static void serial_poll(void)
 {
-    static char line[48];static size_t n;static bool overflow;
+    static char line[2048];static size_t n;static bool overflow;
     char b[64];int count=usb_serial_jtag_read_bytes(b,sizeof(b),0);
     for(int i=0;i<count;i++){
         if(b[i]=='\r')continue;
         if(b[i]=='\n'){
             line[n]=0;
+            if(!overflow&&!strcmp(line,"SETUP?"))diagnostics_printf("SETUP_READY version=1\n");
+            if(!overflow&&!strncmp(line,"HA_SETUP ",9)){
+                setup_request_t request;
+                if(setup_parse(line+9,n-9,&request))diagnostics_printf("SETUP_HA tag=%lu accepted=%u\n",(unsigned long)request.tag,
+                    ha_service_configure_tagged(request.endpoint,request.token,request.entity,request.tag));
+                else diagnostics_printf("SETUP_ERROR invalid_request\n");
+                memset(&request,0,sizeof(request));
+            }
+            if(!overflow&&!strncmp(line,"MEDIA_SETUP ",12)){
+                uint32_t tag=0;char entity[96],extra;
+                bool valid=sscanf(line+12,"%"SCNu32" %95s %c",&tag,entity,&extra)==2&&tag;
+                if(valid)diagnostics_printf("SETUP_MEDIA tag=%lu accepted=%u\n",(unsigned long)tag,media_service_configure_tagged(entity,tag));
+                else diagnostics_printf("SETUP_ERROR invalid_request\n");
+            }
+            if(overflow)diagnostics_printf("SETUP_ERROR line_too_long\n");
             if(!overflow && strcmp(line,"UI")==0)clock_ui_diagnostics();
             if(!overflow && strncmp(line,"TAP ",4)==0){
                 int x,y;char extra;bool ok=!test_touch && sscanf(line+4,"%d %d %c",&x,&y,&extra)==2 && x>=0 && x<480 && y>=0 && y<320;
@@ -82,7 +100,7 @@ static void serial_poll(void)
                     diagnostics_printf("ALARM_SLOT index=%u enabled=%u hour=%u minute=%u days=%u date=%lu consumed=%lu\n",j,c->enabled,c->hour,c->minute,c->weekdays,(unsigned long)c->once_date,(unsigned long)c->consumed_date);
                 }
             }
-            n=0;overflow=false;
+            memset(line,0,sizeof(line));n=0;overflow=false;
         }else if(n<sizeof(line)-1)line[n++]=b[i];else overflow=true;
     }
 }

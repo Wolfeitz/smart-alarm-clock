@@ -8,3 +8,5 @@ void media_service_snapshot(media_snapshot_t *out);
 bool media_service_configure(const char *entity);
 bool media_service_action(media_action_t action);
 bool media_service_refresh(void);
+
+bool media_service_configure_tagged(const char *entity,uint32_t tag);

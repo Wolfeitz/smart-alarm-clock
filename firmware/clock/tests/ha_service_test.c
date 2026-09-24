@@ -5,10 +5,12 @@
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 #include <assert.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 static int64_t now;
+static char diagnostic[128];
 static unsigned requests,posts;
 static int code=200,storage_error;
 static const char *remote="off";
@@ -44,9 +46,9 @@ int main(int argc,char **argv)
         puts("PASS unavailable HA resources preserve safe snapshots and reject commands");return 0;
     }
     ha_service_init();ha_service_poll(true);assert(!requests&&!snapshot().configured);
-    assert(ha_service_configure("http://192.168.1.232:8123","synthetic-test-token","light.bedside"));
+    assert(ha_service_configure_tagged("http://192.168.1.232:8123","synthetic-test-token","light.bedside",42));
     assert(!ha_service_refresh()); /* bounded queue / operation */
-    ha_service_poll(true);assert(snapshot().configured&&snapshot().fresh&&snapshot().light.state==HA_OFF);
+    ha_service_poll(true);assert(strstr(diagnostic,"tag=42 saved=1"));assert(snapshot().configured&&snapshot().fresh&&snapshot().light.state==HA_OFF);
     assert(ha_service_toggle());ha_service_poll(true);assert(posts==1&&snapshot().light.state==HA_ON);
     assert(strstr(snapshot().status,"confirmed"));
     apply=false;assert(ha_service_toggle());ha_service_poll(true);
@@ -78,3 +80,5 @@ int main(int argc,char **argv)
     assert(!ha_service_refresh()&&!ha_service_toggle());ha_service_poll(true);assert(requests==count);
     puts("PASS HA owner: persistence, queue, confirmation, HTTP200 without change, failure expiry, auth, stale and offline state");
 }
+
+void diagnostics_printf(const char *format,...){va_list args;va_start(args,format);vsnprintf(diagnostic,sizeof(diagnostic),format,args);va_end(args);}

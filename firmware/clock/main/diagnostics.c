@@ -28,6 +28,8 @@ static int sdk_log(const char *format,va_list args)
 void diagnostics_init(void)
 {
     usb_serial_jtag_driver_config_t usb=USB_SERIAL_JTAG_DRIVER_CONFIG_DEFAULT();
+    /* Hold a complete bounded setup frame while a display flush delays polling. */
+    usb.rx_buffer_size=4096;
     ESP_ERROR_CHECK(usb_serial_jtag_driver_install(&usb));
     usb_serial_jtag_vfs_use_driver();
     records=xQueueCreate(32,sizeof(record_t));

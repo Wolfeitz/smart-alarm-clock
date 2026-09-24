@@ -17,3 +17,5 @@ bool ha_service_refresh(void);
 
 /* Existing network worker only; never exposes a token to callers. */
 int ha_service_request(const char *path,const char *body,char *response,size_t capacity,size_t *size);
+
+bool ha_service_configure_tagged(const char *endpoint,const char *token,const char *entity,uint32_t tag);

@@ -60,3 +60,27 @@ No Pi configuration, speaker grouping or media playback was changed during build
 
 API references: [media player actions](https://www.home-assistant.io/integrations/media_player/)
 and [pinned2026.9.3 feature flags](https://github.com/home-assistant/core/blob/2026.9.3/homeassistant/components/media_player/const.py).
+
+## USB setup from the computer
+
+Run this in an interactive terminal from the project root:
+
+```sh
+/home/rob/.espressif/tools/python/v6.1/venv/bin/python scripts/configure-clock-ha.py
+```
+
+The helper defaults to the existing server at `http://192.168.1.232:8123` and the
+clock's stable USB port. It checks the clock protocol first, then prompts for a
+Home Assistant token with input hidden. Never put the token in a command argument
+or send it in chat. A read-only entity lookup lists available light and media-player
+IDs; select either or both. Optional `--light light.example` and
+`--player media_player.example` arguments skip discovery. `--url` accepts the server
+root, not a dashboard path. Opening USB can reset the board; it does not power it off.
+
+Only the clock's connection/player preferences are saved. The helper makes no
+Home Assistant configuration changes and requests no playback. It confirms both
+queue acceptance and persistence for each request using a matching request tag.
+If setup fails partway through, an already-confirmed connection save can remain;
+player selection is a separate save. Saved configuration does not establish that
+a token is authorized or that a selected speaker is playing. Live state is shown
+on the clock. Credentials are not written to a computer file or echoed in output.

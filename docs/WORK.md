@@ -1238,3 +1238,37 @@ No real token/entity configured and no media commands sent to the Pi. Live exter
 playback remains unverified; local alarms stay independent. Receipts: media-build,
 media-preview-build, media-flash, media-runtime logs under local-config/clock.
 Physical acceptance remains batched per owner's correction, not a development gate.
+
+## Computer-side credential provisioning (2026-09-24)
+
+Make existing HA/media setup usable without typing a long token on the touchscreen.
+Add bounded USB setup messages with request tags and owner-task persistence
+acknowledgments. Never echo JSON/token; clear serial command buffers after handling.
+Local Python helper prompts with getpass only in a terminal, accepts no token CLI
+argument, writes no credential file and prints only known acknowledgment fields.
+Handshake before requesting credentials, chunked writes, finite acknowledgment
+waits; queue acceptance alone is not reported as saved. Device setup changes only
+clock-owned preferences. Host parser/failure tests and device read-only handshake
+check precede delivery; no real token requested during implementation.
+
+USB setup delivered with hidden terminal token entry, read-only HA entity discovery,
+request-tagged queue/persistence acknowledgments and separate player selection.
+No real credentials supplied and no HA configuration or playback requests made.
+All13 host suites plus allocation-failure variants and6 helper tests pass.
+First device overflow test at32bytes/20ms failed to receive its expected reply;
+slower80ms transmission passed. The SDK default256-byte RX buffer was too small
+for reliable long-message handling across UI work. Increased it to4096bytes to
+hold a complete bounded setup frame, rebuilt and repeated at the normal20ms rate.
+Final device check passed handshake, malformed JSON rejection,2100-byte overflow
+rejection, subsequent handshake recovery, and exact preservation of all8 alarm
+records. RTC/system within1second, storageESP_OK, heap81400..81412 in the bounded
+check; weatherHTTP200. No power-off or owner physical check required.
+
+Final app-only installation1780848bytes verified by esptool; SHA256:
+956d2cd39bb555c3891e6dfa205046ac2dd7263e277301e1c47290d795857e21.
+Private receipts: usb-setup-build.log, usb-setup-flash.log,
+usb-setup-runtime.log (initial failed check), usb-setup-runtime-retry.log (slow),
+usb-setup-runtime-final.log (normal rate, pass). Computer setup instructions are
+in HOME-ASSISTANT.md. Persisted acknowledgment tests are synthetic; actual token
+acceptance/external playback remain unverified. Offline goal remains active with
+batched physical alarm-control and full-power-loss checks outstanding, as directed.

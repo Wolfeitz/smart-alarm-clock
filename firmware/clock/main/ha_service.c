@@ -1,4 +1,5 @@
 #include "ha_service.h"
+#include "diagnostics.h"
 #include "network_http.h"
 #include "esp_timer.h"
 #include "nvs.h"
@@ -10,7 +11,7 @@
 #include <stdlib.h>
 #include <stdatomic.h>
 typedef struct {uint32_t version;char endpoint[192],entity[96],token[512];} config_t;
-typedef struct {unsigned kind;config_t config;ha_light_state_t desired;} command_t;
+typedef struct {unsigned kind;uint32_t tag;config_t config;ha_light_state_t desired;} command_t;
 static config_t config;
 static ha_snapshot_t state;
 static SemaphoreHandle_t lock;
@@ -55,9 +56,11 @@ static bool submit(command_t *c)
     state_unlock();return ok;
 }
 bool ha_service_configure(const char *endpoint,const char *token,const char *entity)
+{return ha_service_configure_tagged(endpoint,token,entity,0);}
+bool ha_service_configure_tagged(const char *endpoint,const char *token,const char *entity,uint32_t tag)
 {
     if(!endpoint||!token||!entity||strlen(endpoint)>=192||strlen(entity)>=96||strlen(token)>=512)return false;
-    command_t c={.kind=1,.config={.version=1}};strcpy(c.config.endpoint,endpoint);
+    command_t c={.kind=1,.tag=tag,.config={.version=1}};strcpy(c.config.endpoint,endpoint);
     size_t n=strlen(c.config.endpoint);if(n&&c.config.endpoint[n-1]=='/')c.config.endpoint[n-1]=0;
     strcpy(c.config.entity,entity);strcpy(c.config.token,token);
     if(!ha_endpoint_valid(c.config.endpoint)||(*entity&&!ha_entity_valid(entity))||(*token&&!ha_token_valid(token))){memset(&c,0,sizeof(c));return false;}
@@ -87,6 +90,7 @@ void ha_service_poll(bool online)
             if(!c.config.token[0]&&!strcmp(c.config.endpoint,config.endpoint))strcpy(c.config.token,config.token);
             esp_err_t err=ESP_ERR_INVALID_ARG;
             if(opened&&config_valid(&c.config)){err=nvs_set_blob(storage,"config",&c.config,sizeof(c.config));if(err==ESP_OK)err=nvs_commit(storage);}
+            if(c.tag)diagnostics_printf("SETUP_HA tag=%lu saved=%u\n",(unsigned long)c.tag,err==ESP_OK);
             if(err==ESP_OK){config=c.config;desired=HA_UNKNOWN;confirm_until=0;
                 state_lock();state.configured=true;state.fresh=false;state.light=(ha_light_t){0};
                 strcpy(state.endpoint,config.endpoint);strcpy(state.entity,config.entity);state_unlock();message("Saved; reading light state...");

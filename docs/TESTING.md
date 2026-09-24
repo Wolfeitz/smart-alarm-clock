@@ -181,3 +181,11 @@ explicit play/pause/track/volume actions, HTTP200 without changed playback, fail
 confirmation expiry, authentication errors, server-bound targets, failed saves and
 allocation failures. The UI preview covers stale-state control disabling. These
 checks use synthetic HA responses; they are not real external playback evidence.
+
+USB provisioning checks: `python scripts/test-clock-setup.py` covers tagged
+acceptance/persistence acknowledgments, missing or failed saves, reordered replies,
+input bounds, URL/entity validation and redirect refusal. The consolidated host
+runner also tests the firmware setup JSON parser, including decoded NULs and invalid
+tags. Tests use synthetic data and never provision a real credential. A device
+handshake and malformed/oversized message test confirms USB framing/recovery only;
+it does not establish successful authenticated Home Assistant operation.

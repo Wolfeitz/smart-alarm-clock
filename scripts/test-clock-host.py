@@ -49,7 +49,7 @@ with tempfile.TemporaryDirectory(prefix="esp-link-host-") as directory:
     subprocess.run([binary], check=True, timeout=10)
     for fault in ("mutex-failure", "queue-failure"):
         subprocess.run([binary, fault], check=True, timeout=10)
-    for name, modules in {"media_model": ["media_model"], "media_service": ["media_model", "media_service", "ha_model"]}.items():
+    for name, modules in {"setup_model": ["setup_model", "ha_model"], "media_model": ["media_model"], "media_service": ["media_model", "media_service", "ha_model"]}.items():
         binary = str(Path(directory) / name)
         subprocess.run([
             "cc", "-std=c11", "-DCJSON_NESTING_LIMIT=16", "-Wall", "-Wextra", "-Werror",

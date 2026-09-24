@@ -58,3 +58,7 @@ output error. A ringing alarm then shows **Audio error**, while Snooze/Dismiss r
 available. **Settings storage error** means persistence failed; do not interpret a
 queued save as a successful save. The current speaker level is the provisionally
 accepted local tone; external playback is not yet an alarm source.
+
+For Home Assistant setup without typing a long token on the touchscreen, use the
+[computer USB setup helper](HOME-ASSISTANT.md#usb-setup-from-the-computer). It offers
+light/player entity discovery and hidden token entry in your terminal.

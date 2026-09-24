@@ -6,10 +6,12 @@
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 #include <assert.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 static int64_t now;
+static char diagnostic[128];
 static unsigned requests,posts;
 static int code=200,storage_error;
 static const char *remote="paused";
@@ -50,8 +52,8 @@ int main(int argc,char **argv)
         puts("PASS media allocation failure snapshots and rejected commands");return 0;
     }
     media_service_init();media_service_poll(true);assert(!requests);
-    assert(media_service_configure("media_player.bedroom"));assert(!media_service_refresh());
-    media_service_poll(true);assert(snapshot().fresh&&snapshot().player.state==MEDIA_PAUSED);
+    assert(media_service_configure_tagged("media_player.bedroom",42));assert(!media_service_refresh());
+    media_service_poll(true);assert(strstr(diagnostic,"tag=42 saved=1"));assert(snapshot().fresh&&snapshot().player.state==MEDIA_PAUSED);
     assert(media_service_action(MEDIA_PLAY));media_service_poll(true);assert(posts==1&&snapshot().player.state==MEDIA_PLAYING);
     assert(strstr(snapshot().status,"confirmed"));
     assert(media_service_action(MEDIA_LOUDER));media_service_poll(true);assert(posts==2);
@@ -70,3 +72,5 @@ int main(int argc,char **argv)
     media_service_disable();assert(!media_service_refresh()&&!media_service_action(MEDIA_PLAY));
     puts("PASS media owner: explicit actions, observed confirmation, volume, failure expiry, auth, server binding, offline and failed saves");
 }
+
+void diagnostics_printf(const char *format,...){va_list args;va_start(args,format);vsnprintf(diagnostic,sizeof(diagnostic),format,args);va_end(args);}
