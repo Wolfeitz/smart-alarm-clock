@@ -17,6 +17,10 @@ the active alarm, including a snoozed alarm. These controls apply to all current
 active alarms. A once alarm disables itself after firing; recurring alarms remain
 enabled for their next scheduled day. Unattended ringing ends after ten minutes.
 
+During snooze, **Show clock** returns to normal clock navigation without changing
+the countdown. The home alarm card shows the remaining time; tap it to reopen
+**Dismiss**. Ringing automatically brings the alarm controls back to the front.
+
 ## Time and screen brightness
 
 **Settings → Time & date** sets local time and writes the RTC. Network time also
@@ -61,8 +65,11 @@ browser or direct Spotify streaming on the clock.
 **Local audio unavailable** means the firmware reported an audio initialization or
 output error. A ringing alarm then shows **Audio error**, while Snooze/Dismiss remain
 available. **Settings storage error** means persistence failed; do not interpret a
-queued save as a successful save. The current speaker level is the provisionally
-accepted local tone. External alarm playback is optional and requires setup.
+queued save as a successful save. **Saved alarms unavailable** means loading the
+stored configuration failed. Automatic writes are suppressed to preserve the
+stored data. The alarm editor warns before an explicit Save replaces the previous
+configuration. The current speaker is audible but has not met the owner's wake-up
+volume requirement. External alarm playback is optional and requires setup.
 
 For Home Assistant setup without typing a long token on the touchscreen, use the
 [computer USB setup helper](HOME-ASSISTANT.md#usb-setup-from-the-computer). It offers

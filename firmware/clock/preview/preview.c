@@ -256,6 +256,36 @@ int main(int argc,char **argv)
         for(unsigned i=1;i<ALARM_COUNT;i++)assert(alarm_state.settings.alarms[i].weekdays==127&&alarm_state.settings.alarms[i].hour==7);
         puts("PASS actual alarm UI: presets, custom day edit, once fields, empty mask rejection and other-slot isolation");
     }
+    if(argc>3&&!strcmp(argv[3],"snooze-clock-test")){
+        click_text(lv_screen_active(),"Clock");advance();
+        alarm_state.ringing=1;advance();
+        lv_obj_t *panel=lv_obj_get_child(lv_layer_top(),0);assert(panel);
+        click_text(panel,"Snooze 5 min");advance();
+        assert(has_text(panel,"Show clock")&&alarm_state.snoozed==1);
+        click_text(panel,"Show clock");advance();
+        assert(lv_obj_has_flag(panel,LV_OBJ_FLAG_HIDDEN)&&alarm_state.snoozed==1);
+        assert(has_text(lv_screen_active(),"Rings again in 05:00"));
+        click_text(lv_screen_active(),"Settings");advance();
+        assert(has_text(lv_screen_active(),"Time & date"));
+        click_text(lv_screen_active(),"Clock");alarm_state.snooze_seconds=217;advance();
+        assert(has_text(lv_screen_active(),"Rings again in 03:37"));
+        lv_obj_t *card=NULL;
+        for(unsigned i=0;i<lv_obj_get_child_count(lv_screen_active());i++){
+            lv_obj_t *o=lv_obj_get_child(lv_screen_active(),i);
+            if(lv_obj_check_type(o,&lv_button_class)&&has_text(o,"SNOOZED - TAP TO MANAGE"))card=o;
+        }
+        assert(card);lv_obj_send_event(card,LV_EVENT_CLICKED,NULL);advance();
+        assert(!lv_obj_has_flag(panel,LV_OBJ_FLAG_HIDDEN));
+        click_text(panel,"Show clock");advance();
+        alarm_state.ringing=2;advance();
+        assert(!lv_obj_has_flag(panel,LV_OBJ_FLAG_HIDDEN)&&has_text(panel,"Snooze 5 min")&&!backlight_dim);
+        click_text(panel,"Dismiss");advance();
+        assert(!alarm_state.snoozed&&!alarm_state.ringing&&lv_obj_get_child_count(lv_layer_top())==0);
+        assert(has_text(lv_screen_active(),"NEXT ALARM"));
+        alarm_state.ringing=1;advance();panel=lv_obj_get_child(lv_layer_top(),0);
+        click_text(panel,"Snooze 5 min");advance();click_text(panel,"Show clock");advance();
+        puts("PASS snooze clock: countdown, navigation, reopen, new ring priority and dismissal");
+    }
     if(argc>3&&!strcmp(argv[3],"load-failure-test")){
         click_text(lv_screen_active(),"Clock");advance();
         alarm_state.load_failed=true;advance();

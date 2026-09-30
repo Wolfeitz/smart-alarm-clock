@@ -8,7 +8,7 @@ volume is unresolved and requires external playback and/or a louder local output
 
 Owner expanded scope to weather/location and continued integration development.
 Home Assistant light setup/control is installed; authenticated operation is pending. Last audit2026-09-30. Installed application SHA256:
-`559fbcc45ff8e35f3cc65e6311cb3e4a6aeeef6cdce5fd8b712dcbdd55357ba9`.
+`fc95c38adbd7f31f48d3ed81d271bd9689b4b5a4127a00e3b5f48c38c9aa05a7`.
 
 | Requirement | Evidence | Status |
 |---|---|---|
@@ -220,7 +220,7 @@ full power loss or scheduling on this new image. Receipt: radio-persist-runtime.
 
 ## Current-image offline restart regression (2026-09-30)
 
-Installed719ffda (SHA above) passed radio-off RTC alarm trigger, successful audio
+Installed719ffda (SHA559fbcc45ff8e35f3cc65e6311cb3e4a6aeeef6cdce5fd8b712dcbdd55357ba9) passed radio-off RTC alarm trigger, successful audio
 transmission, persisted snooze through a processor reset, and persisted dismissal
 through a second reset without re-ringing. Radio stayed off across both resets;
 RTC/system agreement was within one second. All eight original alarm records and

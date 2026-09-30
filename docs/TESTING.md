@@ -275,3 +275,8 @@ A failed explicit alarm save leaves protection active; a successful explicit sav
 establishes a new configuration. The actual-LVGL `load-failure-test` checks the
 home warning and pre-save replacement notice. These inject storage errors in host
 code; no physical flash corruption or interrupted-power behavior is claimed.
+
+Actual-LVGL `snooze-clock-test` exercises Snooze → Show clock, countdown updates,
+Settings/home navigation while snoozed, reopening the alarm card, another ringing
+alarm taking foreground priority and brightness, and Dismiss restoring the normal
+home card. Persistence and timers still belong to the unchanged alarm owner.

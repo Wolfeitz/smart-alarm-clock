@@ -1770,3 +1770,27 @@ snapshot retained beside it. No physical sound observation or full power loss
 was tested. This verifies normal NVS recovery still works with the new failed-load
 protection. Remaining offline acceptance is physical controls/acoustic adequacy
 and the deferred full-power-loss/backup-power arrangement; goal remains active.
+
+## Usable clock during snooze (2026-09-30)
+
+Prior turn supplied new installed-image recovery evidence. Next local UX slice:
+replace the inactive Snooze button during snooze with Show clock. Preserve the
+owner countdown/phase while allowing normal navigation; home alarm card shows
+remaining snooze and reopens Dismiss. Any ringing alarm must reopen the overlay
+and brighten normally. Test actual LVGL callbacks, countdown, navigation,
+reopening, dismissal and a new ringing transition. No schedule/storage change.
+
+Implemented Show clock on the snoozed overlay. Home card shows the owner-provided
+countdown and reopens the overlay; navigation remains usable. Any ringing phase
+forces the overlay visible again; Dismiss restores normal home alarm display.
+No business logic, timing or persistence change. LVGL snooze-clock-test passed
+collapse/navigation/countdown/reopen/new-alarm priority/dismiss; audio-error,
+night-test and alarms-test also passed. Rendered home countdown visually reviewed.
+IDF6.1 build and application-only flash/hash verification passed. Installed SHA:
+`fc95c38adbd7f31f48d3ed81d271bd9689b4b5a4127a00e3b5f48c38c9aa05a7`.
+Normal device startup and alarm overview/editor/cancel/home passed; all eight
+stored records unchanged and RTC advancing within one second of system time.
+Receipts: snooze-clock-{preview-build,build,flash,runtime}.log. New snooze interaction
+is qualified in the actual LVGL preview; physical touch acceptance remains batched.
+Updated user guide also clarifies failed-load replacement and inadequate wake-up
+volume. No full power-off test or new acoustic acceptance claim.

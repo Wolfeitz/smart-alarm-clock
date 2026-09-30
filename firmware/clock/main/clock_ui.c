@@ -15,7 +15,8 @@
 #include <stdlib.h>
 #include <string.h>
 static lv_obj_t *root,*time_text,*date_text,*detail,*next_text,*status,*dim_text;
-static lv_obj_t *home_place,*home_temperature,*home_forecast;
+static lv_obj_t *home_place,*home_temperature,*home_forecast,*alarm_caption;
+static bool snooze_collapsed;
 static lv_obj_t *slot,*hours,*minutes,*repeat,*enabled,*days[7],*year,*month,*day,*edit_status,*overlay,*overlay_detail;
 static alarm_config_t draft;
 static unsigned index_selected;
@@ -245,7 +246,18 @@ static void show_time_editor(lv_event_t *e)
     time_status=label(root,weather_service_timezone(),10,222,460,&lv_font_montserrat_16);
     button(root,"Cancel",50,260,160,go_home,NULL);button(root,"Save time",270,260,160,save_time,NULL);
 }
-static void snooze(lv_event_t *e){(void)e;alarm_service_snooze();}
+static void snooze(lv_event_t *e)
+{
+    (void)e;alarm_snapshot_t s;alarm_service_snapshot(&s);
+    if(s.ringing)alarm_service_snooze();
+    else if(s.snoozed){snooze_collapsed=true;home();clock_ui_update();}
+}
+static void home_alarm(lv_event_t *e)
+{
+    alarm_snapshot_t s;alarm_service_snapshot(&s);
+    if(s.snoozed){snooze_collapsed=false;clock_ui_update();}
+    else show_alarms(e);
+}
 static void dismiss(lv_event_t *e){(void)e;alarm_service_dismiss();}
 static void home(void)
 {
@@ -259,11 +271,11 @@ static void home(void)
     lv_obj_set_style_transform_pivot_x(time_text,LV_PCT(50),0);lv_obj_set_style_transform_pivot_y(time_text,LV_PCT(50),0);lv_obj_set_style_transform_scale(time_text,432,0);
     detail=label(root,"Set time to begin",20,150,270,&lv_font_montserrat_16);
     lv_obj_set_style_text_color(detail,lv_color_hex(0xb2bdc9),0);
-    lv_obj_t *alarm_card=button(root,"",15,178,280,show_alarms,NULL);
+    lv_obj_t *alarm_card=button(root,"",15,178,280,home_alarm,NULL);
     lv_obj_set_height(alarm_card,54);lv_obj_set_style_pad_all(alarm_card,0,0);
     lv_obj_set_style_bg_color(alarm_card,lv_color_hex(0x152535),0);
-    lv_obj_t *caption=label(alarm_card,"NEXT ALARM",8,5,264,&lv_font_montserrat_16);
-    lv_obj_set_style_text_color(caption,lv_color_hex(0xd5a565),0);
+    alarm_caption=label(alarm_card,"NEXT ALARM",8,5,264,&lv_font_montserrat_16);
+    lv_obj_set_style_text_color(alarm_caption,lv_color_hex(0xd5a565),0);
     next_text=label(alarm_card,"No alarms enabled",8,28,264,&lv_font_montserrat_16);
     status=label(root,"",15,237,450,&lv_font_montserrat_16);
     lv_obj_set_style_text_color(status,lv_color_hex(0x95a8ba),0);
@@ -496,6 +508,7 @@ void clock_ui_update(void)
     uint8_t desired=dimmed?25:160;
     if(desired!=applied_brightness){applied_brightness=desired;board_brightness(dimmed);}
     bool active=s.ringing || s.snoozed;
+    if(s.ringing || !active)snooze_collapsed=false;
     if(active && !overlay){
         overlay=lv_obj_create(lv_layer_top());lv_obj_set_size(overlay,460,230);lv_obj_center(overlay);
         lv_obj_set_style_bg_color(overlay,lv_color_hex(0x142c40),0);lv_obj_remove_flag(overlay,LV_OBJ_FLAG_SCROLLABLE);
@@ -505,6 +518,9 @@ void clock_ui_update(void)
     }
     if(!active && overlay){lv_obj_delete(overlay);overlay=NULL;}
     if(overlay){
+        if(snooze_collapsed)lv_obj_add_flag(overlay,LV_OBJ_FLAG_HIDDEN);
+        else lv_obj_remove_flag(overlay,LV_OBJ_FLAG_HIDDEN);
+        lv_label_set_text(lv_obj_get_child(lv_obj_get_child(overlay,2),0),s.ringing?"Snooze 5 min":"Show clock");
         lv_obj_t *title=lv_obj_get_child(overlay,0);lv_label_set_text(title,s.ringing?(audio_status()==ESP_OK?"Alarm":"Audio error"):"Snoozed");
         char text[80];
         if(s.ringing){
@@ -613,6 +629,10 @@ void clock_ui_update(void)
     time_t next=clock_valid()?alarm_next(s.settings.alarms,time(NULL)):0;
     if(next){struct tm local;localtime_r(&next,&local);strftime(b,sizeof(b),"%a %I:%M %p",&local);}
     else snprintf(b,sizeof(b),"%s",clock_valid()?"No upcoming alarms":"Set time to arm alarms");
+    if(s.snoozed){
+        lv_label_set_text(alarm_caption,"SNOOZED - TAP TO MANAGE");
+        snprintf(b,sizeof(b),"Rings again in %02u:%02u",(unsigned)(s.snooze_seconds/60),(unsigned)(s.snooze_seconds%60));
+    }else lv_label_set_text(alarm_caption,"NEXT ALARM");
     lv_label_set_text(next_text,b);
     lv_label_set_text(status,audio_status()!=ESP_OK?"Local audio unavailable":s.load_failed?"Saved alarms unavailable - review Alarms":s.storage_status==ESP_OK?clock_source():"Settings storage error");
     lv_label_set_text(dim_text,s.settings.display.enabled?"Display":applied_brightness<80?"Brighten":"Dim");
@@ -635,7 +655,7 @@ static void dropdown_diagnostics(const char *name,lv_obj_t *o)
 }
 void clock_ui_diagnostics(void)
 {
-    diagnostics_printf("UI_SCREEN name=%s overlay=%u pending=%u\n",media_editing?"media_setup":media_view?"media":alarm_list_view?"alarms":ha_editing?"ha_setup":ha_view?"ha":display_editing?"display":settings_view?"settings":location_editing?"location":network_editing?"network":weather_view?"weather":time_editing?"time":editing?"alarm":"home",overlay!=NULL,pending);
+    diagnostics_printf("UI_SCREEN name=%s overlay=%u pending=%u\n",media_editing?"media_setup":media_view?"media":alarm_list_view?"alarms":ha_editing?"ha_setup":ha_view?"ha":display_editing?"display":settings_view?"settings":location_editing?"location":network_editing?"network":weather_view?"weather":time_editing?"time":editing?"alarm":"home",overlay!=NULL&&!lv_obj_has_flag(overlay,LV_OBJ_FLAG_HIDDEN),pending);
     if(weather_view||network_editing||location_editing){weather_snapshot_t w;weather_service_snapshot(&w);
         diagnostics_printf("WEATHER_STATE online=%u valid=%u fresh=%u zip=%s zone=%s status=%s\n",w.connected,w.has_data,w.has_data&&weather_fresh(&w.data,time(NULL)),w.zip,w.location.timezone,w.status);
     }
