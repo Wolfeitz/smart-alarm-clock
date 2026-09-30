@@ -1686,3 +1686,27 @@ has no transport caller yet; installed d10c3cf remains the last qualified image.
 Next transport work must add authenticated pairing and durable request/result
 correlation; the existing latest-ticket snapshot alone is not sufficient for
 concurrent web transactions. No website-to-device capability is claimed yet.
+
+## Per-request save completion (2026-09-30)
+
+Acceptance: retain a bounded set of completed save tickets so a later command
+cannot hide an earlier failure/success. Store results after the owner decides
+conflict or storage outcome. UI consumes its exact ticket and times out honestly
+if a result is no longer available. This is an in-memory receipt cache, not a
+durable replay journal or authentication. Test mixed failed/successful saves in
+one owner cycle plus bounded eviction; preserve offline execution.
+
+Implemented a16-result RAM cache, exact-ticket alarm/display UI reads, and a
+10-second unavailable-result message without automatic retry or false success.
+Host owner tests pass mixed failure/success completions and bounded eviction;
+actual LVGL alarms-test, repeat-test, night-test and save-timeout-test pass.
+IDF6.1 build passed (save-results-build.log). New preview timeout test verifies
+both editors stay on their page and report unknown completion honestly.
+
+Application-only flash attempt failed before opening USB: the stable by-id device
+and /dev/serial/by-id are absent. Nothing was written. Current installed hash
+remains the previously recorded d10c3cf image; conditional-save and receipt-cache
+changes are built but not installed. No physical test requested. Receipts are
+save-results-{host,preview-build,build,flash}.log under local-config/clock.
+RAM receipts are not durable transport acknowledgments across reboot; real
+pairing, authentication and website/device transport remain outstanding.

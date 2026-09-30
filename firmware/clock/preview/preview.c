@@ -31,7 +31,7 @@ bool media_service_action(media_action_t action){if(action==MEDIA_PLAY||action==
 bool media_service_refresh(void){return true;}
 static uint16_t pixels[480*320];
 static uint32_t ticks;
-static bool has_weather,backlight_dim;
+static bool has_weather,backlight_dim,result_unavailable;
 static weather_snapshot_t weather;
 static alarm_snapshot_t alarm_state;
 static uint32_t tick(void){return ticks;}
@@ -76,6 +76,12 @@ static void click_text(lv_obj_t *parent,const char *text)
             if(l&&lv_obj_check_type(l,&lv_label_class)&&!strcmp(lv_label_get_text(l),text)){lv_obj_send_event(child,LV_EVENT_CLICKED,NULL);return;}
         }
     }
+}
+static bool has_text(lv_obj_t *parent,const char *text)
+{
+    if(lv_obj_check_type(parent,&lv_label_class)&&!strcmp(lv_label_get_text(parent),text))return true;
+    for(unsigned i=0;i<lv_obj_get_child_count(parent);i++)if(has_text(lv_obj_get_child(parent,i),text))return true;
+    return false;
 }
 int main(int argc,char **argv)
 {
@@ -250,9 +256,34 @@ int main(int argc,char **argv)
         for(unsigned i=1;i<ALARM_COUNT;i++)assert(alarm_state.settings.alarms[i].weekdays==127&&alarm_state.settings.alarms[i].hour==7);
         puts("PASS actual alarm UI: presets, custom day edit, once fields, empty mask rejection and other-slot isolation");
     }
+    if(argc>3&&!strcmp(argv[3],"save-timeout-test")){
+        click_text(lv_screen_active(),"Clock");advance();
+        click_text(lv_screen_active(),"Alarms");advance();
+        lv_obj_send_event(lv_obj_get_child(lv_obj_get_child(lv_screen_active(),1),0),LV_EVENT_CLICKED,NULL);advance();
+        result_unavailable=true;click_text(lv_screen_active(),"Save");advance();
+        assert(has_text(lv_screen_active(),"Saving..."));
+        ticks+=10000;advance();
+        assert(has_text(lv_screen_active(),"Result unavailable; reopen to check alarm"));
+        click_text(lv_screen_active(),"Cancel");advance();
+        click_text(lv_screen_active(),"Clock");advance();
+        click_text(lv_screen_active(),"Settings");advance();
+        click_text(lv_screen_active(),"Display & night mode");advance();
+        click_text(lv_screen_active(),"Save");advance();
+        assert(has_text(lv_screen_active(),"Saving..."));
+        ticks+=10000;advance();
+        assert(has_text(lv_screen_active(),"Result unavailable; reopen to check settings"));
+        puts("PASS actual UI: missing alarm/display receipts time out without false success");
+    }
     FILE *f=fopen(argv[1],"wb");if(!f)return 3;fprintf(f,"P6\n480 320\n255\n");
     for(unsigned i=0;i<480*320;i++){uint16_t p=pixels[i];unsigned char rgb[]={((p>>11)&31)*255/31,((p>>5)&63)*255/63,(p&31)*255/31};fwrite(rgb,1,3,f);}fclose(f);return 0;
 }
 
 uint32_t alarm_service_display(const display_schedule_t *s,uint8_t brightness)
 {alarm_state.settings.display=*s;alarm_state.settings.brightness=brightness;return ++alarm_state.save_ticket;}
+
+bool alarm_service_result(uint32_t ticket,alarm_save_result_t *out)
+{
+    if(result_unavailable||!ticket||ticket!=alarm_state.save_ticket)return false;
+    *out=(alarm_save_result_t){.ticket=ticket,.status=alarm_state.save_status};
+    return true;
+}

@@ -24,6 +24,7 @@ static lv_obj_t *alarm_rows[ALARM_COUNT];
 static void show_alarms(lv_event_t *e);
 static lv_obj_t *time_year,*time_month,*time_day,*time_hour,*time_minute,*time_status;
 static uint32_t pending_ticket;
+static int64_t pending_since,display_since;
 static uint8_t applied_brightness;
 static uint64_t wake_until;
 static bool settings_view,display_editing,display_pending;
@@ -164,7 +165,7 @@ static void save_display(lv_event_t *e)
         .end_minute=60*lv_dropdown_get_selected(night_end_hour)+lv_dropdown_get_selected(night_end_minute)};
     if(!display_schedule_valid(&schedule)){lv_label_set_text(display_status,"Start and end must differ");return;}
     display_ticket=alarm_service_display(&schedule,lv_dropdown_get_selected(manual_level)?25:160);
-    display_pending=display_ticket!=0;lv_label_set_text(display_status,display_pending?"Saving...":"Busy - try again");
+    display_pending=display_ticket!=0;display_since=esp_timer_get_time();lv_label_set_text(display_status,display_pending?"Saving...":"Busy - try again");
 }
 static void show_display(lv_event_t *e)
 {
@@ -191,7 +192,7 @@ static void save(lv_event_t *e)
     }else if(!draft.weekdays){lv_label_set_text(edit_status,"Choose at least one day");return;}
     if(!alarm_config_valid(&draft)){lv_label_set_text(edit_status,"Check the date");return;}
     pending_ticket=alarm_service_save_tracked(index_selected,&draft);
-    pending=pending_ticket!=0;lv_label_set_text(edit_status,pending?"Saving...":"Unable to queue save");
+    pending=pending_ticket!=0;pending_since=esp_timer_get_time();lv_label_set_text(edit_status,pending?"Saving...":"Unable to queue save");
 }
 static void show_editor(void)
 {
@@ -517,10 +518,13 @@ void clock_ui_update(void)
         lv_label_set_text(overlay_detail,text);
     }
     if(display_editing){
-        if(display_pending&&s.save_ticket==display_ticket){
+        alarm_save_result_t result;
+        if(display_pending&&alarm_service_result(display_ticket,&result)){
             display_pending=false;
-            if(s.save_status==ESP_OK){home();return;}
+            if(result.status==ESP_OK){home();return;}
             lv_label_set_text(display_status,"Save failed - settings unchanged");
+        }else if(display_pending&&esp_timer_get_time()-display_since>=10000000){
+            display_pending=false;lv_label_set_text(display_status,"Result unavailable; reopen to check settings");
         }
         return;
     }
@@ -589,10 +593,13 @@ void clock_ui_update(void)
     }
     if(time_editing)return;
     if(editing){
-        if(pending && s.save_ticket==pending_ticket){
+        alarm_save_result_t result;
+        if(pending && alarm_service_result(pending_ticket,&result)){
             pending=false;
-            if(s.save_status==ESP_OK)show_alarms(NULL);
-            else lv_label_set_text(edit_status,"Save failed - settings unchanged");
+            if(result.status==ESP_OK)show_alarms(NULL);
+            else lv_label_set_text(edit_status,result.conflict?"Alarm changed; reopen to review":"Save failed - settings unchanged");
+        }else if(pending&&esp_timer_get_time()-pending_since>=10000000){
+            pending=false;lv_label_set_text(edit_status,"Result unavailable; reopen to check alarm");
         }
         return;
     }

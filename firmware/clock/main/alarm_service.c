@@ -21,6 +21,22 @@ static SemaphoreHandle_t lock;
 static alarm_snapshot_t published;
 static atomic_uint next_ticket;
 static uint64_t owner_session;
+static alarm_save_result_t results[16];
+static unsigned result_cursor;
+static void complete(uint32_t ticket,esp_err_t status,bool conflict,unsigned revision)
+{
+    if(!ticket)return;
+    xSemaphoreTake(lock,portMAX_DELAY);
+    results[result_cursor++%16]=(alarm_save_result_t){ticket,status,conflict,revision,owner_session};
+    xSemaphoreGive(lock);
+}
+bool alarm_service_result(uint32_t ticket,alarm_save_result_t *out)
+{
+    if(!ticket||!out||!lock)return false;
+    bool found=false;xSemaphoreTake(lock,portMAX_DELAY);
+    for(unsigned i=0;i<16;i++)if(results[i].ticket==ticket){*out=results[i];found=true;break;}
+    xSemaphoreGive(lock);return found;
+}
 static void run(void *unused)
 {
     (void)unused;clock_settings_t settings;alarm_engine_t engine={0};
@@ -40,6 +56,7 @@ static void run(void *unused)
             if(c.kind==6){
                 if(c.expected_session!=owner_session || c.expected_revision!=revision || dirty){
                     save_ticket=c.ticket;save_status=ESP_ERR_INVALID_STATE;save_conflict=true;
+                    complete(c.ticket,save_status,true,revision);
                     diagnostics_printf("ALARM_CONFLICT ticket=%lu\n",(unsigned long)c.ticket);
                     continue;
                 }
@@ -58,7 +75,7 @@ static void run(void *unused)
                     if(c.kind==1)alarm_cancel(&engine,c.index);
                     revision++;
                 }
-                if(c.ticket){save_ticket=c.ticket;save_status=storage;save_conflict=false;}
+                if(c.ticket){save_ticket=c.ticket;save_status=storage;save_conflict=false;complete(c.ticket,storage,false,revision);}
                 diagnostics_printf("SETTINGS_SAVE status=%s kind=%u index=%u revision=%u\n",esp_err_to_name(storage),c.kind,c.index,revision);
             }else if(c.kind==3){alarm_snooze(&engine,ms);dirty=true;}
             else if(c.kind==4){

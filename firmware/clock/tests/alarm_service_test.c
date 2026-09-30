@@ -19,6 +19,8 @@ static unsigned successful_saves;
 static unsigned recovery_case;
 static bool clock_ready=true;
 static unsigned conditional_case,baseline_saves;
+static bool result_case;
+static uint32_t first_result,last_result;
 uint32_t esp_random(void){static uint32_t n=1234;return ++n;}
 int64_t esp_timer_get_time(void){return ms*1000;}
 time_t time(time_t *out){time_t value=epoch+ms/1000;if(out)*out=value;return value;}
@@ -28,7 +30,7 @@ const char *esp_err_to_name(esp_err_t error){return error?"injected failure":"ES
 void diagnostics_printf(const char *format,...){(void)format;}
 esp_err_t settings_store_open(clock_settings_t *out){*out=durable;return ESP_OK;}
 esp_err_t settings_store_save(const clock_settings_t *in)
-{saves++;if(storage_error)return storage_error;durable=*in;successful_saves++;return ESP_OK;}
+{saves++;if(result_case&&in->alarms[0].hour==8)return 93;if(storage_error)return storage_error;durable=*in;successful_saves++;return ESP_OK;}
 QueueHandle_t xQueueCreate(unsigned n,size_t size){assert(n==8&&size<=sizeof(queue[0]));item_size=size;return queue;}
 int xQueueSend(QueueHandle_t q,const void *v,unsigned wait)
 {(void)q;(void)wait;if(count==8)return 0;memcpy(queue[(head+count)%8],v,item_size);count++;return 1;}
@@ -42,7 +44,33 @@ int xTaskCreate(void (*entry)(void *),const char *name,unsigned stack,void *arg,
 void vTaskDelay(unsigned ticks)
 {
     assert(ticks==100);iterations++;alarm_snapshot_t s;alarm_service_snapshot(&s);
-    if(conditional_case){
+    if(result_case){
+        alarm_save_result_t result;
+        if(iterations==1){
+            assert(!alarm_service_result(0,&result));
+            alarm_config_t edit=s.settings.alarms[0];edit.hour=8;
+            first_result=alarm_service_save_tracked(0,&edit);
+            edit.hour=9;last_result=alarm_service_save_tracked(0,&edit);
+            assert(first_result&&last_result);
+            assert(!alarm_service_result(first_result,&result));
+        }else{
+            if(iterations==2){
+                assert(alarm_service_result(first_result,&result)&&result.status==93&&!result.conflict);
+                assert(result.session==s.session);
+                assert(alarm_service_result(last_result,&result)&&result.status==ESP_OK);
+                assert(durable.alarms[0].hour==9);
+            }
+            if(iterations==5){
+                assert(!alarm_service_result(first_result,&result));
+                assert(alarm_service_result(last_result,&result)&&result.status==ESP_OK);
+                longjmp(finished,1);
+            }
+            for(unsigned i=0;i<8;i++){
+                alarm_config_t edit=s.settings.alarms[0];edit.hour=10+i;
+                last_result=alarm_service_save_tracked(0,&edit);assert(last_result);
+            }
+        }
+    }else if(conditional_case){
         assert(!sounding&&!s.ringing&&!s.snoozed&&s.session);
         if(iterations==1){
             baseline_saves=saves;
@@ -135,7 +163,8 @@ int main(int argc,char **argv)
         if(!strcmp(argv[1],"conditional-session"))conditional_case=4;
         if(!strcmp(argv[1],"conditional-runtime"))conditional_case=5;
     }
-    if(conditional_case){storage_error=0;durable.alarms[0].enabled=false;}
+    result_case=argc>1&&!strcmp(argv[1],"result-cache");
+    if(conditional_case||result_case){storage_error=0;durable.alarms[0].enabled=false;}
     if(recovery_case){
         clock_ready=false;storage_error=0;
         durable.alarms[0].consumed_date=20260101;
@@ -144,6 +173,7 @@ int main(int argc,char **argv)
     alarm_service_init();assert(owner);
     if(edit_case){alarm_config_t edit=durable.alarms[0];edit.hour=8;ticket=alarm_service_save_tracked(0,&edit);assert(ticket);}
     if(!setjmp(finished))owner(NULL);
+    if(result_case){puts("PASS independent failed/successful save receipts, session identity, pending lookup and bounded eviction");return 0;}
     if(conditional_case){puts("PASS conditional owner save: durable success, local-edit conflict, storage failure or obsolete boot session");return 0;}
     if(recovery_case){puts("PASS invalid-time startup: pending snooze preserved by brightness, canceled by dismiss/edit before RTC recovery");return 0;}
     puts(edit_case?"PASS alarm owner tracked failed edit preserves settings; successful retry persists":"PASS alarm owner rings despite checkpoint failure; snooze/dismiss work; bounded retry persists without retrigger");

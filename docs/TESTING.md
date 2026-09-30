@@ -262,3 +262,9 @@ old settings on storage failure and reject obsolete boot tokens. Conflict is a
 separate snapshot flag. This internal API is not network authentication. A future
 transport still needs pairing, request-result correlation, replay handling and
 authorization; the prototype website is not connected by these tests.
+
+The result-cache owner scenario preserves separate failed/successful completion
+receipts when commands drain together and checks bounded eviction. The actual
+LVGL preview `save-timeout-test` withholds receipts and verifies both alarm and
+display editors report an unavailable result after ten seconds without claiming
+success. This RAM cache does not persist across reboot or authenticate callers.
