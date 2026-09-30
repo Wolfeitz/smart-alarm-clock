@@ -1794,3 +1794,36 @@ Receipts: snooze-clock-{preview-build,build,flash,runtime}.log. New snooze inter
 is qualified in the actual LVGL preview; physical touch acceptance remains batched.
 Updated user guide also clarifies failed-load replacement and inadequate wake-up
 volume. No full power-off test or new acoustic acceptance claim.
+
+## Offline-goal completion and blocker audit (2026-09-30)
+
+Previous turn was progress: installed and tested snooze navigation. Current build
+hash matches the recorded installed application; esptool hash verification and
+subsequent CLOCK_READY/RTC/unchanged-settings receipt inspected. Factory backup
+was rehashed now and still matches a963c18040b476d61ec4dc8f630f1b1e38c5b61cc69f6c530a8a7c6676d302ab.
+Tracked worktree clean; unrelated install-arch.sh unchanged and untracked.
+
+Requirement audit against CLOCK-ACCEPTANCE and current receipts:
+- Installed RTC time, alarm editing/persistence, brightness: device evidence exists.
+- Scheduling, snooze/dismiss and Wi-Fi independence: offline trigger and two-reset
+  recovery receipt inspected; normal load path preserved after failed-load fix.
+- Display/touch and audible sound: earlier owner confirmation exists. Latest
+  snooze interaction is LVGL-tested; final physical touch/acoustic checks missing.
+- Processor restart: demonstrated; it cannot establish full power-loss recovery.
+- Full interruption, interrupted write, actual RTC backup arrangement and timed
+  active-phase recovery across full power loss: not demonstrated. Owner deferred
+  power-off checks until the integrated product is ready; do not request them now.
+- Local audibility is confirmed, but owner explicitly reports inadequate wake-up
+  loudness; software transmission success cannot reverse that observation.
+- Recovery image and project boundaries: preserved; no shared service changes.
+
+The same deferred physical acceptance gaps were recorded in the last three goal
+turns (load protection, offline restart regression, snooze navigation). Those
+turns made real progress, but that work has not supplied the missing physical
+proof. No further required software fix is identified by this audit. Additional
+UI/integration development belongs to the broader authorized product direction;
+it cannot be counted as completion evidence for power-loss or acoustics.
+Mark the narrow offline acceptance goal blocked, not complete, pending the final
+physical batch and a satisfactory audio arrangement. Leave current application
+installed and all original settings restored. This does not cancel the broader
+family-companion project or authorize an earlier power-off test.
