@@ -1546,3 +1546,22 @@ transmission completed ESP_OK. Receipts: audio-cancel-host.log,
 audio-cancel-build.log, audio-cancel-flash.log, audio-cancel-runtime.log under
 local-config/clock. This verifies policy and transport, not acoustic stop latency.
 No physical power interruption or HA changes.
+
+## Invalid-time startup recovery coverage (2026-09-30)
+
+Previous turn progressed the goal with installed sound-cancellation fix0699193.
+The owner loop waits for valid RTC time before restoring persisted active phases;
+existing owner tests always supplied valid time. Add production-owner scenarios
+for delayed validity: brightness edits must preserve the pending snooze, while
+Dismiss or editing that alarm must cancel it before recovery. Verify durable
+state, no premature sound, and no revival after time becomes valid. This covers
+software behavior following an invalid-time boot, not RTC backup-power retention.
+
+All three production-owner scenarios passed with the full host suite. During
+invalid time there is no sound, no restored runtime phase and no unsolicited
+checkpoint. Brightness25 saves without discarding the durable snooze; valid time
+then restores its remaining interval. Dismiss and tracked alarm edits clear the
+durable phase/deadline before valid time, so recovery does not revive them.
+Receipt: local-config/clock/invalid-time-owner-host.log. No firmware change or
+flash was needed; installed0699193 remains in place. These deterministic tests
+do not substitute for physical RTC retention or abrupt power-loss acceptance.

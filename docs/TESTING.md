@@ -241,3 +241,11 @@ alarm playback; an on/off cycle between audio blocks cannot revive an old test.
 Repeated unchanged owner updates preserve a valid context. audio.c checks the
 token before each generated block and queues the token with each sound test.
 These checks do not measure physical sound-stop latency or DMA drain time.
+
+## Invalid-time owner startup
+
+The production alarm-owner host harness also runs invalid-brightness,
+invalid-dismiss and invalid-edit scenarios. A saved snooze must remain dormant
+until time is valid. Brightness changes preserve that checkpoint; Dismiss and
+alarm edits cancel it durably before recovery. Tests check persisted state and
+audio state across the validity transition, without emulating battery hardware.

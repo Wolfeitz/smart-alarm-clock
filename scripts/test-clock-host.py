@@ -51,7 +51,7 @@ with tempfile.TemporaryDirectory(prefix="esp-link-host-") as directory:
         *[str(main / (m + ".c")) for m in ("alarm_service", "alarm_output", "alarm_engine", "alarm_recovery", "settings_codec", "display_policy")],
         str(tests / "alarm_service_test.c"), "-o", binary,
     ], check=True, timeout=60)
-    for scenario in ("checkpoint", "edit"):
+    for scenario in ("checkpoint", "edit", "invalid-brightness", "invalid-dismiss", "invalid-edit"):
         subprocess.run([binary, scenario], check=True, timeout=10)
     binary = str(Path(directory) / "remote_alarm")
     subprocess.run([
