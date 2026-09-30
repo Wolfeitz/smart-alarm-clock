@@ -38,7 +38,9 @@ from unanswered requests or from this checklist.
 
 Owner defers further full power-off tests until regular functionality is complete.
 Scheduled night mode is installed; interval/wake/migration host checks pass.
-The current UI remains a proof of concept; visual redesign is deferred.
+The current UI has an initial home-layout improvement; full visual polish remains
+unfinished. The final combined physical procedure is below; it is not a request
+to perform power-off testing now.
 
 ## Current evidence refresh (2026-09-24)
 
@@ -144,3 +146,68 @@ transitions. Host tests prove stale queued/running contexts cannot resume after
 dismissal. New-image boot/navigation/audio-transport checks passed; all eight
 alarms remained unchanged. The prior offline scheduler test is historical; this
 change does not repeat it or prove acoustic latency. See audio-cancel-runtime.log.
+
+## Final combined physical procedure (prepared, not executed)
+
+Run this once integrated functionality and interface work are ready, honoring the
+owner's instruction to batch physical checks. The operator's observations are
+required; USB acknowledgments alone do not count as touch or audible proof.
+Record the actual firmware hash, date, power sources, selected alarm slot and
+results beside the existing installation receipts. Do not assume the battery is
+connected from earlier discussions.
+
+Before testing, capture all eight alarm records and the display settings. Select
+an unused slot; do not replace an enabled personal alarm. Keep a private settings
+backup if using diagnostic tools, since the partition also contains credentials.
+Keep remote alarm use disabled for this offline acceptance. Stop Wi-Fi through the
+existing NETWORK OFF diagnostic and verify its acknowledgement; do not erase the
+saved network or change the router. Check the RTC agrees with local time.
+NETWORK OFF is currently RAM-only and does not survive a reset. Therefore it
+proves disconnected running behavior only. Before the cold-boot offline cases,
+establish a verified persistent radio-off setting or another owner-approved way
+to prevent network time correction. Until then, do not label a connected reset
+as an offline cold-boot test.
+
+1. **Physical editing and brightness.** Use the touchscreen to save a once alarm
+   for at least two minutes ahead, with today's local date. Reopen it and verify
+   the saved time/date and enabled state. Exercise Dim/Brighten, or the display
+   settings when night scheduling is enabled. Text must be readable, touch must
+   hit the visible controls, and each brightness change must be apparent.
+2. **Offline sound and controls.** Observe the alarm reaching its scheduled time
+   without network. Record whether sound is audible at the provisionally accepted
+   level. Tap the visible Snooze button: sound must stop, the countdown must show
+   approximately five minutes, and the clock must remain responsive. Wait for
+   the repeat, then tap Dismiss. Verify no sound resumes and the once alarm is
+   disabled. Capture the device transitions alongside the physical observations.
+3. **Restart with retained power.** Save the chosen brightness and a future alarm,
+   then perform an MCU reset. Verify those settings persist and time is recovered
+   from RTC before any network correction. This is a reset test, not evidence of
+   complete power loss. Historical MCU recovery receipts already cover active
+   ringing and snooze; repeat on the final image if its recovery path has changed.
+4. **Full interruption, only at the agreed final test.** Document whether any
+   battery or other backup supply is connected. Remove all device power for a
+   measured interval, restore it with Wi-Fi still unavailable, and record startup,
+   alarm configuration and brightness. If the RTC retained valid time, compare
+   elapsed time against the measured interval. If RTC time was lost, the clock
+   must visibly request time instead of scheduling against an invented date.
+   Set local time through Settings, then verify a future alarm works offline.
+   Report lack of RTC retention as a hardware/backup limitation, not a pass for
+   battery-backed timekeeping.
+5. **Active-phase interruption.** With valid retained RTC power established,
+   interrupt device power during a five-minute snooze and restore it before the
+   deadline. The remaining interval must be recovered, followed by audible
+   ringing and working Dismiss. A test without valid retained time cannot prove
+   timed recovery; record that case separately. Abrupt loss during a settings save
+   must leave a valid previous or new configuration after restart, not malformed
+   data; preserve before/after records for that separate fault case.
+
+Finish by restoring the original alarm/display settings and checking all eight
+records exactly, turning Wi-Fi back on if it was originally on, and verifying
+that no test alarm remains armed or snoozed. Leave the verified application
+installed. Never restore the factory demo merely to end this test.
+
+**Still unproven:** final physical editor/control behavior, acoustic stop behavior
+after the latest cancellation fix, full interruption during save, RTC retention
+under the actual power arrangement, and timed active-phase recovery across full
+power loss. These observations are required before claiming the offline goal is
+complete. This procedure itself is preparation, not acceptance evidence.

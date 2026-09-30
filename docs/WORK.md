@@ -1565,3 +1565,21 @@ durable phase/deadline before valid time, so recovery does not revive them.
 Receipt: local-config/clock/invalid-time-owner-host.log. No firmware change or
 flash was needed; installed0699193 remains in place. These deterministic tests
 do not substitute for physical RTC retention or abrupt power-loss acceptance.
+
+## Final acceptance preparation (2026-09-30)
+
+Previous turn progressed restart coverage with8c46a29. Current audit preserves the
+remaining physical gaps rather than claiming software tests close them. Added a
+single end-stage procedure to CLOCK-ACCEPTANCE: preserve settings, physical edit/
+brightness, offline audible alarm, full Snooze/Dismiss cycle, reset, documented
+power topology, full interruption and active-phase/save interruption. It explicitly
+distinguishes absent RTC backup from firmware recovery and restores all settings.
+No physical test or power-off request is being made now. Updated contradictory
+USER-GUIDE claims about saved/external playback; no firmware/runtime change.
+Final visual polish remains authorized unfinished work before the combined round.
+
+Procedure review exposed a concrete remaining setup gap: NETWORK OFF is RAM-only.
+A reset restarts connection attempts, so it cannot isolate offline cold-boot
+acceptance. Next bounded implementation: persisted user Wi-Fi off/on control,
+preserving credentials and default behavior, with startup/re-enable tests. This
+is an offline-operating control, not a new external integration.

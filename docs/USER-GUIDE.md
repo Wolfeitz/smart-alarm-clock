@@ -48,8 +48,9 @@ does not disable local alarms. No Home Assistant server is installed by the cloc
 
 **Settings → Media → Setup** selects a player already available in Home Assistant.
 It uses the saved HA server/token and shows track, artist, state and volume. Only
-supported controls are enabled. This controls existing playback; choosing a new
-Spotify playlist and using remote playback as an alarm are not implemented yet.
+supported controls are enabled. The controls operate existing playback. A saved media ID/type can also start a
+selection; optional alarm use is described below. There is no Spotify playlist
+browser or direct Spotify streaming on the clock.
 
 ## Status messages
 
@@ -57,7 +58,7 @@ Spotify playlist and using remote playback as an alarm are not implemented yet.
 output error. A ringing alarm then shows **Audio error**, while Snooze/Dismiss remain
 available. **Settings storage error** means persistence failed; do not interpret a
 queued save as a successful save. The current speaker level is the provisionally
-accepted local tone; external playback is not yet an alarm source.
+accepted local tone. External alarm playback is optional and requires setup.
 
 For Home Assistant setup without typing a long token on the touchscreen, use the
 [computer USB setup helper](HOME-ASSISTANT.md#usb-setup-from-the-computer). It offers
