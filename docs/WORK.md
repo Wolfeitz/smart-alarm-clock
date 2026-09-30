@@ -1746,3 +1746,27 @@ unchanged. Receipts: load-failure-{host,preview-build,build,flash,runtime}.log.
 No storage corruption was induced on the board. This closes a software recovery
 failure path, not physical power-loss or adequate wake-up loudness acceptance.
 Those remain incomplete; full power-off tests remain deferred by owner direction.
+
+## Offline recovery regression after load protection (2026-09-30)
+
+Prior goal turn was progress: installed failed-load protection. Complementary
+acceptance on the installed image: radio off, RTC-triggered once alarm, snooze,
+processor restart restoring snooze, dismissal, second processor restart remaining
+idle. Preserve and compare all alarm records, then restore original disabled
+slot and initial enabled radio. Abort before changes if any user alarm is enabled.
+No full power-off or physical corruption; audio transmission is not loudness proof.
+
+PASS on installed719ffda image: SDK radio-off acknowledged and persisted;
+RTC-triggered alarm mask1 checkpointed ESP_OK; audio transmissions returned
+ESP_OK. Snooze checkpoint survived a processor reset with radio still off,
+RTC/offline startup and advancing system/RTC within one second. Countdown stayed
+within the original five-minute interval. Dismissal survived a second processor
+reset with no active phase or duplicate trigger. All eight consumed/schedule
+records matched across both resets; original disabled alarm records were then
+restored exactly. Initial enabled radio restored, weather HTTP200 resumed with
+saved credentials. Final observed free heap80928. Script exited0.
+Receipt: local-config/clock/offline-recovery-719ffda-runtime.log; original alarm
+snapshot retained beside it. No physical sound observation or full power loss
+was tested. This verifies normal NVS recovery still works with the new failed-load
+protection. Remaining offline acceptance is physical controls/acoustic adequacy
+and the deferred full-power-loss/backup-power arrangement; goal remains active.

@@ -217,3 +217,14 @@ flag loaded, radio boot stayed off, RTC/system agreed, no network activity was
 observed, and all eight alarms were unchanged. Wi-Fi was restored with existing
 credentials and weather/network time recovered. This proves reset isolation, not
 full power loss or scheduling on this new image. Receipt: radio-persist-runtime.log.
+
+## Current-image offline restart regression (2026-09-30)
+
+Installed719ffda (SHA above) passed radio-off RTC alarm trigger, successful audio
+transmission, persisted snooze through a processor reset, and persisted dismissal
+through a second reset without re-ringing. Radio stayed off across both resets;
+RTC/system agreement was within one second. All eight original alarm records and
+initial enabled radio were restored, with weather reconnect confirmed. Receipt:
+`local-config/clock/offline-recovery-719ffda-runtime.log`. This is hardware evidence
+for normal restart recovery after the failed-load protection change; it does not
+prove physical audibility, full-power-loss atomicity or battery-backed retention.
