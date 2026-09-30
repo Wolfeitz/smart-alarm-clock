@@ -1827,3 +1827,31 @@ Mark the narrow offline acceptance goal blocked, not complete, pending the final
 physical batch and a satisfactory audio arrangement. Leave current application
 installed and all original settings restored. This does not cancel the broader
 family-companion project or authorize an earlier power-off test.
+
+## Park website; Duncan and speaker direction (2026-09-30)
+
+Owner explicitly requests preserving web work separately and revisiting it later.
+Created local branch codex/companion-prototype at4430c8d and verified its tree
+contains all seven companion files and the original design. Removed prototype
+files from active main, replaced FAMILY-COMPANION with a parking/return note, and
+updated PROJECT with Duncan's current07:30/08:00/08:15/08:30 pattern, future named
+sequences, existing-provider integration and autonomous college operation.
+These times were not armed on the device. Retained useful firmware conditional
+save/recovery work; no rollback or device changes.
+
+Confirmed PID1536949 was this repo's loopback Python prototype on8767, stopped it,
+and verified the port no longer listens. No Docker/shared infrastructure touched.
+Future local web/backend work requires Docker and a stack/ownership discussion.
+No new SaaS, replacement calendar/mail/task system, or remote-family dependency.
+
+Researched speaker requirements against official Espressif/Waveshare/Sonos docs.
+SPEAKER-REQUIREMENTS.md records local wired audio as the preferred direction to
+qualify, overnight readiness, input/volume recovery, intelligible output, local
+control and dorm-network constraints. No speaker is owned yet; exact purchase
+awaits interface qualification and budget/footprint preference. C5 Bluetooth LE
+is not direct Classic A2DP output. No line-out wiring compatibility is claimed.
+
+python scripts/verify-bootstrap.py passed documentation checks; git diff --check
+passed. Firmware unchanged; no firmware or physical checks warranted here.
+The old narrow offline goal remains blocked on its recorded physical acceptance;
+this user-directed product discussion does not claim that goal complete.

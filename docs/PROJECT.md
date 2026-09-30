@@ -159,14 +159,45 @@ Do not advertise non-HA external playback as implemented. Voice/activation/morni
 briefings are possible later capabilities, not a reason to install HA or make
 local time/alarm execution depend on it. No publication or license choice requested.
 
-## Product direction expanded by owner (2026-09-30)
+## Product direction explored by owner (2026-09-30; superseded below)
 
 Owner says the board demo is aiming too low and asks for a family companion
-website, personalized devices, ChatGPT/Dot/Pet integration and Libre. These are
-now active product-design work, superseding their blanket future-only treatment
-above. Preserve the independent offline clock and existing hardware recovery.
-See FAMILY-COMPANION.md for the proposed boundaries and next delivery slice.
+website, personalized devices, ChatGPT/Dot/Pet integration and Libre. These were initially treated as active product-design work; the later
+owner clarification below parks the website and prioritizes the standalone device. Preserve the independent offline clock and existing hardware recovery.
+See FAMILY-COMPANION.md for the archive branch and conditions for revisiting it.
 This direction does not authorize sharing anyone's health data, installing on the
 HA Pi, publishing a site, or treating experimental readings as medical alarms.
 The narrow offline goal remains incomplete; it is a foundation milestone rather
 than the full product definition. UI/UX is product work, not a final cosmetic pass.
+
+
+## Current direction: Duncan's independent wake-up device (2026-09-30)
+
+Owner explicitly parks the companion website on a separate branch. Main work is
+standalone device functionality, substantially improved UX/UI and actual speaker
+integration. No external speaker is currently owned for this project. Do not
+assume Sonos is available. Future web/backend development must be Docker-based,
+located under the established project roots, with stack and deployment decisions
+discussed before implementation. Do not provision a SaaS or alter shared services.
+
+First intended user is Duncan, leaving for college next year. His current morning
+pattern begins at07:30, reminders at08:00 and08:15, and a stronger prompt at08:30.
+These are requirements/examples, not authorization to silently arm test or daily
+alarms. The product should eventually choose a named multi-stage wake-up sequence
+from an imported school/work schedule with explicit vacation/day-off exceptions.
+Stages may include chimes, spoken reminders, music and an urgent final alert;
+evening early-start reminders and upcoming-test reminders are future extensions.
+
+Integrate existing calendars, mail and task providers; do not recreate them.
+Proposed boundary: integrations/optional AI interpret and propose a concrete plan;
+user-reviewed rules and persisted local execution determine actual alarm times.
+Cache the accepted schedule and local audio in advance. No cloud model, home
+server or internet request may be required at an alarm deadline. Announcements
+need cached recordings or a local alternative; streamed music needs owned/local
+fallback audio. New remote changes cannot be known while offline; show sync
+freshness and allow local correction. College operation must not require Rob's
+home service or Duncan running a server; family sharing should be optional and
+revocable. Service hosting and account ownership remain open product decisions.
+
+Speaker selection criteria and source evidence are recorded in SPEAKER-REQUIREMENTS.md.
+The existing eight independent alarms are not yet a named sequence engine.
