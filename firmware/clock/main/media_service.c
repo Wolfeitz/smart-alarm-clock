@@ -1,6 +1,7 @@
 #include "media_service.h"
 #include "diagnostics.h"
 #include "media_backend.h"
+#include "alarm_output.h"
 #include "esp_timer.h"
 #include "nvs.h"
 #include "freertos/FreeRTOS.h"
@@ -11,7 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-typedef struct {uint32_t version;char endpoint[192],entity[96],content[384],content_type[48];} preferences_t;
+typedef struct {uint32_t version;char endpoint[192],entity[96],content[384],content_type[48];uint32_t remote_alarm;} preferences_t;
 typedef struct {unsigned kind;uint32_t tag;media_action_t action;preferences_t prefs;} command_t;
 static preferences_t prefs;
 static media_snapshot_t state;
@@ -27,21 +28,23 @@ static void take(void){if(lock)xSemaphoreTake(lock,portMAX_DELAY);}
 static void give(void){if(lock)xSemaphoreGive(lock);}
 static void message(const char *s){take();snprintf(state.status,sizeof(state.status),"%s",s);give();}
 static bool valid(const preferences_t *p)
-{return p->version==2&&memchr(p->content,0,sizeof(p->content))&&memchr(p->content_type,0,sizeof(p->content_type))&&media_selection_valid(p->content,p->content_type)&&memchr(p->entity,0,sizeof(p->entity))&&memchr(p->endpoint,0,sizeof(p->endpoint))&&media_backend_target_valid(p->entity)&&media_backend_identity_valid(p->endpoint);}
+{return p->version==3&&p->remote_alarm<=1&&(!p->remote_alarm||p->content[0])&&memchr(p->content,0,sizeof(p->content))&&memchr(p->content_type,0,sizeof(p->content_type))&&media_selection_valid(p->content,p->content_type)&&memchr(p->entity,0,sizeof(p->entity))&&memchr(p->endpoint,0,sizeof(p->endpoint))&&media_backend_target_valid(p->entity)&&media_backend_identity_valid(p->endpoint);}
 void media_service_init(void)
 {
     lock=xSemaphoreCreateMutex();queue=xQueueCreate(1,sizeof(command_t));accepting=lock&&queue;
     if(nvs_open_from_partition("clockcfg","media",NVS_READWRITE,&storage)==ESP_OK){
         opened=true;size_t n=sizeof(prefs);
         esp_err_t err=nvs_get_blob(storage,"player",&prefs,&n);
-        if(err==ESP_OK&&n==offsetof(preferences_t,content)&&prefs.version==1){prefs.version=2;n=sizeof(prefs);}
+        if(err==ESP_OK&&n==offsetof(preferences_t,content)&&prefs.version==1){prefs.version=3;n=sizeof(prefs);}
+        if(err==ESP_OK&&n==offsetof(preferences_t,remote_alarm)&&prefs.version==2){prefs.version=3;n=sizeof(prefs);}
         if(err!=ESP_OK||n!=sizeof(prefs)||!valid(&prefs))memset(&prefs,0,sizeof(prefs));
     }
     state.configured=valid(&prefs);if(state.configured){strcpy(state.entity,prefs.entity);strcpy(state.content,prefs.content);strcpy(state.content_type,prefs.content_type);}
+    state.remote_alarm=state.configured&&prefs.remote_alarm;alarm_output_enable(accepting&&state.remote_alarm);
     message(!accepting?"Media resources unavailable":state.configured?"Waiting for player":"Choose a player in Setup");
 }
 void media_service_disable(void)
-{accepting=false;take();state.busy=false;state.fresh=false;give();message("Network unavailable; local alarms still work");}
+{accepting=false;alarm_output_enable(false);take();state.busy=false;state.fresh=false;give();message("Network unavailable; local alarms still work");}
 void media_service_snapshot(media_snapshot_t *out)
 {take();*out=state;out->fresh=state.fresh&&esp_timer_get_time()-observed<30000000;give();}
 static bool submit(command_t *c)
@@ -53,20 +56,22 @@ static bool submit(command_t *c)
 }
 bool media_service_configure(const char *entity)
 {return media_service_configure_tagged(entity,0);}
-static bool configure(const char *entity,const char *content,const char *type,uint32_t tag)
+static bool configure(const char *entity,const char *content,const char *type,uint32_t tag,bool remote)
 {
-    if(!media_backend_target_valid(entity)||!media_selection_valid(content,type))return false;
+    if(!media_backend_target_valid(entity)||!media_selection_valid(content,type)||(remote&&!*content))return false;
     media_backend_config_t h;media_backend_config(&h);if(!h.configured)return false;
-    command_t c={.kind=1,.tag=tag,.prefs={.version=2}};strcpy(c.prefs.endpoint,h.identity);strcpy(c.prefs.entity,entity);
+    command_t c={.kind=1,.tag=tag,.prefs={.version=3,.remote_alarm=remote}};strcpy(c.prefs.endpoint,h.identity);strcpy(c.prefs.entity,entity);
     strcpy(c.prefs.content,content);strcpy(c.prefs.content_type,type);return submit(&c);
 }
 bool media_service_select(const char *entity,const char *content,const char *type)
-{return configure(entity,content,type,0);}
+{return configure(entity,content,type,0,false);}
+bool media_service_select_alarm(const char *entity,const char *content,const char *type,bool remote)
+{return configure(entity,content,type,0,remote);}
 bool media_service_configure_tagged(const char *entity,uint32_t tag)
 {
     media_snapshot_t current;media_service_snapshot(&current);
     bool same=entity&&!strcmp(entity,current.entity);
-    return configure(entity,same?current.content:"",same?current.content_type:"",tag);
+    return configure(entity,same?current.content:"",same?current.content_type:"",tag,same&&current.remote_alarm);
 }
 bool media_service_refresh(void){command_t c={.kind=3};return submit(&c);}
 bool media_service_action(media_action_t action)
@@ -91,8 +96,8 @@ void media_service_poll(bool online)
             }
             if(c.tag)diagnostics_printf("SETUP_MEDIA tag=%lu saved=%u\n",(unsigned long)c.tag,err==ESP_OK);
             if(err!=ESP_OK){message("Player not saved; check connection and storage");next_poll=esp_timer_get_time()+10000000;return;}
-            prefs=c.prefs;expected=MEDIA_UNKNOWN;deadline=0;selection_pending=false;
-            take();state.configured=true;state.fresh=false;memset(&state.player,0,sizeof(state.player));strcpy(state.entity,prefs.entity);strcpy(state.content,prefs.content);strcpy(state.content_type,prefs.content_type);give();
+            prefs=c.prefs;alarm_output_enable(prefs.remote_alarm!=0);expected=MEDIA_UNKNOWN;deadline=0;selection_pending=false;
+            take();state.configured=true;state.remote_alarm=prefs.remote_alarm!=0;state.fresh=false;memset(&state.player,0,sizeof(state.player));strcpy(state.entity,prefs.entity);strcpy(state.content,prefs.content);strcpy(state.content_type,prefs.content_type);give();
         }
     }
     if(!valid(&prefs))return;

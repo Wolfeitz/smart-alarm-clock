@@ -95,9 +95,12 @@ int main(int argc,char **argv)
     assert(posts==prior_posts+1&&!strcmp(last_path,"/api/services/media_player/play_media"));
     assert(strstr(last_body,"media_content_id")&&strstr(last_body,"https://example.test/radio"));
     assert(strstr(snapshot().status,"selection not verified"));
+    assert(media_service_select_alarm("media_player.bedroom","https://example.test/radio","music",true));
+    media_service_poll(true);assert(snapshot().remote_alarm);
+    assert(!media_service_select_alarm("media_player.bedroom","","",true));
     storage_error=1;assert(media_service_configure("media_player.other"));media_service_poll(true);
     assert(!strcmp(snapshot().entity,"media_player.bedroom")&&strstr(snapshot().status,"not saved"));
-    assert(!strcmp(snapshot().content,"https://example.test/radio"));
+    assert(!strcmp(snapshot().content,"https://example.test/radio")&&snapshot().remote_alarm);
     media_service_disable();assert(!media_service_refresh()&&!media_service_action(MEDIA_PLAY));
     puts("PASS media owner: explicit actions, observed confirmation, volume, failure expiry, auth, server binding, offline and failed saves");
 }

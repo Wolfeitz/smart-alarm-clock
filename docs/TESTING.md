@@ -224,3 +224,11 @@ five-second retry must persist dismissal/consumption without retriggering. A fai
 tracked edit must preserve the old alarm and report its ticket/error; a later
 successful edit must persist. These deterministic owner tests do not simulate
 thread races, physical flash atomicity or audible output.
+
+`alarm_output_test.c` checks the independent eight-second local deadline, wrong or
+stale session proofs, lease expiry, fallback latching, disable/cancel and monotonic
+timer wrap. `remote_alarm_test.c` runs the production network coordinator against
+a simulated backend: exact/mismatched media, lost confirmation, muted player,
+offline no-late-start, cancellation during POST, ambiguous-start cleanup and bounded
+failed-stop retries. Media service/UI tests cover persisted opt-in and rejecting
+an enabled remote alarm without a selection. No physical player is contacted.

@@ -19,7 +19,8 @@ static void text_field(const cJSON *attrs,const char *key,char *out,size_t capac
 }
 bool media_ha_parse(const char *json,size_t size,const char *entity,media_player_t *out)
 {
-    if(!json||!out||!media_backend_target_valid(entity)||!size||size>12288)return false;
+    if(!json||!out||!media_backend_target_valid(entity)||!size||size>12288||memchr(json,0,size))return false;
+    for(size_t i=0;i+6<=size;i++)if(!memcmp(json+i,"\\u0000",6))return false;
     const char *end; cJSON *root=cJSON_ParseWithLengthOpts(json,size,&end,false);if(!root)return false;
     while(end<json+size&&(*end==' '||*end=='\n'||*end=='\r'||*end=='\t'))end++;
     const cJSON *id=cJSON_GetObjectItemCaseSensitive(root,"entity_id"),*state=cJSON_GetObjectItemCaseSensitive(root,"state");
@@ -33,9 +34,13 @@ bool media_ha_parse(const char *json,size_t size,const char *entity,media_player
             for(unsigned i=0;i<7;i++)if(flags&wire[i])p.capabilities|=1u<<i;
             p.relative_volume=(flags&1024)!=0;
         }}
+        const cJSON *muted=cJSON_GetObjectItemCaseSensitive(attrs,"is_volume_muted");
+        if(cJSON_IsBool(muted)){p.muted_known=true;p.muted=cJSON_IsTrue(muted);}
         if(cJSON_IsNumber(volume)&&isfinite(volume->valuedouble)&&volume->valuedouble>=0&&volume->valuedouble<=1){p.volume=volume->valuedouble;p.volume_known=true;}
         if(ok&&cJSON_IsNumber(features)&&((uint32_t)features->valuedouble&4)&&p.volume_known)
             p.capabilities|=(1u<<MEDIA_QUIETER)|(1u<<MEDIA_LOUDER);
+        const cJSON *content=cJSON_GetObjectItemCaseSensitive(attrs,"media_content_id");
+        if(cJSON_IsString(content)&&strlen(content->valuestring)<sizeof(p.content_id))strcpy(p.content_id,content->valuestring);
         text_field(attrs,"friendly_name",p.name,sizeof(p.name));text_field(attrs,"media_title",p.title,sizeof(p.title));text_field(attrs,"media_artist",p.artist,sizeof(p.artist));
     }
     if(ok)*out=p;

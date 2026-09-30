@@ -6,6 +6,7 @@
 #include <stdatomic.h>
 #include "clock_service.h"
 #include "audio.h"
+#include "alarm_output.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -73,9 +74,9 @@ static void run(void *unused)
             diagnostics_printf("ALARM_PHASE ringing=%u snoozed=%u\n",ringing,snoozed);
             prior_ringing=ringing;prior_snoozed=snoozed;
         }
-        audio_alarm(ringing!=0);
+        bool local_sound=alarm_output_local(ringing,(uint32_t)ms);audio_alarm(local_sound);
         xSemaphoreTake(lock,portMAX_DELAY);
-        published=(alarm_snapshot_t){.settings=settings,.ringing=ringing,.snoozed=snoozed,.snooze_seconds=alarm_snooze_seconds(&engine,ms),.storage_status=storage,.revision=revision,.save_ticket=save_ticket,.save_status=save_status};
+        published=(alarm_snapshot_t){.settings=settings,.ringing=ringing,.snoozed=snoozed,.snooze_seconds=alarm_snooze_seconds(&engine,ms),.local_sound=local_sound,.storage_status=storage,.revision=revision,.save_ticket=save_ticket,.save_status=save_status};
         xSemaphoreGive(lock);
         vTaskDelay(pdMS_TO_TICKS(100));
     }

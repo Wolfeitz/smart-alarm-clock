@@ -1473,3 +1473,51 @@ those physical outcomes. The narrow offline goal is therefore blocked on deferre
 acceptance, not complete. Preserve the installed application and no-power-off
 instruction. Broader project work (remote-alarm behavior and final visual polish)
 is still unfinished and is not claimed complete by this goal audit.
+
+## Remote alarm implementation resumed (2026-09-24)
+
+Owner explicitly rejects deferred physical acceptance as a development blocker:
+physical tests occur at the end unless necessary to prove feasibility. Prior goal
+blocking decision does not gate implementation. Add opt-in saved-player alarm use,
+with an independent8second local deadline, exact-media/fresh-session confirmation,
+and local fallback latched on timeout/lost confirmation. HTTP runs only on network
+worker; Snooze/Dismiss invalidate the session immediately and queue best-effort
+remote pause. No real remote playback during development. Test policy, cancellation
+races, unsupported/offline/auth failures, migration and UI; preserve local defaults.
+
+Remote alarm implementation installed. Defaults remain local-only. Version3 media
+preferences migrate older layouts with remote use disabled. The network worker
+starts the saved selection once per alarm session; local scheduling owns the
+eight-second deadline and three-second confirmation lease. Only exact content,
+playing state, known nonzero volume and known unmuted status count as proof.
+Fallback latches for that ringing phase; late responses cannot silence it.
+Snooze/Dismiss invalidate the session immediately; remote pause is best-effort
+with bounded retries and cannot block local controls. Server identity and target
+are pinned for cleanup. This is state confirmation, not acoustic proof.
+
+Host suites and real-LVGL media-test passed, including v1/v2 migration, failed
+saves, offline/start timeout, cancellation during request, wrong/muted/zero-volume
+media and cleanup exhaustion. A test exposed normal polling delaying the first
+pause attempt; cleanup now clears that polling deadline and the regression passes.
+IDF6.1 build and application-only flash1787888bytes passed, SHA256:
+6014036b05befa473bd2ea846967f40407b602f4c31a4eff2406b20f5179c01f.
+USB media/setup/cancel/home navigation passed; all eight alarms unchanged,
+storageESP_OK, RTC/system agree, heap78268..78304, weatherHTTP200. No HA credentials,
+remote playback, Pi changes or physical power-off tests. Logs under local-config/
+clock: remote-alarm-host.log, remote-alarm-build.log, remote-alarm-flash.log and
+remote-alarm-runtime.log.
+
+## Resume and installation checkpoint (2026-09-30)
+
+Previous status-only turn classified as no progress. Revalidated the worktree and
+completed September24 device-test receipt rather than repeating physical tests.
+The offline-remote-default-runtime.log records SDK radio-off, durable RTC alarm
+trigger, successful I2S transmission, Snooze/Dismiss, radio-on and weatherHTTP200.
+Its final eight ALARM_SLOT records exactly match the saved original JSON. This
+verifies the installed remote-alarm image retains default local-only operation;
+it is not acoustic or full power-loss proof. No claim of six-day uptime is made.
+
+Physical acceptance remains deferred by explicit owner instruction and is not a
+blocker for authorized implementation. The previous blocked-goal audit is historical
+and superseded for development sequencing. Final physical verification remains
+required before declaring the offline goal achieved.

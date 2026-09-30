@@ -26,6 +26,7 @@ static media_snapshot_t media_state={.entity="media_player.bedroom",.configured=
 void media_service_snapshot(media_snapshot_t *s){*s=media_state;}
 bool media_service_configure(const char *entity){snprintf(media_state.entity,sizeof(media_state.entity),"%s",entity);return true;}
 bool media_service_select(const char *entity,const char *content,const char *type){if(!media_selection_valid(content,type))return false;strcpy(media_state.content,content);strcpy(media_state.content_type,type);return media_service_configure(entity);}
+bool media_service_select_alarm(const char *entity,const char *content,const char *type,bool remote){if(remote&&!*content)return false;if(!media_service_select(entity,content,type))return false;media_state.remote_alarm=remote;return true;}
 bool media_service_action(media_action_t action){if(action==MEDIA_PLAY||action==MEDIA_START_SAVED)media_state.player.state=MEDIA_PLAYING;if(action==MEDIA_PAUSE)media_state.player.state=MEDIA_PAUSED;return true;}
 bool media_service_refresh(void){return true;}
 static uint16_t pixels[480*320];
@@ -100,8 +101,13 @@ int main(int argc,char **argv)
                     lv_obj_t *o=lv_obj_get_child(lv_screen_active(),i);
                     if(lv_obj_check_type(o,&lv_textarea_class)){assert(count<3);fields[count++]=o;}
                 }
-                assert(count==3);lv_textarea_set_text(fields[1],"https://example.test/radio");lv_textarea_set_text(fields[2],"music");
-                click_text(lv_screen_active(),"Save");advance();assert(!strcmp(media_state.content,"https://example.test/radio"));
+                assert(count==3);
+                for(unsigned i=0;i<lv_obj_get_child_count(lv_screen_active());i++){
+                    lv_obj_t *o=lv_obj_get_child(lv_screen_active(),i);
+                    if(lv_obj_check_type(o,&lv_checkbox_class))lv_obj_add_state(o,LV_STATE_CHECKED);
+                }
+                lv_textarea_set_text(fields[1],"https://example.test/radio");lv_textarea_set_text(fields[2],"music");
+                click_text(lv_screen_active(),"Save");advance();assert(!strcmp(media_state.content,"https://example.test/radio")&&media_state.remote_alarm);
                 click_text(lv_screen_active(),"Start saved");advance();assert(media_state.player.state==MEDIA_PLAYING);
                 media_state.fresh=false;advance();unsigned disabled=0;
                 for(unsigned i=0;i<lv_obj_get_child_count(lv_screen_active());i++){

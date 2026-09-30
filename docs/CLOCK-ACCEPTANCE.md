@@ -7,7 +7,7 @@ or external playback improvements.
 
 Owner expanded scope to weather/location and continued integration development.
 Home Assistant light setup/control is installed; authenticated operation is pending. Last audit2026-09-24. Installed application SHA256:
-`6fe15e5c75758f327d9c8b07448a7be21e3705ec704056cae17c0572c96b2d96`.
+`6014036b05befa473bd2ea846967f40407b602f4c31a4eff2406b20f5179c01f`.
 
 | Requirement | Evidence | Status |
 |---|---|---|
@@ -121,3 +121,20 @@ Its backend-runtime.log verifies RTC startup/agreement, storageESP_OK, all eight
 alarm records unchanged and media/setup/cancel/home navigation. Backend-host.log
 includes a synthetic non-HA backend test, not real non-HA playback. No offline alarm
 code or settings layout changed; physical acceptance remains batched.
+
+
+Latest installed image adds opt-in external alarm playback, disabled by default.
+Host tests cover the independent eight-second local deadline, fresh exact-media
+confirmation, latched fallback and cancellation/cleanup failures. Application-only
+flash was hash-verified; USB navigation preserved all eight alarm records and
+reported storageESP_OK, RTC/system agreement and weatherHTTP200. Receipts:
+remote-alarm-host.log, remote-alarm-flash.log, remote-alarm-runtime.log.
+Authenticated external playback and acoustic fallback remain unverified; these
+are included in the combined end-stage acceptance, not a development gate.
+
+The same installed image also passed the automated offline-default alarm check:
+radio stopped, RTC alarm triggered with persistenceESP_OK, I2S writes succeeded,
+Snooze/Dismiss worked, all eight alarm records restored exactly, then Wi-Fi and
+weather recovered. September24 receipt inspected on September30:
+`local-config/clock/offline-remote-default-runtime.log`. This is software-driven
+device evidence and does not replace the deferred acoustic/power-loss checks.

@@ -9,6 +9,7 @@ main = root / "firmware/clock/main"
 tests = root / "firmware/clock/tests"
 suites = {
     "display_policy": ["display_policy"],
+    "alarm_output": ["alarm_output"],
     "rtc_codec": ["rtc_codec"],
     "local_time": ["local_time"],
     "alarm_engine": ["alarm_engine"],
@@ -38,7 +39,7 @@ with tempfile.TemporaryDirectory(prefix="esp-link-host-") as directory:
     subprocess.run([
         "cc", "-std=c11", "-Wall", "-Wextra", "-Werror",
         "-I" + str(tests / "ha_stubs"), "-I" + str(main),
-        str(main / "media_model.c"), str(main / "media_service.c"),
+        str(main / "media_model.c"), str(main / "media_service.c"), str(main / "alarm_output.c"),
         str(tests / "media_backend_test.c"), "-o", binary,
     ], check=True, timeout=60)
     subprocess.run([binary], check=True, timeout=10)
@@ -46,11 +47,19 @@ with tempfile.TemporaryDirectory(prefix="esp-link-host-") as directory:
     subprocess.run([
         "cc", "-std=c11", "-D_POSIX_C_SOURCE=200809L", "-Wall", "-Wextra", "-Werror",
         "-I" + str(tests / "alarm_stubs"), "-I" + str(tests / "ha_stubs"), "-I" + str(main),
-        *[str(main / (m + ".c")) for m in ("alarm_service", "alarm_engine", "alarm_recovery", "settings_codec", "display_policy")],
+        *[str(main / (m + ".c")) for m in ("alarm_service", "alarm_output", "alarm_engine", "alarm_recovery", "settings_codec", "display_policy")],
         str(tests / "alarm_service_test.c"), "-o", binary,
     ], check=True, timeout=60)
     for scenario in ("checkpoint", "edit"):
         subprocess.run([binary, scenario], check=True, timeout=10)
+    binary = str(Path(directory) / "remote_alarm")
+    subprocess.run([
+        "cc", "-std=c11", "-Wall", "-Wextra", "-Werror",
+        "-I" + str(tests / "ha_stubs"), "-I" + str(main),
+        *[str(main / (m + ".c")) for m in ("remote_alarm", "alarm_output", "media_model")],
+        str(tests / "remote_alarm_test.c"), "-o", binary,
+    ], check=True, timeout=60)
+    subprocess.run([binary], check=True, timeout=10)
     cjson = root / "firmware/clock/managed_components/espressif__cjson/cJSON"
     binary = str(Path(directory) / "weather_model")
     subprocess.run([
@@ -75,7 +84,7 @@ with tempfile.TemporaryDirectory(prefix="esp-link-host-") as directory:
     subprocess.run([binary], check=True, timeout=10)
     for fault in ("mutex-failure", "queue-failure"):
         subprocess.run([binary, fault], check=True, timeout=10)
-    for name, modules in {"setup_model": ["setup_model", "ha_model"], "media_model": ["media_model", "media_ha", "ha_model"], "media_service": ["media_model", "media_service", "media_ha", "ha_model"]}.items():
+    for name, modules in {"setup_model": ["setup_model", "ha_model"], "media_model": ["media_model", "media_ha", "ha_model"], "media_service": ["media_model", "media_service", "media_ha", "ha_model", "alarm_output"]}.items():
         binary = str(Path(directory) / name)
         subprocess.run([
             "cc", "-std=c11", "-DCJSON_NESTING_LIMIT=16", "-Wall", "-Wextra", "-Werror",

@@ -53,8 +53,8 @@ unchanged/failed state remains unconfirmed and polling backs off after the bound
 confirmation window. Track/volume controls display reported state, without claiming
 that an accepted HTTP request proves the intended physical effect.
 
-This is manual player control only. Alarms still use the independent local speaker;
-remote alarm playback and fallback integration are not yet implemented. An actual token and entity are needed for live authenticated use.
+Manual player controls are independent of the optional remote-alarm mode described
+below. Alarms use the local speaker by default. An actual token and entity are needed for live authenticated use.
 No Pi configuration, speaker grouping or media playback was changed during build.
 
 API references: [media player actions](https://www.home-assistant.io/integrations/media_player/)
@@ -123,3 +123,35 @@ not a runtime plugin selector, and no direct Sonos/Spotify backend is implemente
 An alternate-backend host test links the production owner without HA/HTTP/JSON,
 using a different identity/target format; it demonstrates the interface boundary,
 not an actual second integration. Existing HA settings retain their format.
+
+
+## Optional external alarm with local fallback
+
+In Media → Setup, select a player and media ID/type, then enable **Use for alarms
+(local fallback)**. This applies to all enabled alarms. It is off by default and
+stays off when older player settings migrate. Saving the option does not play audio.
+Use a dedicated alarm player: starting the selection can replace its existing media,
+and Snooze/Dismiss requests pause on the player this alarm attempted to start.
+
+At an alarm, the local alarm task starts its own eight-second deadline and exposes a
+new session to the network worker. The worker requires Start saved and Pause support
+before sending playback. Only fresh state from the requested player, playing the
+exact media ID with reported nonzero volume and explicitly unmuted output, grants
+a three-second renewable confirmation. Missing metadata, offline/auth failures,
+HTTP acknowledgment alone, mismatched media, muted/unknown volume, or expiry leaves
+local fallback active. Once fallback starts, it stays on for that ringing phase.
+Playlist players often report the current track ID instead of the requested playlist;
+those will keep the local fallback. Reported playback is not physical acoustic proof.
+
+Snooze, Dismiss and alarm expiry cancel the session immediately in the local task.
+The network worker attempts pause and reads back paused state, with at most three
+attempts in a ten-second retry window; an already-running HTTP request may extend
+that window. In-flight start requests cannot always be cancelled at the server,
+so cleanup also runs after an ambiguous start timeout. Server identity changes
+prevent commands being sent to a different server. Network failure can leave the
+external player running; local Snooze/Dismiss remains usable. Serial diagnostics
+report an unconfirmed remote stop without logging the target/media/token.
+
+This behavior is host-tested with simulated players. No real authenticated alarm
+playback or acoustic verification has yet been performed; that belongs in the
+batched end-to-end acceptance. Local alarm scheduling never waits for HTTP.

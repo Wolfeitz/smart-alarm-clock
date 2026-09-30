@@ -66,3 +66,8 @@ light/player entity discovery and hidden token entry in your terminal.
 Media Setup can also save a media ID and type. **Start saved** starts that selection
 on the configured external player; **Play** resumes its existing media. Saving
 settings does not start playback. Support depends on the selected HA integration.
+
+Media Setup also offers **Use for alarms (local fallback)**, off by default. With
+a saved player/selection, alarms can request that external player; missing or
+unconfirmed playback falls back to the board speaker after eight seconds. See
+[remote alarm behavior and limits](HOME-ASSISTANT.md#optional-external-alarm-with-local-fallback).

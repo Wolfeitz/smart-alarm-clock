@@ -2,6 +2,7 @@
 #include "network_http.h"
 #include "ha_service.h"
 #include "media_service.h"
+#include "remote_alarm.h"
 #include "timezone_rules.h"
 #include "diagnostics.h"
 #include "clock_service.h"
@@ -222,6 +223,7 @@ static void worker(void *arg)
         if(online!=was_online){was_online=online;publish();if(online){status("Wi-Fi connected");weather_at=0;}}
         if(!radio_paused&&!online&&prefs.ssid[0]&&now>=retry){status("Wi-Fi unavailable; reconnecting...");esp_wifi_connect();retry=now+30000000;}
         ha_service_poll(online);
+        remote_alarm_poll(online);
         media_service_poll(online);
         if(online&&now>=weather_at){
             if(clock_valid()){bool ok=update_weather();weather_at=esp_timer_get_time()+(ok?1800000000LL:60000000);}
