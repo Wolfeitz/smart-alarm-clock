@@ -6,8 +6,8 @@ the clear local tone provisionally; desired alarm loudness may need later hardwa
 or external playback improvements.
 
 Owner expanded scope to weather/location and continued integration development.
-Home Assistant light setup/control is installed; authenticated operation is pending. Last audit2026-09-24. Installed application SHA256:
-`6014036b05befa473bd2ea846967f40407b602f4c31a4eff2406b20f5179c01f`.
+Home Assistant light setup/control is installed; authenticated operation is pending. Last audit2026-09-30. Installed application SHA256:
+`229e1167f30362df71e6891a1d069bc4db77ece1b04ce74250906218c91b2b94`.
 
 | Requirement | Evidence | Status |
 |---|---|---|
@@ -138,3 +138,9 @@ Snooze/Dismiss worked, all eight alarm records restored exactly, then Wi-Fi and
 weather recovered. September24 receipt inspected on September30:
 `local-config/clock/offline-remote-default-runtime.log`. This is software-driven
 device evidence and does not replace the deferred acoustic/power-loss checks.
+
+September30 installed sound-cancellation fix invalidates sound tests across alarm
+transitions. Host tests prove stale queued/running contexts cannot resume after
+dismissal. New-image boot/navigation/audio-transport checks passed; all eight
+alarms remained unchanged. The prior offline scheduler test is historical; this
+change does not repeat it or prove acoustic latency. See audio-cancel-runtime.log.

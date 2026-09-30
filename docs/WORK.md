@@ -1521,3 +1521,28 @@ Physical acceptance remains deferred by explicit owner instruction and is not a
 blocker for authorized implementation. The previous blocked-goal audit is historical
 and superseded for development sequencing. Final physical verification remains
 required before declaring the offline goal achieved.
+
+## Local sound cancellation (2026-09-30)
+
+Previous turn made progress: installed remote-alarm changes committed6912d55.
+Code review now finds a local-control defect: audio.c checks cancellation only
+when a sequence started as an alarm. A test already playing, or queued before an
+alarm, can therefore remain audible after Snooze/Dismiss. Acceptance: each alarm
+transition invalidates older sound requests, including a complete on/off cycle
+between audio blocks; reject test requests while local alarm sound is active.
+Keep tone, codec and DMA configuration unchanged. Verify the shared atomic policy
+with host tests, compile firmware and retain the acoustic-latency limitation.
+
+Cancellation fix installed: audio_control tags queued/running sound contexts with
+an atomic generation plus alarm flag. Every activity transition invalidates older
+contexts, even if both start and dismissal occur between audio blocks. Unchanged
+owner updates do not cancel playback; new test requests during local alarms are
+rejected. All host suites passed, IDF6.1 build passed, app-only flash1788016bytes
+hash verified. Installed SHA256:
+229e1167f30362df71e6891a1d069bc4db77ece1b04ce74250906218c91b2b94.
+Device boot reported RTC/system within1second, storageESP_OK, weatherHTTP200 and
+heap78380. Navigation preserved all eight alarms; SOUND was accepted and I2S
+transmission completed ESP_OK. Receipts: audio-cancel-host.log,
+audio-cancel-build.log, audio-cancel-flash.log, audio-cancel-runtime.log under
+local-config/clock. This verifies policy and transport, not acoustic stop latency.
+No physical power interruption or HA changes.

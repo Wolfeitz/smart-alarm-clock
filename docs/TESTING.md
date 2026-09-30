@@ -232,3 +232,12 @@ a simulated backend: exact/mismatched media, lost confirmation, muted player,
 offline no-late-start, cancellation during POST, ambiguous-start cleanup and bounded
 failed-stop retries. Media service/UI tests cover persisted opt-in and rejecting
 an enabled remote alarm without a selection. No physical player is contacted.
+
+## Sound-test cancellation policy
+
+`python scripts/test-clock-host.py` includes the production audio_control atomic
+policy: alarm start invalidates running/queued tests; Snooze/Dismiss invalidates
+alarm playback; an on/off cycle between audio blocks cannot revive an old test.
+Repeated unchanged owner updates preserve a valid context. audio.c checks the
+token before each generated block and queues the token with each sound test.
+These checks do not measure physical sound-stop latency or DMA drain time.

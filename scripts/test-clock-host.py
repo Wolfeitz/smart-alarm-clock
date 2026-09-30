@@ -8,6 +8,7 @@ root = Path(__file__).resolve().parents[1]
 main = root / "firmware/clock/main"
 tests = root / "firmware/clock/tests"
 suites = {
+    "audio_control": ["audio_control"],
     "display_policy": ["display_policy"],
     "alarm_output": ["alarm_output"],
     "rtc_codec": ["rtc_codec"],

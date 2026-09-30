@@ -1,5 +1,6 @@
 #include "diagnostics.h"
 #include "audio.h"
+#include "audio_control.h"
 #include <math.h>
 #include <stdatomic.h>
 #include <stdio.h>
@@ -12,21 +13,21 @@
 #include "freertos/queue.h"
 static i2s_chan_handle_t tx;
 static QueueHandle_t requests;
-static atomic_bool alarm_active;
 static atomic_int last_error=ESP_ERR_INVALID_STATE;
 esp_err_t audio_status(void){return atomic_load(&last_error);}
 enum { OUTPUT_VOLUME = 100, TONE_PEAK = 20000 };
 static int16_t waveform[256];
 static void play_task(void *unused)
 {
-    (void)unused;uint8_t command;int16_t pcm[256*2];
+    (void)unused;int16_t pcm[256*2];
     for(;;){
-        bool alarm=atomic_load(&alarm_active);
-        if(!alarm && xQueueReceive(requests,&command,pdMS_TO_TICKS(50))!=pdTRUE)continue;
+        uint32_t token=audio_control_token();
+        if(!audio_control_is_alarm(token) && xQueueReceive(requests,&token,pdMS_TO_TICKS(50))!=pdTRUE)continue;
+        if(!audio_control_valid(token))continue;
         esp_err_t result=ESP_OK;size_t total=0;
         /* Four brief pulses, with a 10ms envelope to avoid edge clicks. */
         for(unsigned frame=0;frame<22050*2;frame+=256){
-            if(alarm && !atomic_load(&alarm_active))break;
+            if(!audio_control_valid(token))break;
             for(unsigned i=0;i<256;i++){
                 unsigned n=frame+i,pos=n%11025;
                 unsigned envelope=pos<220?pos:pos<5292?220:pos<5512?5512-pos:0;
@@ -86,7 +87,7 @@ void audio_init(i2c_master_bus_handle_t bus)
         uint8_t value=0;int status=control->read_reg(control,regs[i],1,&value,1);
         diagnostics_printf("AUDIO_REG reg=%02x value=%02x status=%d\n",regs[i],value,status);
     }
-    requests=xQueueCreate(1,sizeof(uint8_t));
+    requests=xQueueCreate(1,sizeof(uint32_t));
     if(!requests){diagnostics_printf("AUDIO_INIT failed=queue\n");return;}
     if(xTaskCreate(play_task,"local_audio",4096,NULL,4,NULL)!=pdPASS){vQueueDelete(requests);requests=NULL;diagnostics_printf("AUDIO_INIT failed=task\n");return;}
     atomic_store(&last_error,ESP_OK);
@@ -94,7 +95,8 @@ void audio_init(i2c_master_bus_handle_t bus)
 }
 bool audio_test(void)
 {
-    uint8_t command=1;return requests && xQueueSend(requests,&command,0)==pdTRUE;
+    uint32_t token=audio_control_token();
+    return requests && !audio_control_is_alarm(token) && xQueueSend(requests,&token,0)==pdTRUE;
 }
 
-void audio_alarm(bool ringing){atomic_store(&alarm_active,ringing);}
+void audio_alarm(bool ringing){audio_control_alarm(ringing);}
