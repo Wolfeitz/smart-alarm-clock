@@ -1635,3 +1635,32 @@ No firmware change, service installation, health-data access or publication.
 Next concrete slice is the companion/device interaction design, then one paired
 web-to-device alarm configuration path. Questions sent for intended Dot/Pet,
 Libre sharing scope and speaker model remain pending; design need not wait.
+
+## Companion interaction prototype (2026-09-30)
+
+Acceptance: local responsive prototype with family/device selection, matching
+bedside preview, alarm editing, and explicit simulated pending/applied/conflict
+states. Preserve applied settings until acknowledgment; offline changes remain
+pending. Label synthetic data and disconnected integrations. Include private
+health presentation and assistant/music empty states. No accounts, publication
+or firmware changes. Verify desktop/mobile rendering and synchronization logic.
+
+Companion prototype implemented under companion/ with no frontend dependencies
+or provider calls. Includes seven destinations, two explicitly demo profiles,
+matching bedside concept, editable alarm, manual simulated acknowledgment,
+offline pending state, local-revision conflict, separate sharing toggles and
+unconnected speaker/assistant/Libre states. Hearth is a working name. Real
+pairing and account/backend/device transport are not implemented or implied.
+
+Model tests passed: pending changes preserve applied settings, offline cannot
+acknowledge, local edits reject stale changes, profiles isolated, invalid/duplicate
+proposals rejected. Chromium tests passed all seven routes at1440 and390px, dialog
+Escape, actual form and acknowledgment/conflict flows, profile/private-health
+presentation and no JS exceptions/viewport overflow. First browser check used
+getByRole to count a closed dialog; corrected the test to inspect the DOM node,
+then full run passed. Desktop/mobile/editor screenshots visually inspected,
+retained under local-config/companion-preview/. No real health information used.
+
+Preview served only on127.0.0.1:8767. Port8765 was occupied; left its process alone.
+No runtime infrastructure, HA Pi or firmware changes. Next is a real paired
+website-to-device alarm path; design prototype is not offline-goal completion.
