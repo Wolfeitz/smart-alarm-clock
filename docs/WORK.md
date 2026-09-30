@@ -1703,10 +1703,20 @@ actual LVGL alarms-test, repeat-test, night-test and save-timeout-test pass.
 IDF6.1 build passed (save-results-build.log). New preview timeout test verifies
 both editors stay on their page and report unknown completion honestly.
 
-Application-only flash attempt failed before opening USB: the stable by-id device
-and /dev/serial/by-id are absent. Nothing was written. Current installed hash
-remains the previously recorded d10c3cf image; conditional-save and receipt-cache
-changes are built but not installed. No physical test requested. Receipts are
-save-results-{host,preview-build,build,flash}.log under local-config/clock.
+The first application-only flash attempt could not see USB inside the restricted
+sandbox and wrote nothing. Host-level read-only verification found both the board
+and the existing preview server available. Retried through approved host access:
+application-only write and hash verification passed; bootloader, partitions and
+settings preserved. Installed SHA256:
+`bd8b2d1a5b70e9c6963930cf50472fc5403abea35a25ae19ca764bfa7f4ed148`.
+No physical test requested. Receipts are save-results-{host,preview-build,build,
+flash,host-flash}.log under local-config/clock. The earlier missing-device report
+was a sandbox visibility issue, not a disconnected board.
 RAM receipts are not durable transport acknowledgments across reboot; real
 pairing, authentication and website/device transport remain outstanding.
+
+Installed-device check passed: CLOCK_READY, advancing RTC/system time within one
+second, actual LVGL alarm editor Save returned to the overview/home, storage
+ESP_OK and all eight stored alarm records byte-for-text unchanged. Slot0 was
+verified disabled before the unchanged save. Receipt: save-results-runtime.log.
+No acoustic playback, full-power-loss or web transport claim follows from this.

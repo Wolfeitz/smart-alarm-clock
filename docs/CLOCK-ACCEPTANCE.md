@@ -8,7 +8,7 @@ volume is unresolved and requires external playback and/or a louder local output
 
 Owner expanded scope to weather/location and continued integration development.
 Home Assistant light setup/control is installed; authenticated operation is pending. Last audit2026-09-30. Installed application SHA256:
-`1f36803fb0eda121b7c88b21a2641afe8dee29214186ac33c074aea70ba9a89f`.
+`bd8b2d1a5b70e9c6963930cf50472fc5403abea35a25ae19ca764bfa7f4ed148`.
 
 | Requirement | Evidence | Status |
 |---|---|---|
