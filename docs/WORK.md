@@ -1620,3 +1620,18 @@ NETWORK ON succeeded, weatherHTTP200 and network time resumed using the existing
 credentials; final heap78304. No full power interruption. Receipts under
 local-config/clock: radio-persist-host.log, radio-persist-preview-build.log,
 radio-persist-build.log, radio-persist-flash.log, radio-persist-runtime.log.
+
+## Product direction reset (2026-09-30)
+
+Owner rejects the narrow, kludgy demo trajectory and expands direction to a family
+website, personalized devices, ChatGPT/Dot/Pet and Libre. Stopped the not-yet-edited
+alarm-only cosmetic pass to establish coherent product boundaries. Added
+FAMILY-COMPANION.md and PROJECT scope override: offline execution remains local;
+website configuration requires durable device acknowledgments and conflict handling;
+HA optional; person-specific sharing; authenticated assistant tools; read-only
+freshness-aware Libre presentation. Official Dot/Pet/voice and Abbott sharing docs
+were read. No supported direct Dot embedding or Libre application API was verified.
+No firmware change, service installation, health-data access or publication.
+Next concrete slice is the companion/device interaction design, then one paired
+web-to-device alarm configuration path. Questions sent for intended Dot/Pet,
+Libre sharing scope and speaker model remain pending; design need not wait.

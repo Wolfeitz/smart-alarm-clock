@@ -158,3 +158,15 @@ server-address default remain public-release work.
 Do not advertise non-HA external playback as implemented. Voice/activation/morning
 briefings are possible later capabilities, not a reason to install HA or make
 local time/alarm execution depend on it. No publication or license choice requested.
+
+## Product direction expanded by owner (2026-09-30)
+
+Owner says the board demo is aiming too low and asks for a family companion
+website, personalized devices, ChatGPT/Dot/Pet integration and Libre. These are
+now active product-design work, superseding their blanket future-only treatment
+above. Preserve the independent offline clock and existing hardware recovery.
+See FAMILY-COMPANION.md for the proposed boundaries and next delivery slice.
+This direction does not authorize sharing anyone's health data, installing on the
+HA Pi, publishing a site, or treating experimental readings as medical alarms.
+The narrow offline goal remains incomplete; it is a foundation milestone rather
+than the full product definition. UI/UX is product work, not a final cosmetic pass.
