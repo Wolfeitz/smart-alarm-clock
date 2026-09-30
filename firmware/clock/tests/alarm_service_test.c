@@ -18,6 +18,8 @@ static bool sounding,edit_case;static uint32_t ticket,retry_ticket;
 static unsigned successful_saves;
 static unsigned recovery_case;
 static bool clock_ready=true;
+static unsigned conditional_case,baseline_saves;
+uint32_t esp_random(void){static uint32_t n=1234;return ++n;}
 int64_t esp_timer_get_time(void){return ms*1000;}
 time_t time(time_t *out){time_t value=epoch+ms/1000;if(out)*out=value;return value;}
 bool clock_valid(void){return clock_ready;}
@@ -40,7 +42,28 @@ int xTaskCreate(void (*entry)(void *),const char *name,unsigned stack,void *arg,
 void vTaskDelay(unsigned ticks)
 {
     assert(ticks==100);iterations++;alarm_snapshot_t s;alarm_service_snapshot(&s);
-    if(recovery_case){
+    if(conditional_case){
+        assert(!sounding&&!s.ringing&&!s.snoozed&&s.session);
+        if(iterations==1){
+            baseline_saves=saves;
+            alarm_config_t edit=s.settings.alarms[0];edit.hour=8;
+            if(conditional_case==2){assert(alarm_service_save(0,&edit));edit.hour=9;}
+            if(conditional_case==3)storage_error=93;
+            if(conditional_case==5)assert(alarm_service_dismiss());
+            ticket=alarm_service_save_conditional(0,&edit,
+                conditional_case==4?s.session+1:s.session,s.revision);assert(ticket);
+            assert(!alarm_service_save_conditional(0,NULL,s.session,s.revision));
+            assert(!alarm_service_save_conditional(0,&edit,0,s.revision));
+        }else{
+            assert(s.save_ticket==ticket);
+            if(conditional_case==1){assert(!s.save_conflict&&s.save_status==ESP_OK&&durable.alarms[0].hour==8&&saves==baseline_saves+1);}
+            if(conditional_case==2){assert(s.save_conflict&&s.save_status==ESP_ERR_INVALID_STATE&&durable.alarms[0].hour==8&&saves==baseline_saves+1&&s.storage_status==ESP_OK);}
+            if(conditional_case==3){assert(!s.save_conflict&&s.save_status==93&&durable.alarms[0].hour==7&&s.settings.alarms[0].hour==7);}
+            if(conditional_case==4){assert(s.save_conflict&&s.save_status==ESP_ERR_INVALID_STATE&&durable.alarms[0].hour==7&&saves==baseline_saves);}
+            if(conditional_case==5){assert(s.save_conflict&&durable.alarms[0].hour==7&&saves==baseline_saves+1);}
+            longjmp(finished,1);
+        }
+    }else if(recovery_case){
         assert(!sounding&&!s.ringing);
         if(iterations==1){
             assert(!s.snoozed&&saves==0&&durable.phase[0]==ALARM_SNOOZED);
@@ -105,6 +128,14 @@ int main(int argc,char **argv)
         if(!strcmp(argv[1],"invalid-dismiss"))recovery_case=2;
         if(!strcmp(argv[1],"invalid-edit"))recovery_case=3;
     }
+    if(argc>1){
+        if(!strcmp(argv[1],"conditional-save"))conditional_case=1;
+        if(!strcmp(argv[1],"conditional-conflict"))conditional_case=2;
+        if(!strcmp(argv[1],"conditional-storage"))conditional_case=3;
+        if(!strcmp(argv[1],"conditional-session"))conditional_case=4;
+        if(!strcmp(argv[1],"conditional-runtime"))conditional_case=5;
+    }
+    if(conditional_case){storage_error=0;durable.alarms[0].enabled=false;}
     if(recovery_case){
         clock_ready=false;storage_error=0;
         durable.alarms[0].consumed_date=20260101;
@@ -113,6 +144,7 @@ int main(int argc,char **argv)
     alarm_service_init();assert(owner);
     if(edit_case){alarm_config_t edit=durable.alarms[0];edit.hour=8;ticket=alarm_service_save_tracked(0,&edit);assert(ticket);}
     if(!setjmp(finished))owner(NULL);
+    if(conditional_case){puts("PASS conditional owner save: durable success, local-edit conflict, storage failure or obsolete boot session");return 0;}
     if(recovery_case){puts("PASS invalid-time startup: pending snooze preserved by brightness, canceled by dismiss/edit before RTC recovery");return 0;}
     puts(edit_case?"PASS alarm owner tracked failed edit preserves settings; successful retry persists":"PASS alarm owner rings despite checkpoint failure; snooze/dismiss work; bounded retry persists without retrigger");
 }

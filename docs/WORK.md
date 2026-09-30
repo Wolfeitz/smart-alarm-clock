@@ -1664,3 +1664,25 @@ retained under local-config/companion-preview/. No real health information used.
 Preview served only on127.0.0.1:8767. Port8765 was occupied; left its process alone.
 No runtime infrastructure, HA Pi or firmware changes. Next is a real paired
 website-to-device alarm path; design prototype is not offline-goal completion.
+
+## Conditional device alarm writes (2026-09-30)
+
+Next companion prerequisite: an owner-task compare-and-save API using the snapshot
+boot-session token and revision. Reject queued requests after a local edit,
+runtime transition or reboot; check inside the owner, not in a web/UI thread.
+Successful acknowledgement still follows NVS save. A conflict is distinct from a
+storage failure and must not modify settings/audio. Session0 means startup is not
+ready. No network endpoint or authentication is implied by this internal API.
+
+Conditional-save owner API implemented and all host suites passed, including
+matching durable success, stale revision after queued local edit, failed NVS
+write, old boot token, and runtime command ahead of conditional save. A conflict
+has a separate save_conflict flag and does not masquerade as storage damage.
+The owner publishes session0 until ready; session/revision checks occur where
+settings are mutated. Tokens are concurrency markers, not credentials.
+IDF6.1 build passed. Receipts: conditional-owner-host.log and
+conditional-owner-build.log under local-config/clock. No flash: this internal API
+has no transport caller yet; installed d10c3cf remains the last qualified image.
+Next transport work must add authenticated pairing and durable request/result
+correlation; the existing latest-ticket snapshot alone is not sufficient for
+concurrent web transactions. No website-to-device capability is claimed yet.

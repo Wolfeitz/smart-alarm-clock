@@ -252,3 +252,13 @@ invalid-dismiss and invalid-edit scenarios. A saved snooze must remain dormant
 until time is valid. Brightness changes preserve that checkpoint; Dismiss and
 alarm edits cancel it durably before recovery. Tests check persisted state and
 audio state across the validity transition, without emulating battery hardware.
+
+## Companion conditional-save boundary
+
+Host owner tests exercise conditional-save, conditional-conflict, conditional-storage,
+conditional-session and conditional-runtime: compare the published session/revision
+inside the owner task, reject newer local edits and queued runtime changes, retain
+old settings on storage failure and reject obsolete boot tokens. Conflict is a
+separate snapshot flag. This internal API is not network authentication. A future
+transport still needs pairing, request-result correlation, replay handling and
+authorization; the prototype website is not connected by these tests.
