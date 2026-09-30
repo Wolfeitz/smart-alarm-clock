@@ -256,6 +256,15 @@ int main(int argc,char **argv)
         for(unsigned i=1;i<ALARM_COUNT;i++)assert(alarm_state.settings.alarms[i].weekdays==127&&alarm_state.settings.alarms[i].hour==7);
         puts("PASS actual alarm UI: presets, custom day edit, once fields, empty mask rejection and other-slot isolation");
     }
+    if(argc>3&&!strcmp(argv[3],"load-failure-test")){
+        click_text(lv_screen_active(),"Clock");advance();
+        alarm_state.load_failed=true;advance();
+        assert(has_text(lv_screen_active(),"Saved alarms unavailable - review Alarms"));
+        click_text(lv_screen_active(),"Alarms");advance();
+        lv_obj_send_event(lv_obj_get_child(lv_obj_get_child(lv_screen_active(),1),0),LV_EVENT_CLICKED,NULL);advance();
+        assert(has_text(lv_screen_active(),"Saved alarms unavailable. Saving replaces\nthe previous alarm configuration."));
+        puts("PASS actual UI: failed-load warning on home and explicit replacement notice before alarm save");
+    }
     if(argc>3&&!strcmp(argv[3],"save-timeout-test")){
         click_text(lv_screen_active(),"Clock");advance();
         click_text(lv_screen_active(),"Alarms");advance();

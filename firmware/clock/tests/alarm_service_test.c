@@ -19,7 +19,7 @@ static unsigned successful_saves;
 static unsigned recovery_case;
 static bool clock_ready=true;
 static unsigned conditional_case,baseline_saves;
-static bool result_case;
+static bool result_case,load_failure_case;
 static uint32_t first_result,last_result;
 uint32_t esp_random(void){static uint32_t n=1234;return ++n;}
 int64_t esp_timer_get_time(void){return ms*1000;}
@@ -28,7 +28,7 @@ bool clock_valid(void){return clock_ready;}
 void audio_alarm(bool active){sounding=active;}
 const char *esp_err_to_name(esp_err_t error){return error?"injected failure":"ESP_OK";}
 void diagnostics_printf(const char *format,...){(void)format;}
-esp_err_t settings_store_open(clock_settings_t *out){*out=durable;return ESP_OK;}
+esp_err_t settings_store_open(clock_settings_t *out){if(load_failure_case){settings_defaults(out);return 94;}*out=durable;return ESP_OK;}
 esp_err_t settings_store_save(const clock_settings_t *in)
 {saves++;if(result_case&&in->alarms[0].hour==8)return 93;if(storage_error)return storage_error;durable=*in;successful_saves++;return ESP_OK;}
 QueueHandle_t xQueueCreate(unsigned n,size_t size){assert(n==8&&size<=sizeof(queue[0]));item_size=size;return queue;}
@@ -44,7 +44,36 @@ int xTaskCreate(void (*entry)(void *),const char *name,unsigned stack,void *arg,
 void vTaskDelay(unsigned ticks)
 {
     assert(ticks==100);iterations++;alarm_snapshot_t s;alarm_service_snapshot(&s);
-    if(result_case){
+    if(load_failure_case){
+        assert(!sounding&&!s.ringing&&!s.snoozed);
+        if(iterations<=60){
+            assert(s.load_failed&&s.storage_status==94&&saves==0&&durable.alarms[0].enabled);
+            if(iterations==1){
+                assert(alarm_service_brightness(25));assert(alarm_service_dismiss());
+                ticket=alarm_service_display(&s.settings.display,25);assert(ticket);
+            }
+            if(iterations==2){
+                alarm_save_result_t result;
+                assert(alarm_service_result(ticket,&result)&&result.status==94);
+            }
+            if(iterations==60){
+                alarm_config_t edit=s.settings.alarms[0];edit.hour=8;
+                ticket=alarm_service_save_tracked(0,&edit);assert(ticket);
+            }
+        }else if(iterations==61){
+            assert(s.load_failed&&s.storage_status==93&&saves==1&&durable.alarms[0].enabled);
+            assert(s.save_ticket==ticket&&s.save_status==93);
+        }else if(iterations==120){
+            assert(saves==1&&s.storage_status==93&&durable.alarms[0].enabled);
+            storage_error=0;alarm_config_t edit=s.settings.alarms[0];edit.hour=9;
+            ticket=alarm_service_save_tracked(0,&edit);assert(ticket);
+        }else if(iterations==121){
+            assert(!s.load_failed&&s.storage_status==ESP_OK&&s.save_ticket==ticket&&s.save_status==ESP_OK);
+            assert(saves==2&&!durable.alarms[0].enabled&&durable.alarms[0].hour==9);
+            assert(durable.brightness==160);
+            longjmp(finished,1);
+        }
+    }else if(result_case){
         alarm_save_result_t result;
         if(iterations==1){
             assert(!alarm_service_result(0,&result));
@@ -170,9 +199,11 @@ int main(int argc,char **argv)
         durable.alarms[0].consumed_date=20260101;
         durable.phase[0]=ALARM_SNOOZED;durable.deadline[0]=(uint32_t)time(NULL)+60;
     }
+    load_failure_case=argc>1&&!strcmp(argv[1],"load-failure");
     alarm_service_init();assert(owner);
     if(edit_case){alarm_config_t edit=durable.alarms[0];edit.hour=8;ticket=alarm_service_save_tracked(0,&edit);assert(ticket);}
     if(!setjmp(finished))owner(NULL);
+    if(load_failure_case){puts("PASS failed load preserves stored alarms and warning until deliberate successful alarm save");return 0;}
     if(result_case){puts("PASS independent failed/successful save receipts, session identity, pending lookup and bounded eviction");return 0;}
     if(conditional_case){puts("PASS conditional owner save: durable success, local-edit conflict, storage failure or obsolete boot session");return 0;}
     if(recovery_case){puts("PASS invalid-time startup: pending snooze preserved by brightness, canceled by dismiss/edit before RTC recovery");return 0;}

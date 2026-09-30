@@ -6,6 +6,7 @@ typedef struct {
     uint8_t ringing,snoozed;
     uint32_t snooze_seconds;
     bool local_sound;
+    bool load_failed; /* Stored settings unavailable; automatic replacement is suppressed. */
     esp_err_t storage_status;
     unsigned revision;
     uint64_t session; /* Boot-scoped concurrency token; zero until owner publishes. */

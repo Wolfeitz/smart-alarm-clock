@@ -217,7 +217,7 @@ static void show_editor(void)
     year=number_list(2000,2099,35,142,125);month=number_list(1,12,180,142,110);day=number_list(1,31,310,142,110);
     lv_dropdown_set_selected(year,date/10000-2000);lv_dropdown_set_selected(month,date/100%100-1);lv_dropdown_set_selected(day,date%100-1);
     lv_obj_add_event_cb(repeat,repeat_changed,LV_EVENT_VALUE_CHANGED,NULL);repeat_changed(NULL);
-    edit_status=label(root,"24-hour time  /  select days or a date",15,211,450,&lv_font_montserrat_16);
+    edit_status=label(root,s.load_failed?"Saved alarms unavailable. Saving replaces\nthe previous alarm configuration.":"24-hour time  /  select days or a date",15,211,450,&lv_font_montserrat_16);
     button(root,"Cancel",50,260,160,show_alarms,NULL);button(root,"Save",270,260,160,save,NULL);
 }
 static void save_time(lv_event_t *e)
@@ -614,7 +614,7 @@ void clock_ui_update(void)
     if(next){struct tm local;localtime_r(&next,&local);strftime(b,sizeof(b),"%a %I:%M %p",&local);}
     else snprintf(b,sizeof(b),"%s",clock_valid()?"No upcoming alarms":"Set time to arm alarms");
     lv_label_set_text(next_text,b);
-    lv_label_set_text(status,audio_status()!=ESP_OK?"Local audio unavailable":s.storage_status==ESP_OK?clock_source():"Settings storage error");
+    lv_label_set_text(status,audio_status()!=ESP_OK?"Local audio unavailable":s.load_failed?"Saved alarms unavailable - review Alarms":s.storage_status==ESP_OK?clock_source():"Settings storage error");
     lv_label_set_text(dim_text,s.settings.display.enabled?"Display":applied_brightness<80?"Brighten":"Dim");
     weather_snapshot_t weather;weather_service_snapshot(&weather);
     lv_label_set_text(home_place,weather.location.name[0]?weather.location.name:"Local weather");

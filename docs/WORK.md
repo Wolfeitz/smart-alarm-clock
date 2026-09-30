@@ -1720,3 +1720,29 @@ second, actual LVGL alarm editor Save returned to the overview/home, storage
 ESP_OK and all eight stored alarm records byte-for-text unchanged. Slot0 was
 verified disabled before the unchanged save. Receipt: save-results-runtime.log.
 No acoustic playback, full-power-loss or web transport claim follows from this.
+
+## Preserve failed-load settings (2026-09-30)
+
+Prior goal turn was progress: installed exact-ticket results and verified alarm
+preservation. Offline recovery audit found that a settings-load error is followed
+by an automatic default checkpoint, potentially replacing unreadable saved data
+and hiding the warning. Acceptance: after load failure, never checkpoint defaults
+or let brightness/display changes replace alarms. Keep the load error visible.
+Only an explicit successful alarm save may establish a new valid configuration;
+a failed explicit save must leave the protection in place. Owner-loop tests must
+cover idle time, dismiss, brightness, failed recovery and successful recovery.
+No physical corruption or full power-off test is authorized or needed for this fix.
+
+Implemented startup-load protection with a published load_failed flag and clear
+home/editor warnings. Host suites pass, including no writes across idle time,
+dismiss, brightness, display settings, failed explicit save, and successful
+explicit alarm replacement. Actual LVGL load-failure-test passes; rendered editor
+warning visually inspected and fits above Save/Cancel. IDF6.1 build passed.
+Application-only flash/hash verification passed; installed SHA256:
+`559fbcc45ff8e35f3cc65e6311cb3e4a6aeeef6cdce5fd8b712dcbdd55357ba9`.
+Board normal startup reports RTC/offline, advancing RTC/system within one second,
+storage ESP_OK. Alarm overview/editor/cancel/home passed with all8 records
+unchanged. Receipts: load-failure-{host,preview-build,build,flash,runtime}.log.
+No storage corruption was induced on the board. This closes a software recovery
+failure path, not physical power-loss or adequate wake-up loudness acceptance.
+Those remain incomplete; full power-off tests remain deferred by owner direction.

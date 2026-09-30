@@ -268,3 +268,10 @@ receipts when commands drain together and checks bounded eviction. The actual
 LVGL preview `save-timeout-test` withholds receipts and verifies both alarm and
 display editors report an unavailable result after ten seconds without claiming
 success. This RAM cache does not persist across reboot or authenticate callers.
+
+The `load-failure` owner scenario rejects automatic checkpoints and brightness/
+display writes after a failed startup read, preserving the original stored data.
+A failed explicit alarm save leaves protection active; a successful explicit save
+establishes a new configuration. The actual-LVGL `load-failure-test` checks the
+home warning and pre-save replacement notice. These inject storage errors in host
+code; no physical flash corruption or interrupted-power behavior is claimed.

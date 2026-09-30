@@ -41,6 +41,7 @@ static void run(void *unused)
 {
     (void)unused;clock_settings_t settings;alarm_engine_t engine={0};
     esp_err_t storage=settings_store_open(&settings);unsigned revision=0;
+    bool settings_loaded=storage==ESP_OK;
     uint8_t prior_ringing=0,prior_snoozed=0;
     uint32_t save_ticket=0;esp_err_t save_status=ESP_OK;bool save_conflict=false;
     memcpy(engine.alarms,settings.alarms,sizeof(engine.alarms));
@@ -69,9 +70,11 @@ static void run(void *unused)
                     c.alarm=alarm_merge_edit(&engine.alarms[c.index],&c.alarm);
                     next.alarms[c.index]=c.alarm;next.phase[c.index]=0;next.deadline[c.index]=0;
                 }else{next.brightness=c.brightness;if(c.kind==5)next.display=c.display;}
-                storage=settings_store_save(&next);
+                /* Brightness must not replace alarms after a failed startup read.
+                 * Only a deliberate alarm edit can establish a new configuration. */
+                if(settings_loaded || c.kind==1)storage=settings_store_save(&next);
                 if(storage==ESP_OK){
-                    settings=next;memcpy(engine.alarms,settings.alarms,sizeof(engine.alarms));
+                    settings_loaded=true;settings=next;memcpy(engine.alarms,settings.alarms,sizeof(engine.alarms));
                     if(c.kind==1)alarm_cancel(&engine,c.index);
                     revision++;
                 }
@@ -88,7 +91,7 @@ static void run(void *unused)
             for(unsigned i=0;i<ALARM_COUNT;i++)if(settings.phase[i]!=engine.runtime[i].phase)dirty=true;
             if(last_ms && llabs((long long)(now-last_epoch)-(long long)((ms-last_ms)/1000))>2)dirty=true;
         }
-        if(consumed || dirty || (retry && ms>=retry_at)){
+        if(settings_loaded && (consumed || dirty || (retry && ms>=retry_at))){
             if(restored)alarm_capture(&settings,&engine,now,ms);
             storage=settings_store_save(&settings);retry=storage!=ESP_OK;retry_at=ms+5000;revision++;
             diagnostics_printf("ALARM_CHECKPOINT status=%s\n",esp_err_to_name(storage));
@@ -103,7 +106,7 @@ static void run(void *unused)
         }
         bool local_sound=alarm_output_local(ringing,(uint32_t)ms);audio_alarm(local_sound);
         xSemaphoreTake(lock,portMAX_DELAY);
-        published=(alarm_snapshot_t){.settings=settings,.ringing=ringing,.snoozed=snoozed,.snooze_seconds=alarm_snooze_seconds(&engine,ms),.local_sound=local_sound,.storage_status=storage,.revision=revision,.session=owner_session,.save_ticket=save_ticket,.save_status=save_status,.save_conflict=save_conflict};
+        published=(alarm_snapshot_t){.settings=settings,.ringing=ringing,.snoozed=snoozed,.snooze_seconds=alarm_snooze_seconds(&engine,ms),.local_sound=local_sound,.storage_status=storage,.load_failed=!settings_loaded,.revision=revision,.session=owner_session,.save_ticket=save_ticket,.save_status=save_status,.save_conflict=save_conflict};
         xSemaphoreGive(lock);
         vTaskDelay(pdMS_TO_TICKS(100));
     }
