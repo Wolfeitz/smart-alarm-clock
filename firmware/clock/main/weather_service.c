@@ -1,4 +1,5 @@
 #include "weather_service.h"
+#include "radio_preferences.h"
 #include "network_http.h"
 #include "ha_service.h"
 #include "media_service.h"
@@ -45,7 +46,7 @@ static void status(const char *message)
 static void publish(void)
 {
     state_lock();state.location=prefs.location;
-    state.manual_location=prefs.version==1;
+    state.manual_location=prefs.version==1;state.radio_paused=radio_paused;
     strcpy(state.ssid,prefs.ssid);strcpy(state.zip,prefs.zip);state.connected=online;
     state.restart_for_zone=prefs.location.timezone[0]&&strcmp(active_zone,prefs.location.timezone)!=0;
     state_unlock();
@@ -96,6 +97,7 @@ static esp_err_t radio_init(void)
     err=esp_wifi_set_mode(WIFI_MODE_STA);if(err!=ESP_OK)return err;
     esp_sntp_config_t ntp=ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");ntp.sync_cb=time_sync;
     err=esp_netif_sntp_init(&ntp);if(err!=ESP_OK)return err;
+    if(radio_paused)return ESP_OK;
     err=esp_wifi_start();if(err==ESP_OK)radio_started=true;return err;
 }
 static esp_err_t connect_wifi(void)
@@ -180,7 +182,9 @@ static void worker(void *arg)
     (void)arg;esp_err_t radio=radio_init();
     if(radio!=ESP_OK){available=false;state_lock();state.busy=false;state_unlock();ha_service_disable();media_service_disable();status("Wi-Fi initialization failed; clock works offline");vTaskDelete(NULL);return;}
     int64_t retry=0,weather_at=0;bool was_online=false;
-    if(prefs.ssid[0]){status("Connecting to Wi-Fi...");connect_wifi();retry=esp_timer_get_time()+30000000;}
+    diagnostics_printf("NETWORK_BOOT enabled=%u\n",!radio_paused);
+    if(radio_paused)status("Wi-Fi off; saved for restart");
+    else if(prefs.ssid[0]){status("Connecting to Wi-Fi...");connect_wifi();retry=esp_timer_get_time()+30000000;}
     else status("Set up Wi-Fi to get local weather");
     for(;;){
         command_t command;
@@ -198,20 +202,25 @@ static void worker(void *arg)
                 else{
                     bool changed=strcmp(prefs.zip,next.zip)!=0;prefs=next;
                     if(changed){state_lock();state.has_data=false;state_unlock();}
-                    if(command.kind==1){radio_paused=false;status("Wi-Fi saved; connecting...");connect_wifi();retry=esp_timer_get_time()+30000000;}
+                    if(command.kind==1){
+                        if(radio_paused)status("Wi-Fi saved; radio remains off");
+                        else{status("Wi-Fi saved; connecting...");connect_wifi();retry=esp_timer_get_time()+30000000;}
+                    }
                     else status("Location saved; looking up weather...");
                     weather_at=0;
                 }
             }else if(command.kind==5||command.kind==6){
-                bool enable=command.kind==6;esp_err_t result=ESP_OK;
-                if(enable){
+                bool enable=command.kind==6;
+                esp_err_t result=storage_open?radio_preferences_save(storage,enable):ESP_ERR_INVALID_STATE;
+                if(result!=ESP_OK)status("Wi-Fi setting not saved; unchanged");
+                else if(enable){
                     if(!radio_started){result=esp_wifi_start();if(result==ESP_OK)radio_started=true;}
                     if(result==ESP_OK){radio_paused=false;if(prefs.ssid[0])result=connect_wifi();retry=esp_timer_get_time()+30000000;}
                     status(result==ESP_OK?"Wi-Fi resumed":"Wi-Fi resume failed");weather_at=0;
                 }else{
                     radio_paused=true;
                     if(radio_started)result=esp_wifi_stop();
-                    if(result==ESP_OK){radio_started=false;online=false;status("Wi-Fi paused; clock works offline");}
+                    if(result==ESP_OK){radio_started=false;online=false;status("Wi-Fi off; saved for restart");}
                     else{radio_paused=false;status("Wi-Fi pause failed");}
                 }
                 diagnostics_printf("NETWORK_RADIO enabled=%u status=%s\n",enable,esp_err_to_name(result));
@@ -241,6 +250,10 @@ void weather_service_init(void)
     if(err==ESP_OK){storage_open=true;preferences_t saved;size_t size=sizeof(saved);
         if(nvs_get_blob(storage,"preferences",&saved,&size)==ESP_OK&&size==sizeof(saved)&&valid_preferences(&saved))prefs=saved;
     }
+    bool enabled=false;
+    esp_err_t radio_saved=storage_open?radio_preferences_load(storage,&enabled):ESP_ERR_INVALID_STATE;
+    radio_paused=!enabled;
+    diagnostics_printf("NETWORK_SETTINGS enabled=%u status=%s\n",enabled,esp_err_to_name(radio_saved));
     if(prefs.location.timezone[0])strcpy(active_zone,prefs.location.timezone);
     else if(storage_open){char prior[64];size_t length=sizeof(prior);
         if(nvs_get_str(storage,"fallback_zone",prior,&length)==ESP_OK&&timezone_rule(prior))strcpy(active_zone,prior);
@@ -277,7 +290,7 @@ bool weather_service_location(const char *zip)
 }
 bool weather_service_scan(void){command_t c={.kind=3};return submit(&c);}
 bool weather_service_refresh(void){command_t c={.kind=4};return submit(&c);}
-bool weather_service_take_time(time_t *epoch){return time_updates&&xQueueReceive(time_updates,epoch,0)==pdTRUE;}
+bool weather_service_take_time(time_t *epoch){return time_updates&&xQueueReceive(time_updates,epoch,0)==pdTRUE&&!radio_paused;}
 const char *weather_service_timezone(void){return active_zone;}
 
 bool weather_service_radio(bool enabled){command_t c={.kind=enabled?6:5};return submit(&c);}

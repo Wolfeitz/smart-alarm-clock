@@ -36,7 +36,7 @@ static unsigned shown_scan;
 static lv_obj_t *network_list;
 static weather_network_t shown_networks[WEATHER_NETWORK_COUNT],chosen_network;
 static lv_obj_t *weather_title,*weather_now,*weather_today,*weather_status,*zone_button;
-static lv_obj_t *network_password,*network_zip,*network_status,*keyboard;
+static lv_obj_t *network_password,*network_zip,*network_status,*keyboard,*radio_button;
 static void show_weather(lv_event_t *e);
 static void show_ha(lv_event_t *e);
 static void show_media(lv_event_t *e);
@@ -422,14 +422,21 @@ static void rescan(lv_event_t *e)
 {
     (void)e;network_error=false;if(!weather_service_scan()){lv_label_set_text(network_status,"Busy - please try Scan again");network_error=true;}
 }
+static void toggle_radio(lv_event_t *e)
+{
+    (void)e;weather_snapshot_t s;weather_service_snapshot(&s);network_error=false;
+    if(!weather_service_radio(s.radio_paused)){lv_label_set_text(network_status,"Busy; try again");network_error=true;}
+}
 static void show_network(lv_event_t *e)
 {
     (void)e;editing=false;time_editing=false;reset_screen();network_editing=true;wifi_listing=true;network_error=false;shown_scan=~0u;
-    label(root,"Choose Wi-Fi",10,10,300,&lv_font_montserrat_20);button(root,"Scan",345,6,120,rescan,NULL);
+    label(root,"Wi-Fi",10,10,180,&lv_font_montserrat_20);button(root,"Scan",345,6,120,rescan,NULL);
+    weather_snapshot_t w;weather_service_snapshot(&w);
+    radio_button=button(root,w.radio_paused?"Turn on":"Turn off",210,6,125,toggle_radio,NULL);
     network_list=lv_list_create(root);lv_obj_set_pos(network_list,12,58);lv_obj_set_size(network_list,456,150);
     network_status=label(root,"Scanning nearby networks...",10,217,460,&lv_font_montserrat_16);
     button(root,"Back",20,264,130,show_weather,NULL);button(root,"Test sound",165,264,145,sound,NULL);
-    button(root,"Clock",325,264,135,go_home,NULL);weather_service_scan();
+    button(root,"Clock",325,264,135,go_home,NULL);if(!w.radio_paused)weather_service_scan();
 }
 static void save_location(lv_event_t *e)
 {
@@ -550,6 +557,7 @@ void clock_ui_update(void)
         if(network_editing||location_editing){
             if(network_connecting&&!w.busy&&w.connected&&!strcmp(w.ssid,chosen_network.ssid)){show_weather(NULL);return;}
             if(location_editing&&!w.manual_location&&!lv_textarea_get_text(network_zip)[0]&&w.zip[0])lv_textarea_set_text(network_zip,w.zip);
+            if(wifi_listing)lv_label_set_text(lv_obj_get_child(radio_button,0),w.radio_paused?"Turn on":"Turn off");
             if(wifi_listing&&shown_scan!=w.scan_revision){
                 shown_scan=w.scan_revision;lv_obj_clean(network_list);memcpy(shown_networks,w.networks,sizeof(shown_networks));
                 for(unsigned i=0;i<w.network_count;i++){

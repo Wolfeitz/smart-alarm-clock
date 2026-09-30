@@ -157,8 +157,11 @@ radio-failure injection is claimed by these host checks.
 Serial `NETWORK OFF` and `NETWORK ON` commands pause/resume the board radio through
 the network worker without changing saved credentials. Require both the queued
 request acknowledgment and `NETWORK_RADIO ... status=ESP_OK`; a queued request
-alone is not proof of radio state. This diagnostic is volatile: restart restores
-normal networking. Resume after any offline test. It does not simulate power loss.
+alone is not proof of radio state. The setting now persists across restart in a
+separate radio_enabled key; legacy missing keys default to enabled. Corrupt or
+unreadable keys leave the radio off. Resume after an offline test if originally
+on. This does not simulate power loss. Host tests cover reload and storage errors;
+actual-LVGL radio-test covers both buttons/labels.
 
 Combined navigation stability check (board attached, no alarms enabled):
 

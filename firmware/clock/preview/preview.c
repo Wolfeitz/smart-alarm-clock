@@ -60,6 +60,7 @@ void weather_service_snapshot(weather_snapshot_t *s){*s=weather;}
 bool weather_service_connect(const char *ssid,const char *password){(void)password;strcpy(weather.ssid,ssid);weather.connected=true;return true;}
 bool weather_service_location(const char *zip){(void)zip;return true;}
 bool weather_service_scan(void){return true;}
+bool weather_service_radio(bool enabled){weather.radio_paused=!enabled;return true;}
 bool weather_service_refresh(void){return true;}
 const char *weather_service_timezone(void){return "America/New_York";}
 static void advance(void){for(unsigned i=0;i<20;i++){ticks+=20;lv_timer_handler();}clock_ui_update();lv_refr_now(NULL);}
@@ -165,8 +166,13 @@ int main(int argc,char **argv)
         }
         else if(!strcmp(argv[3],"display")){click_text(lv_screen_active(),"Settings");advance();click_text(lv_screen_active(),"Display & night mode");advance();}
         else {click_text(lv_screen_active(),"Weather");advance();}
-        if(!strcmp(argv[3],"wifi")||!strcmp(argv[3],"connect")){
+        if(!strcmp(argv[3],"wifi")||!strcmp(argv[3],"radio-test")||!strcmp(argv[3],"connect")){
             click_text(lv_screen_active(),"Wi-Fi");advance();
+            if(!strcmp(argv[3],"radio-test")){
+                click_text(lv_screen_active(),"Turn off");advance();assert(weather.radio_paused);
+                click_text(lv_screen_active(),"Turn on");advance();assert(!weather.radio_paused);
+                puts("PASS actual Wi-Fi screen on/off control and label updates");
+            }
             if(!strcmp(argv[3],"connect")){
                 lv_obj_t *screen=lv_screen_active(),*list=NULL,*password=NULL;
                 for(unsigned i=0;i<lv_obj_get_child_count(screen);i++)if(lv_obj_check_type(lv_obj_get_child(screen,i),&lv_list_class))list=lv_obj_get_child(screen,i);

@@ -1,13 +1,14 @@
 # Offline clock acceptance
 
 **Current board:** clock with Wi-Fi picker, manually selected Summerfield weather,
-current/day forecast, network time/RTC sync and dark home/weather UI. Owner accepts
-the clear local tone provisionally; desired alarm loudness may need later hardware
-or external playback improvements.
+current/day forecast, network time/RTC sync and dark home/weather UI. Owner previously accepted
+the clear local tone provisionally, but on September30 explicitly reported it is
+not loud enough to wake someone. Audibility is demonstrated; acceptable wake-up
+volume is unresolved and requires external playback and/or a louder local output.
 
 Owner expanded scope to weather/location and continued integration development.
 Home Assistant light setup/control is installed; authenticated operation is pending. Last audit2026-09-30. Installed application SHA256:
-`229e1167f30362df71e6891a1d069bc4db77ece1b04ce74250906218c91b2b94`.
+`1f36803fb0eda121b7c88b21a2641afe8dee29214186ac33c074aea70ba9a89f`.
 
 | Requirement | Evidence | Status |
 |---|---|---|
@@ -17,7 +18,7 @@ Home Assistant light setup/control is installed; authenticated operation is pend
 | Local time/date entry | Set time installed; host calendar/leap/DST tests pass; RTC adapter already hardware-tested | On-device LVGL navigation/save tested; physical editor use pending |
 | Editable persistent alarms | Eight-slot editor installed; NVS save/reset readback preserved disabled06:43 weekdays62; exact save acknowledgment implemented | Persistence and on-device LVGL editing/save demonstrated; physical editor pending |
 | Local scheduled trigger | Once alarm triggered on physical board; consumption saved before playback | State transition demonstrated |
-| Audible local sound | Owner confirms clear audible tone; factory music louder but distorted; accepts current tone for now | Demonstrated and provisionally accepted; desired loudness remains a limitation |
+| Audible local sound | Owner confirms clear audible tone; factory music louder but distorted; accepts current tone for now | Audibility demonstrated; owner now reports wake-up loudness insufficient |
 | Snooze and dismiss | Real five-minute snooze re-rang after300.01 seconds; dismissal cleared state | Scheduler and on-device LVGL event paths demonstrated; physical button check pending |
 | Restart recovery | Ringing, snooze, dismissal and brightness survive MCU resets | Demonstrated |
 | Saved brightness | Owner confirmed Dim/Brighten; brightness25 survived reset, restored160 | Demonstrated |
@@ -162,11 +163,10 @@ backup if using diagnostic tools, since the partition also contains credentials.
 Keep remote alarm use disabled for this offline acceptance. Stop Wi-Fi through the
 existing NETWORK OFF diagnostic and verify its acknowledgement; do not erase the
 saved network or change the router. Check the RTC agrees with local time.
-NETWORK OFF is currently RAM-only and does not survive a reset. Therefore it
-proves disconnected running behavior only. Before the cold-boot offline cases,
-establish a verified persistent radio-off setting or another owner-approved way
-to prevent network time correction. Until then, do not label a connected reset
-as an offline cold-boot test.
+NETWORK OFF now saves the preference across reset. Require NETWORK_SETTINGS and
+NETWORK_BOOT enabled=0 after restart, valid RTC-source startup and no network time
+correction during the observation. This isolates offline boot without changing
+the router or erasing credentials.
 
 1. **Physical editing and brightness.** Use the touchscreen to save a once alarm
    for at least two minutes ahead, with today's local date. Reopen it and verify
@@ -211,3 +211,9 @@ after the latest cancellation fix, full interruption during save, RTC retention
 under the actual power arrangement, and timed active-phase recovery across full
 power loss. These observations are required before claiming the offline goal is
 complete. This procedure itself is preparation, not acceptance evidence.
+
+September30 persistent-offline image passed a radio-off MCU restart: saved off
+flag loaded, radio boot stayed off, RTC/system agreed, no network activity was
+observed, and all eight alarms were unchanged. Wi-Fi was restored with existing
+credentials and weather/network time recovered. This proves reset isolation, not
+full power loss or scheduling on this new image. Receipt: radio-persist-runtime.log.

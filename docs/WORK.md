@@ -1583,3 +1583,40 @@ A reset restarts connection attempts, so it cannot isolate offline cold-boot
 acceptance. Next bounded implementation: persisted user Wi-Fi off/on control,
 preserving credentials and default behavior, with startup/re-enable tests. This
 is an offline-operating control, not a new external integration.
+
+## Persistent offline mode (2026-09-30)
+
+Acceptance before coding: save a separate radio-enabled flag without altering
+credentials/location or alarm settings. Missing flag preserves legacy enabled
+behavior; unreadable/corrupt flag keeps radio off and reports error. A saved off
+flag must prevent esp_wifi_start and connection attempts at boot. Failed saves
+must not change current radio state. UI provides explicit on/off; saving network
+credentials while off preserves off. NETWORK OFF/ON adopts the same persisted
+semantics. Verify host persistence faults and actual MCU restart offline, then
+restore on and reconnect. No full power-off or shared network changes.
+
+## Updated speaker and UX priority (2026-09-30)
+
+Owner now says onboard volume is insufficient to wake anyone and wants external
+sound for alarms and music; earlier provisional tone acceptance establishes
+audibility only, not acceptable wake-up loudness. Speaker model question is
+pending. Existing Sonos through the existing HA server was recommended, with
+Music Assistant optional later; no service installation or HA modification was
+authorized/performed. External playback remains unverified and cannot establish
+a loud offline fallback. Owner also requests greater UI/UX priority. Final
+acceptance must retain the volume limitation explicitly, not recycle the earlier
+provisional acceptance as proof of bedside reliability.
+
+Persistent offline mode installed and verified. Host suites cover legacy missing
+key, off/on reload, malformed/read errors (off), write/commit errors; actual LVGL
+radio-test passes both controls and labels, rendered Wi-Fi screen inspected.
+IDF6.1 build and app-only flash1788864bytes hash verified. Installed SHA256:
+1f36803fb0eda121b7c88b21a2641afe8dee29214186ac33c074aea70ba9a89f.
+On-device NETWORK OFF succeeded, an esptool chip-id/reset cycle was performed,
+then boot reported NETWORK_SETTINGS enabled=0 ESP_OK and NETWORK_BOOT enabled=0.
+RTC-source time agreed exactly during offline observation; no weather request or
+IP connection was observed. All eight alarm records matched before/after.
+NETWORK ON succeeded, weatherHTTP200 and network time resumed using the existing
+credentials; final heap78304. No full power interruption. Receipts under
+local-config/clock: radio-persist-host.log, radio-persist-preview-build.log,
+radio-persist-build.log, radio-persist-flash.log, radio-persist-runtime.log.

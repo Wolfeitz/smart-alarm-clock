@@ -27,6 +27,12 @@ with tempfile.TemporaryDirectory(prefix="esp-link-host-") as directory:
             str(tests / (name + "_test.c")), "-o", binary,
         ], check=True, timeout=60)
         subprocess.run([binary], check=True, timeout=10)
+    binary = str(Path(directory) / "radio_preferences")
+    subprocess.run(["cc", "-std=c11", "-Wall", "-Wextra", "-Werror",
+        "-I" + str(tests / "storage_stubs"), "-I" + str(main),
+        str(main / "radio_preferences.c"), str(tests / "radio_preferences_test.c"),
+        "-o", binary], check=True, timeout=60)
+    subprocess.run([binary], check=True, timeout=10)
     binary = str(Path(directory) / "settings_store")
     subprocess.run([
         "cc", "-std=c11", "-D_POSIX_C_SOURCE=200809L", "-Wall", "-Wextra", "-Werror",

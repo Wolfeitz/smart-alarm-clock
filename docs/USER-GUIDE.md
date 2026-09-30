@@ -32,7 +32,11 @@ these display settings instead of toggling manual brightness.
 
 ## Weather and connection
 
-Tap **Weather**, then **Wi-Fi** to scan nearby networks and connect. Location is
+Tap **Weather**, then **Wi-Fi** to scan nearby networks and connect. **Turn off**
+keeps Wi-Fi off across restarts, preserving your saved network and password.
+**Turn on** reconnects to that saved network; tap Scan to look for others. Saving
+credentials while off does not silently turn Wi-Fi back on. Local time, alarms
+and brightness remain available offline. Location is
 separate: **Location** selects the ZIP used for weather/timezone. A manually selected
 ZIP takes precedence over network-based estimation. The current manual location is
 27358. A timezone change may require the restart offered on the weather screen.
