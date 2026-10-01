@@ -1992,3 +1992,16 @@ before,after}.log and weather-calendar-before.json. Home restored. No physical
 power-off, acoustic or finger-touch acceptance claimed. Documentation verifier
 passed (documentation only). Wallpaper rotation and animated weather are not yet
 implemented; this delivers condition artwork, a local calendar and the Wi-Fi fix.
+
+## Resumed offline goal audit (2026-10-01)
+
+Previous turn classification: progress (installed and verified Wi-Fi selection,
+calendar and weather artwork). Fresh goal audit checked current Git, binary hash,
+flash/runtime receipts and September30 offline recovery evidence. Corrected stale
+installed-image identity at the top of CLOCK-ACCEPTANCE.md and explicitly scoped
+historical recovery evidence. Current installed image remains0f55da6/c20a7cbb….
+No firmware or device state changed during this audit. Remaining full-goal proof
+requires the owner's deferred combined physical/power-interruption observations;
+software tests cannot substitute. This is the first resumed blocking audit, not
+three consecutive blocked turns. Goal stays active and incomplete. No repeated
+physical prompt or additional power/reset test was issued.

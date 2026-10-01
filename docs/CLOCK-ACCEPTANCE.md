@@ -7,8 +7,11 @@ not loud enough to wake someone. Audibility is demonstrated; acceptable wake-up
 volume is unresolved and requires external playback and/or a louder local output.
 
 Owner expanded scope to weather/location and continued integration development.
-Home Assistant light setup/control is installed; authenticated operation is pending. Last audit2026-09-30. Installed application SHA256:
-`fc95c38adbd7f31f48d3ed81d271bd9689b4b5a4127a00e3b5f48c38c9aa05a7`.
+Home Assistant light setup/control is installed; authenticated operation is pending. Last audit2026-10-01. Installed application from commit `0f55da6`, SHA256:
+`c20a7cbb3bcd46922b0766be029726d311e453e6aecebcd87bedcdb69c6f74ed`.
+Application-only flash verification and subsequent RTC/calendar/navigation receipts
+are `weather-calendar-flash.log` and `weather-calendar-after.log` under
+`local-config/clock`. These do not repeat historical offline alarm recovery tests.
 
 | Requirement | Evidence | Status |
 |---|---|---|
@@ -228,3 +231,20 @@ initial enabled radio were restored, with weather reconnect confirmed. Receipt:
 `local-config/clock/offline-recovery-719ffda-runtime.log`. This is hardware evidence
 for normal restart recovery after the failed-load protection change; it does not
 prove physical audibility, full-power-loss atomicity or battery-backed retention.
+
+
+## Acceptance audit after calendar/Wi-Fi update (2026-10-01)
+
+Rehashed the built application and checked its successful flash receipt, matching
+installed-image identity above. The post-installation receipt shows valid RTC
+heartbeats within one second, calendar navigation and no alarm-setting changes.
+The September30 offline recovery receipt remains the evidence for radio-off
+triggering, persisted snooze/reset and persisted dismissal/reset. The October1
+image changes UI and network selection, not alarm execution or persistence; it
+must not inherit a claim of final physical acceptance from that earlier receipt.
+
+Outstanding acceptance remains the combined physical procedure above: current
+finger-operated alarm editing/snooze/dismiss, acoustic behavior, actual backup
+power/RTC retention, complete interruption recovery and interrupted-save behavior.
+The owner has deferred full-power tests until integrated functionality is ready.
+No physical check is requested by this audit, and no completion claim is made.
