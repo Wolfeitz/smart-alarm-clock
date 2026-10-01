@@ -75,7 +75,7 @@ void board_init(void)
     ESP_ERROR_CHECK(esp_lcd_panel_reset(panel));ESP_ERROR_CHECK(esp_lcd_panel_init(panel));
     ESP_ERROR_CHECK(esp_lcd_panel_invert_color(panel,true));
     ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(panel,true));
-    ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel,true,true));
+    ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel,false,false));
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel,true));
     const uint8_t brightness[]={5,160};
     ESP_ERROR_CHECK(i2c_master_transmit(expander,brightness,sizeof(brightness),100));
@@ -94,7 +94,8 @@ bool board_touch(int *x,int *y)
     if((data[0]&15)==0 || (data[0]&15)>2)return false;
     int rx=((data[1]&15)<<8)|data[2],ry=((data[3]&15)<<8)|data[4];
     if(rx>=320 || ry>=480)return false;
-    *x=479-ry;*y=rx;return true;
+    /* Keep touch aligned with the owner-requested 180-degree panel rotation. */
+    *x=ry;*y=319-rx;return true;
 }
 void board_brightness(bool dim)
 {

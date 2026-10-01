@@ -48,3 +48,7 @@ date-field visibility and rejection of an empty recurring schedule.
 
 `media-test` checks play/pause, setup/cancel and disabling all playback controls
 when the reported player state is stale. `media` renders synthetic player data.
+
+Main navigation regression: `clock_preview /tmp/navigation.ppm weather navigation-test`
+checks 25 cycles across all primary destinations, Settings/Weather setup-return
+behavior, and unchanged alarm records. `settings` renders the settings hub.

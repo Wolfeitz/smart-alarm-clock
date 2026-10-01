@@ -201,3 +201,14 @@ revocable. Service hosting and account ownership remain open product decisions.
 
 Speaker selection criteria and source evidence are recorded in SPEAKER-REQUIREMENTS.md.
 The existing eight independent alarms are not yet a named sequence engine.
+
+
+## Sonos and device-first UI decision (2026-10-01)
+
+After considering complete replacement products, owner chooses continued work on
+the existing device and a Sonos speaker integration. No companion app or general
+speaker-control application is needed for this proof. Improve device navigation
+and visual presentation now. Sonos must not require Home Assistant; the existing
+HA media adapter is not evidence of direct Sonos support. Speaker presence/model
+and audible playback remain unverified. Onboard fallback remains independent but
+is not adequately loud to wake Duncan. Phone alarms do not wake him; he uses iPhone.

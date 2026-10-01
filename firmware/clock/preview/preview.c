@@ -170,6 +170,7 @@ int main(int argc,char **argv)
                 }
             }
         }
+        else if(!strcmp(argv[3],"settings")||!strcmp(argv[3],"navigation-test")){click_text(lv_screen_active(),"Settings");advance();}
         else if(!strcmp(argv[3],"display")){click_text(lv_screen_active(),"Settings");advance();click_text(lv_screen_active(),"Display & night mode");advance();}
         else {click_text(lv_screen_active(),"Weather");advance();}
         if(!strcmp(argv[3],"wifi")||!strcmp(argv[3],"radio-test")||!strcmp(argv[3],"connect")){
@@ -312,6 +313,35 @@ int main(int argc,char **argv)
         ticks+=10000;advance();
         assert(has_text(lv_screen_active(),"Result unavailable; reopen to check settings"));
         puts("PASS actual UI: missing alarm/display receipts time out without false success");
+    }
+    if(argc>3&&!strcmp(argv[3],"navigation-test")){
+        alarm_config_t before[ALARM_COUNT];memcpy(before,alarm_state.settings.alarms,sizeof(before));
+        for(unsigned cycle=0;cycle<25;cycle++){
+            click_text(lv_screen_active(),"Settings");advance();
+            assert(has_text(lv_screen_active(),"Make it yours"));
+            click_text(lv_screen_active(),"Wi-Fi");advance();
+            assert(has_text(lv_screen_active(),"Scan"));
+            click_text(lv_screen_active(),"Back");advance();
+            assert(has_text(lv_screen_active(),"Make it yours"));
+            click_text(lv_screen_active(),"Location");advance();
+            assert(has_text(lv_screen_active(),"Save location"));
+            click_text(lv_screen_active(),"Back");advance();
+            assert(has_text(lv_screen_active(),"Make it yours"));
+            click_text(lv_screen_active(),"Time & date");advance();
+            click_text(lv_screen_active(),"Cancel");advance();
+            assert(has_text(lv_screen_active(),"Make it yours"));
+            click_text(lv_screen_active(),"Weather");advance();
+            assert(has_text(lv_screen_active(),"Refresh"));
+            click_text(lv_screen_active(),"Wi-Fi");advance();
+            click_text(lv_screen_active(),"Back");advance();
+            assert(has_text(lv_screen_active(),"Refresh"));
+            click_text(lv_screen_active(),"Alarms");advance();
+            assert(lv_obj_get_child_count(lv_obj_get_child(lv_screen_active(),1))==ALARM_COUNT);
+            click_text(lv_screen_active(),"Clock");advance();
+            assert(has_text(lv_screen_active(),"NEXT ALARM"));
+        }
+        assert(!memcmp(before,alarm_state.settings.alarms,sizeof(before)));
+        puts("PASS main navigation: 25 cycles, setup returns to origin, no alarm changes");
     }
     FILE *f=fopen(argv[1],"wb");if(!f)return 3;fprintf(f,"P6\n480 320\n255\n");
     for(unsigned i=0;i<480*320;i++){uint16_t p=pixels[i];unsigned char rgb[]={((p>>11)&31)*255/31,((p>>5)&63)*255/63,(p&31)*255/31};fwrite(rgb,1,3,f);}fclose(f);return 0;

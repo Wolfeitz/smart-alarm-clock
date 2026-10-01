@@ -57,7 +57,7 @@ def command(text, duration=.5):
     return collect(duration)
 
 def screen(expected):
-    text = command('UI')
+    text = command('UI', 1.5)
     if f'UI_SCREEN name={expected} overlay=0' not in text:
         raise RuntimeError(f'Expected {expected} without alarm overlay; stopped without altering settings')
 
@@ -85,18 +85,18 @@ try:
     if any('enabled=1 ' in row for row in original):
         raise RuntimeError('An alarm is enabled; leaving it untouched')
     for cycle in range(args.cycles):
-        tap(405, 33, 'settings')
-        tap(240, 154, 'display')
+        tap(410, 288, 'settings')
+        tap(356, 87, 'display')
         tap(130, 282, 'settings')  # Cancel
-        tap(240, 216, 'ha')
+        tap(120, 203, 'ha')
         tap(405, 28, 'ha_setup')
         tap(120, 282, 'ha')       # Cancel; never save credentials
         tap(80, 282, 'settings')
-        tap(240, 282, 'home')
-        tap(240, 282, 'alarms')
+        tap(66, 288, 'home')
+        tap(180, 288, 'alarms')
         tap(220, 85, 'alarm')
         tap(130, 282, 'alarms')   # Cancel; never save an alarm
-        tap(240, 282, 'home')
+        tap(66, 288, 'home')
         if alarms() != original:
             raise RuntimeError('Alarm records changed unexpectedly')
         print(f'Cycle {cycle + 1}/{args.cycles}: home restored, alarm records unchanged', flush=True)

@@ -1855,3 +1855,45 @@ python scripts/verify-bootstrap.py passed documentation checks; git diff --check
 passed. Firmware unchanged; no firmware or physical checks warranted here.
 The old narrow offline goal remains blocked on its recorded physical acceptance;
 this user-directed product discussion does not claim that goal complete.
+
+## Device UI and navigation refresh (2026-10-01)
+
+Owner retains this device and selects Sonos as the next speaker integration target.
+Companion app/site stays parked; no speaker purchase or presence is assumed. Direct
+Sonos proof remains separate from the existing optional HA media adapter.
+Acceptance before coding: consistent Clock/Alarms/Weather/Settings navigation on
+main screens, legible bedtime hierarchy, direct Wi-Fi/location setup in Settings,
+retained large local snooze/dismiss controls and honest offline/error states.
+Keep owner services, schedules and persistence unchanged. Verify actual LVGL
+renderings and navigation/save/cancel regressions, then firmware build. No physical
+power-off or per-feature user testing. No new phone app or speaker-control app.
+
+Owner additionally requests 180-degree display rotation for the enclosure.
+Invert both panel mirror flags while retaining axis swap; transform touch from
+(479-raw_y, raw_x) to (raw_y, 319-raw_x). Raw range guards remain unchanged.
+This preserves the 480x320 logical UI and serial tap coordinates. Physical touch
+alignment requires observation; no physical acceptance is inferred from the build.
+
+UI refresh: actual LVGL host renderings reviewed (home/settings/alarms/weather),
+25 navigation cycles and alarm save/cancel, repeat, snooze, night, audio failure,
+load failure, missing receipt, radio, connection, media and HA regressions passed.
+Full host logic suite, IDF6.1 build, documentation verifier and diff check passed.
+Receipts: local-config/clock/ui-refresh/, ui-refresh-host.log, ui-refresh-build.log.
+Serial access initially denied; owner restored ACL. First status capture was
+incomplete; second obtained CLOCK_READY and all eight disabled alarms before flash.
+Application-only flash/hash verification passed, 1790880 bytes at0x20000. Installed
+SHA256 d9f3808800e0865a5418f55e7d95d5b3af1c7fb12d674d654d0a48b952055d95.
+Includes authorized 180-degree display and touch rotation. No full power-off.
+Sonos remains a selected future integration, not implemented by this UI change.
+
+Installed board automated navigation: first cycle completed with all eight alarm
+records unchanged. Second cycle reached alarm editor/cancel but final UI snapshot
+was absent within the 0.5-second diagnostic read window; no crash or wrong-screen
+response was captured. Increased snapshot read window to1.5seconds (no repeated
+taps) and reran the bounded check. This is serial diagnostic timing, not claimed
+physical touch acceptance. No speaker or GPIO wiring changes were made.
+
+Rerun PASS: one complete installed navigation cycle, four valid RTC heartbeats,
+heap77588bytes stable, all eight alarm records equal to pre-flash snapshot.
+Receipt: local-config/clock/navigation-soak-20261001-182320.log. Home restored.
+No real acoustic/Sonos playback or physical finger-coordinate test performed.

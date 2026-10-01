@@ -97,3 +97,24 @@ is configured by this factory routine. Default I2S config at0x4227f3a8 is
 22050Hz,16-bit stereo Philips framing, BCLK23/WS10/DOUT25/DIN24.
 Clock's output-only test retains these transmit settings, leaves DIN unused,
 and pins official espressif/esp_codec_dev1.6.2. Audible verification pending.
+
+## Owner enclosure rotation (2026-10-01)
+
+Current clock board.c retains swapXY but now clears both panel mirror flags.
+Touch transforms to x=raw_y, y=319-raw_x, a 180-degree rotation of the previously
+owner-confirmed mapping. Firmware compiled and flashed; physical orientation/touch
+acceptance is not implied by automated logical-coordinate navigation.
+
+## Vendor schematic now retrieved (2026-10-01)
+
+Source: https://github.com/waveshareteam/ESP32-C5-Touch-LCD-3.5/raw/main/schematic/ESP32-C5-Touch-LCD-3.5.pdf
+Private source copy: local-config/hardware-reference/ESP32-C5-Touch-LCD-3.5.pdf.
+Visually reviewed audio and PinOut blocks. J8 is a separate internal two-pin
+speaker connector driven by NS4150B differential OUT+/OUT- (neither speaker wire
+is ground). Amplifier VDD is VCC3V3. J3 is the exposed 32-pin expansion header:
+power/ground, ESP32 SDA/SCL, UART, select GPIO, CH32 expander lines and control/debug.
+It has no dedicated analog audio or speaker output. Schematic J8 calls the part
+PH1.25-2P whereas marketing calls it MX1.25; verify housing/keying before ordering.
+No speaker impedance, usable continuous output, header power budget or third-party
+speaker compatibility was established. External I2S amplifier is a possible new
+hardware/firmware design, not an existing plug-in accessory on this header.

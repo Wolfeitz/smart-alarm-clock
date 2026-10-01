@@ -1,5 +1,12 @@
 # Using the clock
 
+## Navigation
+
+Clock, Alarms, Weather and Settings share a bottom navigation bar; the current
+page is highlighted. The home weather card opens the forecast, and the next-alarm
+card opens alarms (or active snooze controls). Dim/Brighten is at the top right.
+Editors keep explicit Save/Cancel actions instead of the navigation bar.
+
 ## Alarms
 
 Tap **Alarms** on the home screen. The list shows eight slots with their time,
@@ -21,6 +28,9 @@ During snooze, **Show clock** returns to normal clock navigation without changin
 the countdown. The home alarm card shows the remaining time; tap it to reopen
 **Dismiss**. Ringing automatically brings the alarm controls back to the front.
 
+The display and touch mapping are rotated 180 degrees from the earlier prototype
+to match the owner-selected enclosure orientation.
+
 ## Time and screen brightness
 
 **Settings → Time & date** sets local time and writes the RTC. Network time also
@@ -36,7 +46,8 @@ these display settings instead of toggling manual brightness.
 
 ## Weather and connection
 
-Tap **Weather**, then **Wi-Fi** to scan nearby networks and connect. **Turn off**
+Tap **Settings → Wi-Fi** to scan nearby networks and connect. Weather retains
+a Wi-Fi shortcut. Wi-Fi and Location return to the page you opened them from. **Turn off**
 keeps Wi-Fi off across restarts, preserving your saved network and password.
 **Turn on** reconnects to that saved network; tap Scan to look for others. Saving
 credentials while off does not silently turn Wi-Fi back on. Local time, alarms

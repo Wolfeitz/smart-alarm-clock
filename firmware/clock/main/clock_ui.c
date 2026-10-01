@@ -35,11 +35,14 @@ static void show_display(lv_event_t *e);
 static void show_settings(lv_event_t *e);
 static bool weather_view,network_editing,network_error,location_editing,wifi_listing,network_connecting;
 static unsigned shown_scan;
+static bool setup_from_settings;
 static lv_obj_t *network_list;
 static weather_network_t shown_networks[WEATHER_NETWORK_COUNT],chosen_network;
 static lv_obj_t *weather_title,*weather_now,*weather_today,*weather_status,*zone_button;
 static lv_obj_t *network_password,*network_zip,*network_status,*keyboard,*radio_button;
 static void show_weather(lv_event_t *e);
+static void show_network(lv_event_t *e);
+static void show_location(lv_event_t *e);
 static void show_ha(lv_event_t *e);
 static void show_media(lv_event_t *e);
 static bool media_view,media_editing,media_error;
@@ -51,12 +54,12 @@ static lv_obj_t *label(lv_obj_t *parent,const char *text,int x,int y,int w,const
 {
     lv_obj_t *o=lv_label_create(parent);lv_label_set_text(o,text);lv_obj_set_pos(o,x,y);lv_obj_set_width(o,w);
     lv_obj_set_style_text_font(o,font,0);lv_obj_set_style_text_align(o,LV_TEXT_ALIGN_CENTER,0);
-    lv_obj_set_style_text_color(o,lv_color_hex(0xf6eddc),0);return o;
+    lv_obj_set_style_text_color(o,lv_color_hex(0xf3eee5),0);return o;
 }
 static lv_obj_t *button(lv_obj_t *parent,const char *text,int x,int y,int w,lv_event_cb_t cb,void *data)
 {
     lv_obj_t *o=lv_button_create(parent);lv_obj_set_pos(o,x,y);lv_obj_set_size(o,w,44);
-    lv_obj_set_style_bg_color(o,lv_color_hex(0x203347),0);lv_obj_set_style_radius(o,12,0);lv_obj_set_style_shadow_width(o,0,0);lv_obj_add_event_cb(o,cb,LV_EVENT_CLICKED,data);
+    lv_obj_set_style_bg_color(o,lv_color_hex(0x202d36),0);lv_obj_set_style_radius(o,12,0);lv_obj_set_style_shadow_width(o,0,0);lv_obj_set_style_border_width(o,1,0);lv_obj_set_style_border_color(o,lv_color_hex(0x33434e),0);lv_obj_set_style_bg_color(o,lv_color_hex(0x365961),LV_STATE_PRESSED);lv_obj_add_event_cb(o,cb,LV_EVENT_CLICKED,data);
     lv_obj_t *l=lv_label_create(o);lv_label_set_text(l,text);lv_obj_center(l);return o;
 }
 static void home(void);
@@ -66,10 +69,23 @@ static void reset_screen(void)
 {
     alarm_list_view=false;settings_view=false;display_editing=false;display_pending=false;ha_view=false;ha_editing=false;ha_error=false;media_view=false;media_editing=false;media_error=false;
     weather_view=false;network_editing=false;location_editing=false;wifi_listing=false;network_connecting=false;
-    lv_obj_clean(root);lv_obj_set_style_bg_color(root,lv_color_hex(0x0b1119),0);
+    lv_obj_clean(root);lv_obj_set_style_bg_color(root,lv_color_hex(0x0c141b),0);
     lv_obj_remove_flag(root,LV_OBJ_FLAG_SCROLLABLE);
 }
 static void go_home(lv_event_t *e){(void)e;home();}
+/* Main destinations have identical positions; editors retain explicit Save/Cancel. */
+static void navigation(unsigned selected)
+{
+    const char *names[]={"Clock","Alarms","Weather","Settings"};
+    lv_event_cb_t callbacks[]={go_home,show_alarms,show_weather,show_settings};
+    for(unsigned i=0;i<4;i++){
+        lv_obj_t *b=button(root,names[i],12+i*116,266,108,callbacks[i],NULL);
+        lv_obj_set_style_radius(b,10,0);
+        lv_obj_set_style_bg_color(b,lv_color_hex(i==selected?0x2e5558:0x121e27),0);
+        lv_obj_set_style_border_color(b,lv_color_hex(i==selected?0x7dbbb0:0x24343f),0);
+        lv_obj_set_style_text_color(b,lv_color_hex(i==selected?0xd7fff0:0xa8bac7),0);
+    }
+}
 static void select_alarm(lv_event_t *e)
 {index_selected=(unsigned)(uintptr_t)lv_event_get_user_data(e);show_editor();}
 static void update_alarm_rows(const alarm_snapshot_t *s)
@@ -94,14 +110,14 @@ static void show_alarms(lv_event_t *e)
     label(root,"Alarms",15,12,450,&lv_font_montserrat_20);
     lv_obj_t *list=lv_obj_create(root);lv_obj_set_pos(list,15,52);lv_obj_set_size(list,450,198);
     lv_obj_set_style_pad_all(list,6,0);lv_obj_set_style_border_width(list,0,0);
-    lv_obj_set_style_bg_color(list,lv_color_hex(0x0b1119),0);
+    lv_obj_set_style_bg_color(list,lv_color_hex(0x0c141b),0);
     lv_obj_set_scroll_dir(list,LV_DIR_VER);
     for(unsigned i=0;i<ALARM_COUNT;i++){
         lv_obj_t *row=button(list,"",0,i*72,422,select_alarm,(void *)(uintptr_t)i);lv_obj_set_height(row,64);
         alarm_rows[i]=lv_obj_get_child(row,0);lv_obj_set_width(alarm_rows[i],394);
         lv_obj_set_style_text_align(alarm_rows[i],LV_TEXT_ALIGN_LEFT,0);lv_obj_center(alarm_rows[i]);
     }
-    button(root,"Clock",150,261,180,go_home,NULL);
+    navigation(1);
     alarm_snapshot_t s;alarm_service_snapshot(&s);update_alarm_rows(&s);
 }
 static void sound(lv_event_t *e)
@@ -151,12 +167,15 @@ static lv_obj_t *number_list(int first,int last,int x,int y,int w)
 static void show_settings(lv_event_t *e)
 {
     (void)e;editing=false;time_editing=false;reset_screen();settings_view=true;
-    label(root,"Settings",10,15,320,&lv_font_montserrat_20);
-    button(root,"Media",350,8,115,show_media,NULL);
-    button(root,"Time & date",80,75,320,show_time_editor,NULL);
-    button(root,"Display & night mode",80,135,320,show_display,NULL);
-    button(root,"Home Assistant",80,195,320,show_ha,NULL);
-    button(root,"Clock",150,260,180,go_home,NULL);
+    label(root,"Make it yours",20,16,440,&lv_font_montserrat_20);
+    button(root,"Time & date",15,65,218,show_time_editor,NULL);
+    button(root,"Display & night mode",247,65,218,show_display,NULL);
+    button(root,"Wi-Fi",15,123,218,show_network,NULL);
+    button(root,"Location",247,123,218,show_location,NULL);
+    button(root,"Home Assistant",15,181,218,show_ha,NULL);
+    button(root,"Media",247,181,218,show_media,NULL);
+    label(root,"Optional integrations: Home Assistant / Media",15,237,450,&lv_font_montserrat_16);
+    navigation(3);
 }
 static void save_display(lv_event_t *e)
 {
@@ -244,7 +263,7 @@ static void show_time_editor(lv_event_t *e)
     lv_dropdown_set_selected(time_year,local.tm_year-100);lv_dropdown_set_selected(time_month,local.tm_mon);
     lv_dropdown_set_selected(time_day,local.tm_mday-1);lv_dropdown_set_selected(time_hour,local.tm_hour);lv_dropdown_set_selected(time_minute,local.tm_min);
     time_status=label(root,weather_service_timezone(),10,222,460,&lv_font_montserrat_16);
-    button(root,"Cancel",50,260,160,go_home,NULL);button(root,"Save time",270,260,160,save_time,NULL);
+    button(root,"Cancel",50,260,160,show_settings,NULL);button(root,"Save time",270,260,160,save_time,NULL);
 }
 static void snooze(lv_event_t *e)
 {
@@ -262,32 +281,34 @@ static void dismiss(lv_event_t *e){(void)e;alarm_service_dismiss();}
 static void home(void)
 {
     editing=false;time_editing=false;pending=false;reset_screen();
-    date_text=label(root,"Clock",18,24,310,&lv_font_montserrat_16);
-    lv_obj_set_style_text_color(date_text,lv_color_hex(0xb2bdc9),0);
+    date_text=label(root,"Clock",20,23,330,&lv_font_montserrat_16);
+    lv_obj_set_style_text_color(date_text,lv_color_hex(0xa8bac7),0);
     lv_obj_set_style_text_align(date_text,LV_TEXT_ALIGN_LEFT,0);
-    button(root,"Settings",350,12,115,show_settings,NULL);
-    time_text=label(root,"--:--",22,75,270,&lv_font_montserrat_48);
-    lv_obj_set_style_text_color(time_text,lv_color_hex(0xffd998),0);
+    lv_obj_t *b=button(root,"Dim",365,10,100,dim,NULL);dim_text=lv_obj_get_child(b,0);
+    time_text=label(root,"--:--",22,80,270,&lv_font_montserrat_48);
+    lv_obj_set_style_text_color(time_text,lv_color_hex(0xffdfaa),0);
     lv_obj_set_style_transform_pivot_x(time_text,LV_PCT(50),0);lv_obj_set_style_transform_pivot_y(time_text,LV_PCT(50),0);lv_obj_set_style_transform_scale(time_text,432,0);
-    detail=label(root,"Set time to begin",20,150,270,&lv_font_montserrat_16);
-    lv_obj_set_style_text_color(detail,lv_color_hex(0xb2bdc9),0);
-    lv_obj_t *alarm_card=button(root,"",15,178,280,home_alarm,NULL);
-    lv_obj_set_height(alarm_card,54);lv_obj_set_style_pad_all(alarm_card,0,0);
-    lv_obj_set_style_bg_color(alarm_card,lv_color_hex(0x152535),0);
-    alarm_caption=label(alarm_card,"NEXT ALARM",8,5,264,&lv_font_montserrat_16);
-    lv_obj_set_style_text_color(alarm_caption,lv_color_hex(0xd5a565),0);
-    next_text=label(alarm_card,"No alarms enabled",8,28,264,&lv_font_montserrat_16);
-    status=label(root,"",15,237,450,&lv_font_montserrat_16);
+    detail=label(root,"Set time to begin",20,148,270,&lv_font_montserrat_16);
+    lv_obj_set_style_text_color(detail,lv_color_hex(0xa8bac7),0);
+    lv_obj_t *alarm_card=button(root,"",15,185,450,home_alarm,NULL);
+    lv_obj_set_height(alarm_card,52);lv_obj_set_style_pad_all(alarm_card,0,0);
+    lv_obj_set_style_bg_color(alarm_card,lv_color_hex(0x213637),0);
+    lv_obj_set_style_border_color(alarm_card,lv_color_hex(0x527c72),0);
+    alarm_caption=label(alarm_card,"NEXT ALARM",12,5,424,&lv_font_montserrat_16);
+    lv_obj_set_style_text_color(alarm_caption,lv_color_hex(0x9cd4bb),0);
+    next_text=label(alarm_card,"No alarms enabled",12,27,424,&lv_font_montserrat_16);
+    status=label(root,"",15,242,450,&lv_font_montserrat_16);
     lv_obj_set_style_text_color(status,lv_color_hex(0x95a8ba),0);
-    lv_obj_t *card=button(root,"",310,74,155,show_weather,NULL);lv_obj_set_height(card,158);lv_obj_set_style_pad_all(card,0,0);
-    lv_obj_set_style_bg_color(card,lv_color_hex(0x142a35),0);lv_obj_remove_flag(card,LV_OBJ_FLAG_SCROLLABLE);
-    home_place=label(card,"Summerfield",4,12,147,&lv_font_montserrat_16);
-    lv_obj_set_height(home_place,22);lv_label_set_long_mode(home_place,LV_LABEL_LONG_DOT);
-    home_temperature=label(card,"-- F",4,45,147,&lv_font_montserrat_48);
-    lv_obj_set_style_text_color(home_temperature,lv_color_hex(0x9edbd2),0);
-    home_forecast=label(card,"Set up Wi-Fi\nfor weather",4,107,147,&lv_font_montserrat_16);
-    lv_obj_t *b=button(root,"Dim",15,261,140,dim,NULL);dim_text=lv_obj_get_child(b,0);
-    button(root,"Alarms",170,261,140,show_alarms,NULL);button(root,"Weather",325,261,140,show_weather,NULL);
+    lv_obj_t *card=button(root,"",310,64,155,show_weather,NULL);
+    lv_obj_set_height(card,112);lv_obj_set_style_pad_all(card,0,0);
+    lv_obj_set_style_bg_color(card,lv_color_hex(0x172b38),0);lv_obj_remove_flag(card,LV_OBJ_FLAG_SCROLLABLE);
+    home_place=label(card,"Local weather",4,6,147,&lv_font_montserrat_16);
+    lv_obj_set_height(home_place,20);lv_label_set_long_mode(home_place,LV_LABEL_LONG_DOT);
+    home_temperature=label(card,"-- F",4,29,147,&lv_font_montserrat_48);
+    lv_obj_set_style_text_color(home_temperature,lv_color_hex(0xb4d8e9),0);
+    home_forecast=label(card,"Set up Wi-Fi",4,81,147,&lv_font_montserrat_16);
+    lv_obj_set_height(home_forecast,22);lv_label_set_long_mode(home_forecast,LV_LABEL_LONG_DOT);
+    navigation(0);
 }
 static void keyboard_event(lv_event_t *e)
 {
@@ -440,15 +461,18 @@ static void toggle_radio(lv_event_t *e)
     (void)e;weather_snapshot_t s;weather_service_snapshot(&s);network_error=false;
     if(!weather_service_radio(s.radio_paused)){lv_label_set_text(network_status,"Busy; try again");network_error=true;}
 }
+static void setup_back(lv_event_t *e)
+{if(setup_from_settings)show_settings(e);else show_weather(e);}
 static void show_network(lv_event_t *e)
 {
+    if(settings_view||weather_view)setup_from_settings=settings_view;
     (void)e;editing=false;time_editing=false;reset_screen();network_editing=true;wifi_listing=true;network_error=false;shown_scan=~0u;
     label(root,"Wi-Fi",10,10,180,&lv_font_montserrat_20);button(root,"Scan",345,6,120,rescan,NULL);
     weather_snapshot_t w;weather_service_snapshot(&w);
     radio_button=button(root,w.radio_paused?"Turn on":"Turn off",210,6,125,toggle_radio,NULL);
     network_list=lv_list_create(root);lv_obj_set_pos(network_list,12,58);lv_obj_set_size(network_list,456,150);
     network_status=label(root,"Scanning nearby networks...",10,217,460,&lv_font_montserrat_16);
-    button(root,"Back",20,264,130,show_weather,NULL);button(root,"Test sound",165,264,145,sound,NULL);
+    button(root,"Back",20,264,130,setup_back,NULL);button(root,"Test sound",165,264,145,sound,NULL);
     button(root,"Clock",325,264,135,go_home,NULL);if(!w.radio_paused)weather_service_scan();
 }
 static void save_location(lv_event_t *e)
@@ -464,13 +488,14 @@ static void estimate_location(lv_event_t *e)
 }
 static void show_location(lv_event_t *e)
 {
+    if(settings_view||weather_view)setup_from_settings=settings_view;
     (void)e;weather_snapshot_t s;weather_service_snapshot(&s);editing=false;time_editing=false;reset_screen();location_editing=true;network_error=false;
     label(root,"Weather & time zone",10,10,290,&lv_font_montserrat_20);
     button(root,"Use network",315,5,150,estimate_location,NULL);
     label(root,s.manual_location?"Manual location - preserved across Wi-Fi changes":"Estimated from network - check or change ZIP",10,52,460,&lv_font_montserrat_16);
     network_zip=network_field("US ZIP",s.zip,95,5,false);lv_textarea_set_accepted_chars(network_zip,"0123456789");
     network_status=label(root,s.location.name,10,158,460,&lv_font_montserrat_16);
-    button(root,"Back",45,264,170,show_weather,NULL);button(root,"Save location",265,264,170,save_location,NULL);
+    button(root,"Back",45,264,170,setup_back,NULL);button(root,"Save location",265,264,170,save_location,NULL);
     keyboard=lv_keyboard_create(root);lv_obj_set_size(keyboard,480,130);lv_obj_align(keyboard,LV_ALIGN_BOTTOM_MID,0,0);
     lv_obj_add_flag(keyboard,LV_OBJ_FLAG_HIDDEN);lv_obj_add_event_cb(keyboard,keyboard_event,LV_EVENT_ALL,NULL);
 }
@@ -486,12 +511,12 @@ static void show_weather(lv_event_t *e)
     (void)e;editing=false;time_editing=false;reset_screen();weather_view=true;
     weather_title=label(root,"Local weather",15,12,315,&lv_font_montserrat_20);
     button(root,"Refresh",350,8,115,refresh_weather,NULL);
-    weather_now=label(root,"Connect Wi-Fi to begin",15,72,450,&lv_font_montserrat_20);
-    weather_today=label(root,"Today's forecast will appear here",15,123,450,&lv_font_montserrat_16);
-    weather_status=label(root,"",15,177,450,&lv_font_montserrat_16);
-    label(root,"Open-Meteo / CC BY 4.0",15,235,290,&lv_font_montserrat_16);
-    button(root,"Clock",15,264,130,go_home,NULL);button(root,"Wi-Fi",165,264,140,show_network,NULL);button(root,"Location",325,264,140,show_location,NULL);
-    zone_button=button(root,"Apply zone",325,211,140,restart_zone,NULL);lv_obj_add_flag(zone_button,LV_OBJ_FLAG_HIDDEN);
+    weather_now=label(root,"Connect Wi-Fi to begin",15,59,450,&lv_font_montserrat_20);
+    weather_today=label(root,"Today's forecast will appear here",15,112,450,&lv_font_montserrat_16);
+    weather_status=label(root,"",15,158,450,&lv_font_montserrat_16);
+    label(root,"Open-Meteo / CC BY 4.0",15,198,290,&lv_font_montserrat_16);
+    button(root,"Wi-Fi",15,218,140,show_network,NULL);button(root,"Location",170,218,140,show_location,NULL);navigation(2);
+    zone_button=button(root,"Apply zone",325,218,140,restart_zone,NULL);lv_obj_add_flag(zone_button,LV_OBJ_FLAG_HIDDEN);
 }
 void clock_ui_init(void)
 {
@@ -575,7 +600,7 @@ void clock_ui_update(void)
     if(weather_view||network_editing||location_editing){
         weather_snapshot_t w;weather_service_snapshot(&w);
         if(network_editing||location_editing){
-            if(network_connecting&&!w.busy&&w.connected&&!strcmp(w.ssid,chosen_network.ssid)){show_weather(NULL);return;}
+            if(network_connecting&&!w.busy&&w.connected&&!strcmp(w.ssid,chosen_network.ssid)){setup_back(NULL);return;}
             if(location_editing&&!w.manual_location&&!lv_textarea_get_text(network_zip)[0]&&w.zip[0])lv_textarea_set_text(network_zip,w.zip);
             if(wifi_listing)lv_label_set_text(lv_obj_get_child(radio_button,0),w.radio_paused?"Turn on":"Turn off");
             if(wifi_listing&&shown_scan!=w.scan_revision){
@@ -640,9 +665,9 @@ void clock_ui_update(void)
     lv_label_set_text(home_place,weather.location.name[0]?weather.location.name:"Local weather");
     if(weather.has_data){
         snprintf(b,sizeof(b),"%.0f°",weather.data.temperature);lv_label_set_text(home_temperature,b);
-        snprintf(b,sizeof(b),"%s\nH %.0f°  L %.0f°",weather_fresh(&weather.data,time(NULL))?weather_condition(weather.data.code):"Outdated",weather.data.high,weather.data.low);
+        snprintf(b,sizeof(b),"%s",weather_fresh(&weather.data,time(NULL))?weather_condition(weather.data.code):"Outdated");
         lv_label_set_text(home_forecast,b);
-    }else{lv_label_set_text(home_temperature,"--°");lv_label_set_text(home_forecast,weather.connected?"Updating...":"Set up Wi-Fi\nfor weather");}
+    }else{lv_label_set_text(home_temperature,"--°");lv_label_set_text(home_forecast,weather.connected?"Updating...":"Set up Wi-Fi");}
 }
 
 static void dropdown_diagnostics(const char *name,lv_obj_t *o)
