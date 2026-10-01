@@ -4,7 +4,7 @@
 
 The bottom navigation icons are house (Clock), bell (Alarms), sun/cloud (Weather),
 and gear (Settings); the current page is highlighted. The home weather card opens the forecast, and the next-alarm
-card opens alarms (or active snooze controls). The sun icon controls brightness.
+row opens alarms (or active snooze controls). The half-lit lightbulb controls brightness.
 Editors keep explicit Save/Cancel actions instead of the navigation bar.
 
 ## Alarms
@@ -38,7 +38,7 @@ updates the RTC when available. Local time and alarm execution continue without
 Wi-Fi. Complete loss of device power is different from loss of Wi-Fi; RTC retention
 across that event still depends on the board's backup-power arrangement.
 
-The home **sun icon** changes manual brightness. Under
+The home **half-lit lightbulb icon** changes manual brightness. Under
 **Settings → Display & night mode**, choose a local-time dim interval and enable
 the schedule. Touch temporarily brightens the screen for thirty seconds. Ringing
 alarms brighten the screen. When scheduling is enabled, the home shortcut opens

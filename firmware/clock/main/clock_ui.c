@@ -313,20 +313,24 @@ static void home_alarm(lv_event_t *e)
 static void dismiss(lv_event_t *e){(void)e;alarm_service_dismiss();}
 static void brightness_icon(lv_obj_t *parent)
 {
-    static const lv_point_precise_t rays[8][2]={
-        {{16,1},{16,5}},{{16,27},{16,31}},{{1,16},{5,16}},{{27,16},{31,16}},
-        {{5,5},{8,8}},{{24,24},{27,27}},{{5,27},{8,24}},{{24,8},{27,5}}
-    };
-    for(unsigned i=0;i<8;i++){
-        lv_obj_t *ray=lv_line_create(parent);lv_line_set_points(ray,rays[i],2);
-        lv_obj_set_pos(ray,8,6);lv_obj_set_style_line_width(ray,2,0);
-        lv_obj_set_style_line_color(ray,lv_color_hex(0xffdfaa),0);
-        lv_obj_remove_flag(ray,LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_t *bulb=lv_obj_create(parent);lv_obj_remove_style_all(bulb);
+    lv_obj_set_pos(bulb,13,6);lv_obj_set_size(bulb,22,25);
+    lv_obj_set_style_border_width(bulb,2,0);lv_obj_set_style_radius(bulb,LV_RADIUS_CIRCLE,0);
+    lv_obj_set_style_border_color(bulb,lv_color_hex(0xffdfaa),0);
+    lv_obj_set_style_clip_corner(bulb,true,0);
+    lv_obj_remove_flag(bulb,LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_t *lit=lv_obj_create(bulb);lv_obj_remove_style_all(lit);
+    lv_obj_set_pos(lit,0,0);lv_obj_set_size(lit,9,21);
+    lv_obj_set_style_bg_color(lit,lv_color_hex(0xffdfaa),0);
+    lv_obj_set_style_bg_opa(lit,LV_OPA_COVER,0);
+    lv_obj_remove_flag(lit,LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
+    for(int i=0;i<2;i++){
+        lv_obj_t *base=lv_obj_create(parent);lv_obj_remove_style_all(base);
+        lv_obj_set_pos(base,19+i,31+i*4);lv_obj_set_size(base,10-i*2,2);
+        lv_obj_set_style_bg_color(base,lv_color_hex(0xffdfaa),0);
+        lv_obj_set_style_bg_opa(base,LV_OPA_COVER,0);lv_obj_set_style_radius(base,1,0);
+        lv_obj_remove_flag(base,LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
     }
-    lv_obj_t *sun=lv_obj_create(parent);lv_obj_set_pos(sun,18,16);lv_obj_set_size(sun,12,12);
-    lv_obj_set_style_radius(sun,LV_RADIUS_CIRCLE,0);lv_obj_set_style_border_width(sun,2,0);
-    lv_obj_set_style_border_color(sun,lv_color_hex(0xffdfaa),0);lv_obj_set_style_bg_opa(sun,LV_OPA_TRANSP,0);
-    lv_obj_remove_flag(sun,LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
 }
 /* A local month view; no fabricated events or dependency on a provider. */
 static void calendar_refresh_heading(void)
@@ -430,13 +434,13 @@ static void home(void)
     lv_obj_set_style_transform_pivot_x(time_text,LV_PCT(50),0);lv_obj_set_style_transform_pivot_y(time_text,LV_PCT(50),0);lv_obj_set_style_transform_scale(time_text,432,0);
     detail=label(root,"Set time to begin",20,148,270,&lv_font_montserrat_16);
     lv_obj_set_style_text_color(detail,lv_color_hex(0xa8bac7),0);
-    lv_obj_t *alarm_card=button(root,"",15,185,450,home_alarm,NULL);
-    lv_obj_set_height(alarm_card,52);lv_obj_set_style_pad_all(alarm_card,0,0);
-    lv_obj_set_style_bg_color(alarm_card,lv_color_hex(0x213637),0);
-    lv_obj_set_style_border_color(alarm_card,lv_color_hex(0x527c72),0);
-    alarm_caption=label(alarm_card,"NEXT ALARM",12,5,424,&lv_font_montserrat_16);
+    lv_obj_t *alarm_card=button(root,"",70,190,340,home_alarm,NULL);
+    lv_obj_set_user_data(alarm_card,"Upcoming alarms");lv_obj_set_height(alarm_card,44);lv_obj_set_style_pad_all(alarm_card,0,0);
+    lv_obj_set_style_bg_opa(alarm_card,LV_OPA_TRANSP,0);
+    lv_obj_set_style_border_width(alarm_card,0,0);
+    alarm_caption=label(alarm_card,LV_SYMBOL_BELL,8,12,28,&lv_font_montserrat_16);
     lv_obj_set_style_text_color(alarm_caption,lv_color_hex(0x9cd4bb),0);
-    next_text=label(alarm_card,"No alarms enabled",12,27,424,&lv_font_montserrat_16);
+    next_text=label(alarm_card,"No alarms enabled",43,12,288,&lv_font_montserrat_16);
     status=label(root,"",15,242,450,&lv_font_montserrat_16);
     lv_obj_set_style_text_color(status,lv_color_hex(0x95a8ba),0);
     lv_obj_t *card=button(root,"",310,64,155,show_weather,NULL);
@@ -804,12 +808,12 @@ void clock_ui_update(void)
         strftime(b,sizeof(b),"%p   :%S   %Z",&local);lv_label_set_text(detail,b);
     }
     time_t next=clock_valid()?alarm_next(s.settings.alarms,time(NULL)):0;
-    if(next){struct tm local;localtime_r(&next,&local);strftime(b,sizeof(b),"%a %I:%M %p",&local);}
+    if(next){struct tm local;localtime_r(&next,&local);strftime(b,sizeof(b),"Next: %a %I:%M %p",&local);}
     else snprintf(b,sizeof(b),"%s",clock_valid()?"No upcoming alarms":"Set time to arm alarms");
     if(s.snoozed){
-        lv_label_set_text(alarm_caption,"SNOOZED - TAP TO MANAGE");
+        lv_label_set_text(alarm_caption,LV_SYMBOL_PAUSE);
         snprintf(b,sizeof(b),"Rings again in %02u:%02u",(unsigned)(s.snooze_seconds/60),(unsigned)(s.snooze_seconds%60));
-    }else lv_label_set_text(alarm_caption,"NEXT ALARM");
+    }else lv_label_set_text(alarm_caption,LV_SYMBOL_BELL);
     lv_label_set_text(next_text,b);
 
 

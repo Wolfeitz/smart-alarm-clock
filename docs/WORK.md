@@ -2005,3 +2005,22 @@ requires the owner's deferred combined physical/power-interruption observations;
 software tests cannot substitute. This is the first resumed blocking audit, not
 three consecutive blocked turns. Goal stays active and incomplete. No repeated
 physical prompt or additional power/reset test was issued.
+
+## Compact alarm row and half-lit bulb (2026-10-01)
+
+Owner requests less space for upcoming alarms and a brightness symbol that cannot
+be mistaken for weather; specifically selects a half-lit lightbulb. Replaced the
+450x52 two-line card with a340x44 transparent single-line target, bell and next
+alarm (pause symbol/countdown while snoozed). Touch target remains44px high.
+Native bulb outline, half fill and base replace the sun; callback unchanged.
+Actual LVGL preview inspected; brightness toggle/night settings and snooze/manage/
+new-alarm foreground/dismiss checks passed. Updated test selectors for compact
+presentation after the first run caught the obsolete NEXT ALARM text assertion.
+IDF build passed. Pre-flash state: eight disabled alarms, idle, storage OK.
+Installed application-only SHA256:
+9159e67bb79ba8974793c1b26d11e270ba8bcb4d2200764746466e3fc2aceeb8.
+Flash hash verified. Installed logical tap on compact row opens Alarms; home
+restored and eight alarm records unchanged. Receipts: compact-controls-build.log,
+compact-controls-flash.log, compact-controls-before/after.log. No sound or physical
+power-off test. Goal progress: requested brightness/alarm interaction improvement
+installed; full physical acceptance remains incomplete and deferred by owner.

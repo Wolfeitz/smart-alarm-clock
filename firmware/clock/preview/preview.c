@@ -276,7 +276,7 @@ int main(int argc,char **argv)
         lv_obj_t *card=NULL;
         for(unsigned i=0;i<lv_obj_get_child_count(lv_screen_active());i++){
             lv_obj_t *o=lv_obj_get_child(lv_screen_active(),i);
-            if(lv_obj_check_type(o,&lv_button_class)&&has_text(o,"SNOOZED - TAP TO MANAGE"))card=o;
+            if(lv_obj_check_type(o,&lv_button_class)&&lv_obj_get_user_data(o)&&!strcmp(lv_obj_get_user_data(o),"Upcoming alarms"))card=o;
         }
         assert(card);lv_obj_send_event(card,LV_EVENT_CLICKED,NULL);advance();
         assert(!lv_obj_has_flag(panel,LV_OBJ_FLAG_HIDDEN));
@@ -285,7 +285,7 @@ int main(int argc,char **argv)
         assert(!lv_obj_has_flag(panel,LV_OBJ_FLAG_HIDDEN)&&has_text(panel,"Snooze 5 min")&&!backlight_dim);
         click_text(panel,"Dismiss");advance();
         assert(!alarm_state.snoozed&&!alarm_state.ringing&&lv_obj_get_child_count(lv_layer_top())==0);
-        assert(has_text(lv_screen_active(),"NEXT ALARM"));
+        assert(has_text(lv_screen_active(),LV_SYMBOL_BELL));
         alarm_state.ringing=1;advance();panel=lv_obj_get_child(lv_layer_top(),0);
         click_text(panel,"Snooze 5 min");advance();click_text(panel,"Show clock");advance();
         puts("PASS snooze clock: countdown, navigation, reopen, new ring priority and dismissal");
@@ -341,7 +341,7 @@ int main(int argc,char **argv)
             click_text(lv_screen_active(),"Alarms");advance();
             assert(lv_obj_get_child_count(lv_obj_get_child(lv_screen_active(),1))==ALARM_COUNT);
             click_text(lv_screen_active(),"Clock");advance();
-            assert(has_text(lv_screen_active(),"NEXT ALARM"));
+            assert(has_text(lv_screen_active(),LV_SYMBOL_BELL));
         }
         assert(!memcmp(before,alarm_state.settings.alarms,sizeof(before)));
         puts("PASS main navigation: 25 cycles, setup returns to origin, no alarm changes");
@@ -405,7 +405,7 @@ int main(int argc,char **argv)
         click_text(lv_screen_active(),"Wi-Fi shortcut");advance();
         assert(has_text(lv_screen_active(),"Scan"));
         click_text(lv_screen_active(),"Back");advance();
-        assert(has_text(lv_screen_active(),"NEXT ALARM"));
+        assert(has_text(lv_screen_active(),LV_SYMBOL_BELL));
         audio_error=1;advance();assert(has_text(lv_screen_active(),"Local audio unavailable"));
         puts("PASS connectivity: independent Wi-Fi/HTTPS evidence, age, offline, shortcut/back, warning priority");
     }
