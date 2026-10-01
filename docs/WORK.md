@@ -2024,3 +2024,67 @@ restored and eight alarm records unchanged. Receipts: compact-controls-build.log
 compact-controls-flash.log, compact-controls-before/after.log. No sound or physical
 power-off test. Goal progress: requested brightness/alarm interaction improvement
 installed; full physical acceptance remains incomplete and deferred by owner.
+
+Offline-goal continuation audit after30e8eca: previous turn was progress (installed
+compact alarm/brightness controls). Current worktree and acceptance checklist
+rechecked. Remaining proof requires physical touch/acoustic observations and the
+owner-deferred power/RTC/interrupted-save tests. No new software defect or missing
+automatable check identified; no repeated tests or device changes justified.
+First consecutive blocked observation after that implementation turn. Goal remains
+incomplete; do not treat this audit entry as implementation progress.
+Second consecutive blocked observation: previous audit was no progress, not a live
+process wait. Rechecked acceptance/worktree; no new physical evidence or changed
+authorization. Same deferred physical checks remain. No device action taken.
+Third consecutive blocked observation: same acceptance gaps and owner deferral
+reconfirmed. Previous turn was no progress. Mark offline-verification goal blocked,
+not complete; firmware30e8eca remains installed. This status is limited to final
+physical acceptance and does not prohibit separately authorized development.
+
+## Offline wallpaper and translucent home (2026-10-01)
+
+Owner requests a modern photographic background and translucent windows, using
+provided image as style reference only. Continue development independently of
+end-stage power tests. Acceptance: original local landscape, embedded flash-backed
+RGB565 image with no network or full-frame heap allocation; readable clock/date,
+translucent weather/alarm/navigation surfaces, existing hitboxes and alarm overlay
+priority preserved. No wallpaper downloads, secrets, new server or live blur in
+this first rendering step. Verify actual LVGL previews, navigation/brightness/
+snooze paths, build and installed memory/navigation before leaving it installed.
+
+Owner redirects background source to Wallhaven. Public unauthenticated API query
+succeeded from host. For sample pomle9: original4096x2731 JPEG; measured large
+thumbnail432x243/36557bytes, aspect-preserving thumbnail300x200/42408bytes.
+Neither is exact480x320; full source can be downscaled or thumbnail upscaled.
+Python urllib returned403 for thumbnail while curl succeeded; device HTTP path
+still needs verification. Generated landscape/native translucency preview exists
+in working tree only, NOT installed. Do not claim Wallhaven runtime integration.
+Next: use actual Wallhaven source, bounded JPEG decoding/cache, preserve image
+provenance and keep downloaded third-party assets out of distributable defaults.
+
+Wallpaper source choices clarified: local images, selected URLs/list, or optional
+Wallhaven; each can be fixed or rotate. Preserve this scope beyond the initial
+rendering proof. Current implementation must not be described as complete rotation.
+PSRAM evidence: current Waveshare board page identifies8MB; Espressif C5 packaging
+spec identifies in-package3.3V Quad PSRAM; pinned6.1 C5 Kconfig supports Quad only
+with40MHz default. Enable40MHz and capability-only allocation, built-in memory
+test, ignore-not-found fallback. Core malloc stays internal; missing external RAM
+must disable dynamic imagery, not the clock. Preserve prior binary/sdkconfig for
+application-only recovery. No partition/bootloader writes in this step.
+
+Scenic/memory foundation installed and verified: SHA256
+8dda6ea0116104e6528bd05678fb47ad6a059eb08793e2d27fe1bd438aaeb783.
+Application-only flash hash passed. Startup detected8MB PSRAM at40MHz, built-in
+SPI SRAM test OK, external_free8386156/internal_free168992 at pre-board startup.
+RTC and system agree; home/Alarms/home navigation passed; eight alarms unchanged.
+Receipts: scenic-memory-build/flash/before/after.log. Heap total now includes
+external RAM, so do not compare total heap to historical internal-only samples.
+Actual LVGL navigation25cycles, snooze, brightness, connectivity and calendar
+checks passed. The original bundled landscape is a local choice only. Source
+model/URL encoding/bounds/SFW candidate parsing host test passed; this model is
+not yet wired to runtime downloads or settings. Rotation, configurable sources,
+JPEG decoding and persistent image caching remain unfinished. No completion claim.
+
+Sonos architecture clarification: direct local UPnP/SOAP adapter, no HA dependency;
+clock-hosted local audio URLs are the proposed offline-LAN media path. C5 supports
+BLE only, not Classic A2DP. Requires real Era100 playback qualification; none
+performed. Internet music still depends on its service; local LAN still required.

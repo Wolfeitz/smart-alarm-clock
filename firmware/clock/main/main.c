@@ -8,6 +8,7 @@
 #include "esp_timer.h"
 #include "esp_system.h"
 #include "esp_heap_caps.h"
+#include "esp_psram.h"
 #include "driver/usb_serial_jtag.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -108,6 +109,7 @@ void app_main(void)
 {
     /* UI/RTC owner stays above HTTPS work; alarm owner remains higher still. */
     vTaskPrioritySet(NULL,3);diagnostics_init();
+    diagnostics_printf("IMAGE_MEMORY psram=%u external_free=%lu internal_free=%lu\n",esp_psram_is_initialized(),(unsigned long)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),(unsigned long)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
     board_init();clock_init(board_bus());audio_init(board_bus());weather_service_init();alarm_service_init();
     lv_init();lv_tick_set_cb(tick);
     lv_display_t *d=lv_display_create(480,320);lv_display_set_color_format(d,LV_COLOR_FORMAT_RGB565);

@@ -14,6 +14,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+extern const lv_image_dsc_t home_wallpaper;
+static bool scenic_home;
 static lv_obj_t *root,*time_text,*date_text,*detail,*next_text,*status;
 static lv_obj_t *home_place,*home_temperature,*home_forecast,*alarm_caption;
 static bool snooze_collapsed,calendar_view;
@@ -72,7 +74,7 @@ static void show_editor(void);
 static void show_time_editor(lv_event_t *e);
 static void reset_screen(void)
 {
-    calendar_view=false;weather_art=NULL;artwork_code=-999;alarm_list_view=false;settings_view=false;display_editing=false;display_pending=false;ha_view=false;ha_editing=false;ha_error=false;media_view=false;media_editing=false;media_error=false;
+    scenic_home=false;calendar_view=false;weather_art=NULL;artwork_code=-999;alarm_list_view=false;settings_view=false;display_editing=false;display_pending=false;ha_view=false;ha_editing=false;ha_error=false;media_view=false;media_editing=false;media_error=false;
     weather_view=false;network_editing=false;location_editing=false;wifi_listing=false;network_connecting=false;
     lv_obj_clean(root);lv_obj_set_style_bg_color(root,lv_color_hex(0x0c141b),0);
     lv_obj_remove_flag(root,LV_OBJ_FLAG_SCROLLABLE);
@@ -116,6 +118,12 @@ static void navigation(unsigned selected)
         lv_obj_set_style_bg_color(b,lv_color_hex(i==selected?0x2e5558:0x121e27),0);
         lv_obj_set_style_border_color(b,lv_color_hex(i==selected?0x7dbbb0:0x24343f),0);
         lv_obj_set_style_text_color(b,lv_color_hex(i==selected?0xd7fff0:0xa8bac7),0);
+        if(scenic_home){
+            lv_obj_set_style_bg_color(b,lv_color_hex(i==selected?0x455b70:0x101a2d),0);
+            lv_obj_set_style_bg_opa(b,i==selected?LV_OPA_70:LV_OPA_50,0);
+            lv_obj_set_style_border_color(b,lv_color_hex(0xb5c5d7),0);
+            lv_obj_set_style_border_opa(b,i==selected?LV_OPA_50:LV_OPA_20,0);
+        }
         if(i==2)weather_nav_icon(b,i==selected);
     }
 }
@@ -399,17 +407,25 @@ static void update_weather_art(int code,bool fresh)
 }
 static void home(void)
 {
-    editing=false;time_editing=false;pending=false;reset_screen();
+    editing=false;time_editing=false;pending=false;reset_screen();scenic_home=true;
+    lv_obj_t *wallpaper=lv_image_create(root);lv_image_set_src(wallpaper,&home_wallpaper);
+    lv_obj_set_pos(wallpaper,0,0);lv_obj_remove_flag(wallpaper,LV_OBJ_FLAG_CLICKABLE);
+    /* Native image data is read from flash; scrim protects contrast without blur. */
+    lv_obj_t *scrim=lv_obj_create(root);lv_obj_remove_style_all(scrim);
+    lv_obj_set_size(scrim,480,320);lv_obj_set_style_bg_color(scrim,lv_color_hex(0x07101f),0);
+    lv_obj_set_style_bg_opa(scrim,LV_OPA_20,0);
+    lv_obj_remove_flag(scrim,LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_t *date_button=button(root,"",15,8,335,show_calendar,NULL);
     lv_obj_set_user_data(date_button,"Calendar");lv_obj_set_height(date_button,48);
     lv_obj_set_style_pad_all(date_button,0,0);lv_obj_set_style_bg_opa(date_button,LV_OPA_TRANSP,0);
     lv_obj_set_style_border_width(date_button,0,0);
     date_text=label(date_button,"Calendar",5,12,325,&lv_font_montserrat_20);
-    lv_obj_set_style_text_color(date_text,lv_color_hex(0xa8bac7),0);
+    lv_obj_set_style_text_color(date_text,lv_color_hex(0xe6e9f2),0);
     lv_obj_set_style_text_align(date_text,LV_TEXT_ALIGN_LEFT,0);
     lv_obj_set_height(date_text,22);lv_label_set_long_mode(date_text,LV_LABEL_LONG_DOT);
     wifi_indicator=button(root,"",358,10,48,home_network,NULL);
     lv_obj_set_user_data(wifi_indicator,"Wi-Fi shortcut");
+    lv_obj_set_style_bg_opa(wifi_indicator,LV_OPA_50,0);lv_obj_set_style_border_opa(wifi_indicator,LV_OPA_20,0);
     lv_obj_set_style_pad_all(wifi_indicator,0,0);
     for(unsigned i=0;i<3;i++){
         int radius=8+i*6;
@@ -428,24 +444,28 @@ static void home(void)
     lv_obj_set_pos(wifi_dot,21,30);lv_obj_set_size(wifi_dot,6,6);
     lv_obj_set_style_radius(wifi_dot,LV_RADIUS_CIRCLE,0);lv_obj_set_style_border_width(wifi_dot,0,0);
     lv_obj_t *b=button(root,"",417,10,48,dim,NULL);
+    lv_obj_set_style_bg_opa(b,LV_OPA_50,0);lv_obj_set_style_border_opa(b,LV_OPA_20,0);
     lv_obj_set_user_data(b,"Brightness");lv_obj_set_style_pad_all(b,0,0);brightness_icon(b);
     time_text=label(root,"--:--",22,80,270,&lv_font_montserrat_48);
-    lv_obj_set_style_text_color(time_text,lv_color_hex(0xffdfaa),0);
+    lv_obj_set_style_text_color(time_text,lv_color_hex(0xfff6ec),0);
     lv_obj_set_style_transform_pivot_x(time_text,LV_PCT(50),0);lv_obj_set_style_transform_pivot_y(time_text,LV_PCT(50),0);lv_obj_set_style_transform_scale(time_text,432,0);
     detail=label(root,"Set time to begin",20,148,270,&lv_font_montserrat_16);
-    lv_obj_set_style_text_color(detail,lv_color_hex(0xa8bac7),0);
+    lv_obj_set_style_text_color(detail,lv_color_hex(0xd5deeb),0);
     lv_obj_t *alarm_card=button(root,"",70,190,340,home_alarm,NULL);
     lv_obj_set_user_data(alarm_card,"Upcoming alarms");lv_obj_set_height(alarm_card,44);lv_obj_set_style_pad_all(alarm_card,0,0);
-    lv_obj_set_style_bg_opa(alarm_card,LV_OPA_TRANSP,0);
+    lv_obj_set_style_bg_color(alarm_card,lv_color_hex(0x122136),0);
+    lv_obj_set_style_bg_opa(alarm_card,LV_OPA_40,0);
     lv_obj_set_style_border_width(alarm_card,0,0);
     alarm_caption=label(alarm_card,LV_SYMBOL_BELL,8,12,28,&lv_font_montserrat_16);
     lv_obj_set_style_text_color(alarm_caption,lv_color_hex(0x9cd4bb),0);
     next_text=label(alarm_card,"No alarms enabled",43,12,288,&lv_font_montserrat_16);
     status=label(root,"",15,242,450,&lv_font_montserrat_16);
-    lv_obj_set_style_text_color(status,lv_color_hex(0x95a8ba),0);
+    lv_obj_set_style_text_color(status,lv_color_hex(0xcbd8e5),0);
     lv_obj_t *card=button(root,"",310,64,155,show_weather,NULL);
     lv_obj_set_height(card,112);lv_obj_set_style_pad_all(card,0,0);
-    lv_obj_set_style_bg_color(card,lv_color_hex(0x172b38),0);lv_obj_remove_flag(card,LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_color(card,lv_color_hex(0x102038),0);
+    lv_obj_set_style_bg_opa(card,LV_OPA_60,0);lv_obj_set_style_border_color(card,lv_color_hex(0xbdcadb),0);
+    lv_obj_set_style_border_opa(card,LV_OPA_30,0);lv_obj_remove_flag(card,LV_OBJ_FLAG_SCROLLABLE);
     home_place=label(card,"Local weather",4,6,147,&lv_font_montserrat_16);
     lv_obj_set_height(home_place,20);lv_label_set_long_mode(home_place,LV_LABEL_LONG_DOT);
     weather_art=lv_obj_create(card);lv_obj_remove_style_all(weather_art);

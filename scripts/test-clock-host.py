@@ -68,6 +68,13 @@ with tempfile.TemporaryDirectory(prefix="esp-link-host-") as directory:
     ], check=True, timeout=60)
     subprocess.run([binary], check=True, timeout=10)
     cjson = root / "firmware/clock/managed_components/espressif__cjson/cJSON"
+    binary = str(Path(directory) / "background_model")
+    subprocess.run([
+        "cc", "-std=c11", "-DCJSON_NESTING_LIMIT=16", "-Wall", "-Wextra", "-Werror",
+        "-I" + str(main), "-I" + str(cjson), str(cjson / "cJSON.c"),
+        str(main / "background_model.c"), str(tests / "background_model_test.c"), "-o", binary,
+    ], check=True, timeout=60)
+    subprocess.run([binary], check=True, timeout=10)
     binary = str(Path(directory) / "weather_model")
     subprocess.run([
         "cc", "-std=c11", "-D_POSIX_C_SOURCE=200809L", "-DCJSON_NESTING_LIMIT=16", "-Wall", "-Wextra", "-Werror",

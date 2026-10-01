@@ -5,6 +5,6 @@ set(LV_BUILD_CONF_PATH "${CMAKE_CURRENT_SOURCE_DIR}/lv_conf.h" CACHE PATH "" FOR
 set(CONFIG_LV_BUILD_DEMOS OFF CACHE BOOL "" FORCE)
 set(CONFIG_LV_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(../managed_components/lvgl__lvgl lvgl)
-add_executable(clock_preview preview.c ../main/media_model.c ../main/display_policy.c ../main/clock_ui.c ../main/alarm_engine.c ../main/settings_codec.c ../main/local_time.c ../main/weather_model.c ../managed_components/espressif__cjson/cJSON/cJSON.c)
+add_executable(clock_preview preview.c ../main/media_model.c ../main/display_policy.c ../main/clock_ui.c ../main/home_wallpaper.c ../main/alarm_engine.c ../main/settings_codec.c ../main/local_time.c ../main/weather_model.c ../managed_components/espressif__cjson/cJSON/cJSON.c)
 target_include_directories(clock_preview PRIVATE stubs ../main ../managed_components/espressif__cjson/cJSON)
 target_link_libraries(clock_preview PRIVATE lvgl m)
