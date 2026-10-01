@@ -9,6 +9,9 @@ typedef struct {
     char ssid[33],zip[6],status[96];
     bool radio_paused,connected,has_data,restart_for_zone,busy,scanning,manual_location;
     unsigned scan_revision,network_count;
+    bool signal_known,internet_verified;
+    int signal_dbm;
+    uint32_t internet_age_seconds;
     weather_network_t networks[WEATHER_NETWORK_COUNT];
 } weather_snapshot_t;
 /* Init before alarm/UI tasks: loads timezone once; no runtime TZ mutation. */

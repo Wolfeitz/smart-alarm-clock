@@ -72,6 +72,9 @@ static void click_text(lv_obj_t *parent,const char *text)
             lv_obj_send_event(lv_obj_get_parent(child),LV_EVENT_CLICKED,NULL);return;
         }
         if(lv_obj_check_type(child,&lv_button_class)){
+            /* Navigation keeps stable names independently of icon presentation. */
+            const char *name=lv_obj_get_user_data(child);
+            if(name&&!strcmp(name,text)){lv_obj_send_event(child,LV_EVENT_CLICKED,NULL);return;}
             lv_obj_t *l=lv_obj_get_child(child,0);
             if(l&&lv_obj_check_type(l,&lv_label_class)&&!strcmp(lv_label_get_text(l),text)){lv_obj_send_event(child,LV_EVENT_CLICKED,NULL);return;}
         }
@@ -87,7 +90,7 @@ int main(int argc,char **argv)
 {
     if(argc<2)return 2;has_weather=argc>2&&!strcmp(argv[2],"weather");
     setenv("TZ","EST5EDT,M3.2.0/2,M11.1.0/2",1);tzset();settings_defaults(&alarm_state.settings);
-    weather=(weather_snapshot_t){.zip="27358",.location={.name="Summerfield",.timezone="America/New_York"},.manual_location=true,.has_data=has_weather,.connected=has_weather,.status="Set up Wi-Fi for local weather",
+    weather=(weather_snapshot_t){.zip="27358",.location={.name="Summerfield",.timezone="America/New_York"},.manual_location=true,.has_data=has_weather,.connected=has_weather,.signal_known=has_weather,.signal_dbm=-48,.internet_verified=has_weather,.internet_age_seconds=30,.status="Set up Wi-Fi for local weather",
         .network_count=3,.scan_revision=1,.networks={{.ssid="Home Wi-Fi",.rssi=-42,.secured=true},{.ssid="Guest Network",.rssi=-65,.secured=true},{.ssid="Another network",.rssi=-78,.secured=true}}};
     time_t now=time(NULL);struct tm date;localtime_r(&now,&date);date.tm_hour=0;date.tm_min=0;date.tm_sec=0;
     weather.data=(weather_data_t){.temperature=72,.feels_like=71,.high=77,.low=58,.code=2,.day_code=2,.rain_percent=10,.observed_at=now,.fetched_at=now,.day_start=mktime(&date)};
@@ -342,6 +345,28 @@ int main(int argc,char **argv)
         }
         assert(!memcmp(before,alarm_state.settings.alarms,sizeof(before)));
         puts("PASS main navigation: 25 cycles, setup returns to origin, no alarm changes");
+    }
+    if(argc>3&&!strcmp(argv[3],"connectivity-test")){
+        click_text(lv_screen_active(),"Clock");advance();
+        weather.connected=true;weather.signal_known=true;weather.signal_dbm=-48;
+        weather.internet_verified=false;advance();
+        assert(has_text(lv_screen_active(),LV_SYMBOL_WARNING "  Internet not verified"));
+        weather.internet_verified=true;weather.internet_age_seconds=30;advance();
+        assert(has_text(lv_screen_active(),LV_SYMBOL_OK "  Internet checked just now"));
+        weather.internet_age_seconds=120;advance();
+        assert(has_text(lv_screen_active(),LV_SYMBOL_OK "  Internet checked 2 min ago"));
+        weather.internet_age_seconds=1860;advance();
+        assert(has_text(lv_screen_active(),LV_SYMBOL_WARNING "  Internet not verified"));
+        weather.connected=false;advance();
+        assert(has_text(lv_screen_active(),LV_SYMBOL_WIFI "  Wi-Fi disconnected"));
+        weather.radio_paused=true;advance();
+        assert(has_text(lv_screen_active(),LV_SYMBOL_WIFI "  Wi-Fi off"));
+        click_text(lv_screen_active(),LV_SYMBOL_WIFI);advance();
+        assert(has_text(lv_screen_active(),"Scan"));
+        click_text(lv_screen_active(),"Back");advance();
+        assert(has_text(lv_screen_active(),"NEXT ALARM"));
+        audio_error=1;advance();assert(has_text(lv_screen_active(),"Local audio unavailable"));
+        puts("PASS connectivity: independent Wi-Fi/HTTPS evidence, age, offline, shortcut/back, warning priority");
     }
     FILE *f=fopen(argv[1],"wb");if(!f)return 3;fprintf(f,"P6\n480 320\n255\n");
     for(unsigned i=0;i<480*320;i++){uint16_t p=pixels[i];unsigned char rgb[]={((p>>11)&31)*255/31,((p>>5)&63)*255/63,(p&31)*255/31};fwrite(rgb,1,3,f);}fclose(f);return 0;

@@ -35,13 +35,15 @@ static void show_display(lv_event_t *e);
 static void show_settings(lv_event_t *e);
 static bool weather_view,network_editing,network_error,location_editing,wifi_listing,network_connecting;
 static unsigned shown_scan;
-static bool setup_from_settings;
+static unsigned setup_origin; /* 0 weather, 1 settings, 2 clock */
+static lv_obj_t *wifi_indicator,*wifi_strength[3];
 static lv_obj_t *network_list;
 static weather_network_t shown_networks[WEATHER_NETWORK_COUNT],chosen_network;
 static lv_obj_t *weather_title,*weather_now,*weather_today,*weather_status,*zone_button;
 static lv_obj_t *network_password,*network_zip,*network_status,*keyboard,*radio_button;
 static void show_weather(lv_event_t *e);
 static void show_network(lv_event_t *e);
+static void home_network(lv_event_t *e){setup_origin=2;show_network(e);}
 static void show_location(lv_event_t *e);
 static void show_ha(lv_event_t *e);
 static void show_media(lv_event_t *e);
@@ -73,17 +75,45 @@ static void reset_screen(void)
     lv_obj_remove_flag(root,LV_OBJ_FLAG_SCROLLABLE);
 }
 static void go_home(lv_event_t *e){(void)e;home();}
+/* Weather is not included in LVGL's built-in symbol font. Construct a small
+ * sun/cloud silhouette with native objects, without a bitmap or emoji font. */
+static void weather_nav_icon(lv_obj_t *button, bool selected)
+{
+    const uint32_t ink=selected?0xd7fff0:0xa8bac7;
+    const int circles[][3]={{49,8,12},{39,20,10},{45,14,15},{55,19,11}};
+    for(unsigned i=0;i<4;i++){
+        lv_obj_t *o=lv_obj_create(button);
+        lv_obj_remove_flag(o,LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_pos(o,circles[i][0],circles[i][1]);
+        lv_obj_set_size(o,circles[i][2],circles[i][2]);
+        lv_obj_set_style_radius(o,LV_RADIUS_CIRCLE,0);
+        lv_obj_set_style_border_width(o,i==0?2:0,0);
+        lv_obj_set_style_border_color(o,lv_color_hex(ink),0);
+        lv_obj_set_style_bg_color(o,lv_color_hex(ink),0);
+        if(i==0)lv_obj_set_style_bg_opa(o,LV_OPA_TRANSP,0);
+    }
+    lv_obj_t *base=lv_obj_create(button);
+    lv_obj_remove_flag(base,LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_pos(base,43,24);lv_obj_set_size(base,19,6);
+    lv_obj_set_style_border_width(base,0,0);lv_obj_set_style_radius(base,2,0);
+    lv_obj_set_style_bg_color(base,lv_color_hex(ink),0);
+}
 /* Main destinations have identical positions; editors retain explicit Save/Cancel. */
 static void navigation(unsigned selected)
 {
     const char *names[]={"Clock","Alarms","Weather","Settings"};
+    const char *icons[]={LV_SYMBOL_HOME,LV_SYMBOL_BELL,"",LV_SYMBOL_SETTINGS};
     lv_event_cb_t callbacks[]={go_home,show_alarms,show_weather,show_settings};
     for(unsigned i=0;i<4;i++){
-        lv_obj_t *b=button(root,names[i],12+i*116,266,108,callbacks[i],NULL);
+        lv_obj_t *b=button(root,icons[i],12+i*116,266,108,callbacks[i],NULL);
+        lv_obj_set_user_data(b,(void *)names[i]);
+        lv_obj_set_style_pad_all(b,0,0);
+        lv_obj_set_style_text_font(b,&lv_font_montserrat_20,0);
         lv_obj_set_style_radius(b,10,0);
         lv_obj_set_style_bg_color(b,lv_color_hex(i==selected?0x2e5558:0x121e27),0);
         lv_obj_set_style_border_color(b,lv_color_hex(i==selected?0x7dbbb0:0x24343f),0);
         lv_obj_set_style_text_color(b,lv_color_hex(i==selected?0xd7fff0:0xa8bac7),0);
+        if(i==2)weather_nav_icon(b,i==selected);
     }
 }
 static void select_alarm(lv_event_t *e)
@@ -281,9 +311,21 @@ static void dismiss(lv_event_t *e){(void)e;alarm_service_dismiss();}
 static void home(void)
 {
     editing=false;time_editing=false;pending=false;reset_screen();
-    date_text=label(root,"Clock",20,23,330,&lv_font_montserrat_16);
+    date_text=label(root,"Clock",20,23,278,&lv_font_montserrat_16);
     lv_obj_set_style_text_color(date_text,lv_color_hex(0xa8bac7),0);
     lv_obj_set_style_text_align(date_text,LV_TEXT_ALIGN_LEFT,0);
+    lv_obj_set_height(date_text,22);lv_label_set_long_mode(date_text,LV_LABEL_LONG_DOT);
+    wifi_indicator=button(root,LV_SYMBOL_WIFI,306,10,48,home_network,NULL);
+    lv_obj_set_style_pad_all(wifi_indicator,0,0);
+    lv_obj_t *wifi_label=lv_obj_get_child(wifi_indicator,0);
+    lv_obj_align(wifi_label,LV_ALIGN_TOP_MID,0,5);
+    for(unsigned i=0;i<3;i++){
+        wifi_strength[i]=lv_obj_create(wifi_indicator);
+        lv_obj_remove_flag(wifi_strength[i],LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_pos(wifi_strength[i],13+i*8,35-(i+1)*3);
+        lv_obj_set_size(wifi_strength[i],5,(i+1)*3);
+        lv_obj_set_style_radius(wifi_strength[i],1,0);lv_obj_set_style_border_width(wifi_strength[i],0,0);
+    }
     lv_obj_t *b=button(root,"Dim",365,10,100,dim,NULL);dim_text=lv_obj_get_child(b,0);
     time_text=label(root,"--:--",22,80,270,&lv_font_montserrat_48);
     lv_obj_set_style_text_color(time_text,lv_color_hex(0xffdfaa),0);
@@ -462,10 +504,10 @@ static void toggle_radio(lv_event_t *e)
     if(!weather_service_radio(s.radio_paused)){lv_label_set_text(network_status,"Busy; try again");network_error=true;}
 }
 static void setup_back(lv_event_t *e)
-{if(setup_from_settings)show_settings(e);else show_weather(e);}
+{if(setup_origin==2)home();else if(setup_origin==1)show_settings(e);else show_weather(e);}
 static void show_network(lv_event_t *e)
 {
-    if(settings_view||weather_view)setup_from_settings=settings_view;
+    if(settings_view||weather_view)setup_origin=settings_view?1:0;
     (void)e;editing=false;time_editing=false;reset_screen();network_editing=true;wifi_listing=true;network_error=false;shown_scan=~0u;
     label(root,"Wi-Fi",10,10,180,&lv_font_montserrat_20);button(root,"Scan",345,6,120,rescan,NULL);
     weather_snapshot_t w;weather_service_snapshot(&w);
@@ -488,7 +530,7 @@ static void estimate_location(lv_event_t *e)
 }
 static void show_location(lv_event_t *e)
 {
-    if(settings_view||weather_view)setup_from_settings=settings_view;
+    if(settings_view||weather_view)setup_origin=settings_view?1:0;
     (void)e;weather_snapshot_t s;weather_service_snapshot(&s);editing=false;time_editing=false;reset_screen();location_editing=true;network_error=false;
     label(root,"Weather & time zone",10,10,290,&lv_font_montserrat_20);
     button(root,"Use network",315,5,150,estimate_location,NULL);
@@ -659,9 +701,19 @@ void clock_ui_update(void)
         snprintf(b,sizeof(b),"Rings again in %02u:%02u",(unsigned)(s.snooze_seconds/60),(unsigned)(s.snooze_seconds%60));
     }else lv_label_set_text(alarm_caption,"NEXT ALARM");
     lv_label_set_text(next_text,b);
-    lv_label_set_text(status,audio_status()!=ESP_OK?"Local audio unavailable":s.load_failed?"Saved alarms unavailable - review Alarms":s.storage_status==ESP_OK?clock_source():"Settings storage error");
+
     lv_label_set_text(dim_text,s.settings.display.enabled?"Display":applied_brightness<80?"Brighten":"Dim");
     weather_snapshot_t weather;weather_service_snapshot(&weather);
+    unsigned bars=weather.connected&&weather.signal_known?(weather.signal_dbm>=-60?3:weather.signal_dbm>=-75?2:1):0;
+    lv_obj_set_style_text_color(wifi_indicator,lv_color_hex(weather.connected?0x9cd4bb:0x71818d),0);
+    for(unsigned i=0;i<3;i++)lv_obj_set_style_bg_color(wifi_strength[i],lv_color_hex(i<bars?0x9cd4bb:0x33434e),0);
+    if(weather.radio_paused)snprintf(b,sizeof(b),LV_SYMBOL_WIFI "  Wi-Fi off");
+    else if(!weather.connected)snprintf(b,sizeof(b),LV_SYMBOL_WIFI "  Wi-Fi disconnected");
+    else if(weather.internet_verified&&weather.internet_age_seconds<1860){
+        if(weather.internet_age_seconds<60)snprintf(b,sizeof(b),LV_SYMBOL_OK "  Internet checked just now");
+        else snprintf(b,sizeof(b),LV_SYMBOL_OK "  Internet checked %u min ago",(unsigned)(weather.internet_age_seconds/60));
+    }else snprintf(b,sizeof(b),LV_SYMBOL_WARNING "  Internet not verified");
+    lv_label_set_text(status,audio_status()!=ESP_OK?"Local audio unavailable":s.load_failed?"Saved alarms unavailable - review Alarms":s.storage_status!=ESP_OK?"Settings storage error":!clock_valid()?"Set time to enable alarms":b);
     lv_label_set_text(home_place,weather.location.name[0]?weather.location.name:"Local weather");
     if(weather.has_data){
         snprintf(b,sizeof(b),"%.0f°",weather.data.temperature);lv_label_set_text(home_temperature,b);
@@ -684,6 +736,9 @@ void clock_ui_diagnostics(void)
     if(weather_view||network_editing||location_editing){weather_snapshot_t w;weather_service_snapshot(&w);
         diagnostics_printf("WEATHER_STATE online=%u valid=%u fresh=%u zip=%s zone=%s status=%s\n",w.connected,w.has_data,w.has_data&&weather_fresh(&w.data,time(NULL)),w.zip,w.location.timezone,w.status);
     }
+    weather_snapshot_t link;weather_service_snapshot(&link);
+    diagnostics_printf("UI_CONNECTIVITY wifi=%u signal_known=%u dbm=%d internet_verified=%u age=%lu\n",
+        link.connected,link.signal_known,link.signal_dbm,link.internet_verified,(unsigned long)link.internet_age_seconds);
     alarm_snapshot_t state;alarm_service_snapshot(&state);
     diagnostics_printf("AUDIO_STATE status=%d\n",(int)audio_status());
     diagnostics_printf("DISPLAY_STATE auto=%u start=%u end=%u level=%u\n",state.settings.display.enabled,state.settings.display.start_minute,state.settings.display.end_minute,applied_brightness);

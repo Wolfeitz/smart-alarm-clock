@@ -2,8 +2,8 @@
 
 ## Navigation
 
-Clock, Alarms, Weather and Settings share a bottom navigation bar; the current
-page is highlighted. The home weather card opens the forecast, and the next-alarm
+The bottom navigation icons are house (Clock), bell (Alarms), sun/cloud (Weather),
+and gear (Settings); the current page is highlighted. The home weather card opens the forecast, and the next-alarm
 card opens alarms (or active snooze controls). Dim/Brighten is at the top right.
 Editors keep explicit Save/Cancel actions instead of the navigation bar.
 
@@ -45,6 +45,16 @@ alarms brighten the screen. When scheduling is enabled, the home shortcut opens
 these display settings instead of toggling manual brightness.
 
 ## Weather and connection
+
+Tap the top-right Wi-Fi indicator to open Wi-Fi settings; Back returns to Clock.
+Three bars show strong signal, two good, one weak (associated AP RSSI, sampled
+about every five seconds when the network worker is free). No bars means signal
+is unavailable or Wi-Fi is disconnected. The Internet status reports the age of
+a successful HTTPS weather/location request; it is not a continuous Internet
+probe. Failed requests or disconnection clear verification, and old results
+expire after31minutes. Audio, saved-settings and invalid-time warnings take
+priority over connectivity status.
+
 
 Tap **Settings → Wi-Fi** to scan nearby networks and connect. Weather retains
 a Wi-Fi shortcut. Wi-Fi and Location return to the page you opened them from. **Turn off**

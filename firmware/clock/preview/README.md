@@ -52,3 +52,7 @@ when the reported player state is stale. `media` renders synthetic player data.
 Main navigation regression: `clock_preview /tmp/navigation.ppm weather navigation-test`
 checks 25 cycles across all primary destinations, Settings/Weather setup-return
 behavior, and unchanged alarm records. `settings` renders the settings hub.
+
+`connectivity-test` covers verified/unknown/stale Internet status independently
+of Wi-Fi, radio-off/disconnected states, home Wi-Fi shortcut/Back and audio warning
+priority. Navigation uses stable object names so icon changes preserve scenarios.

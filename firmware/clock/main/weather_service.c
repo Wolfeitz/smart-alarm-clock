@@ -37,6 +37,7 @@ static nvs_handle_t storage;
 static bool storage_open,radio_started;
 static atomic_bool online,available,radio_paused;
 static atomic_int disconnect_reason;
+static int64_t internet_checked_at;
 static char active_zone[64]="America/New_York";
 /* If lock allocation fails no worker starts, so the fallback snapshot is immutable. */
 static void state_lock(void){if(lock)xSemaphoreTake(lock,portMAX_DELAY);}
@@ -72,7 +73,7 @@ static void wifi_event(void *arg,esp_event_base_t base,int32_t id,void *data)
     (void)arg;(void)data;
     if(base==IP_EVENT&&id==IP_EVENT_STA_GOT_IP&&!radio_paused)online=true;
     if(base==WIFI_EVENT&&id==WIFI_EVENT_STA_DISCONNECTED){
-        online=false;wifi_event_sta_disconnected_t *event=data;disconnect_reason=event->reason;
+        online=false;state_lock();state.internet_verified=false;state.signal_known=false;state_unlock();wifi_event_sta_disconnected_t *event=data;disconnect_reason=event->reason;
         diagnostics_printf("WIFI_DISCONNECTED reason=%u\n",event->reason);
     }
 }
@@ -102,7 +103,7 @@ static esp_err_t radio_init(void)
 }
 static esp_err_t connect_wifi(void)
 {
-    online=false;
+    online=false;state_lock();state.internet_verified=false;state.signal_known=false;state_unlock();
     if(radio_started)esp_wifi_disconnect();
     wifi_config_t config={0};memcpy(config.sta.ssid,prefs.ssid,strlen(prefs.ssid));
     memcpy(config.sta.password,prefs.password,strlen(prefs.password));
@@ -117,6 +118,8 @@ static esp_err_t connect_wifi(void)
 static bool fetch(const char *url,char *buffer,size_t *size)
 {
     int status=network_http_request(url,NULL,NULL,buffer,WEATHER_JSON_LIMIT+1,size);
+    state_lock();state.internet_verified=status==200&&online;
+    internet_checked_at=esp_timer_get_time();state_unlock();
     diagnostics_printf("WEATHER_HTTP status=%d bytes=%u\n",status,(unsigned)*size);return status==200;
 }
 static bool update_weather(void)
@@ -181,7 +184,7 @@ static void worker(void *arg)
 {
     (void)arg;esp_err_t radio=radio_init();
     if(radio!=ESP_OK){available=false;state_lock();state.busy=false;state_unlock();ha_service_disable();media_service_disable();status("Wi-Fi initialization failed; clock works offline");vTaskDelete(NULL);return;}
-    int64_t retry=0,weather_at=0;bool was_online=false;
+    int64_t retry=0,weather_at=0,signal_at=0;bool was_online=false;
     diagnostics_printf("NETWORK_BOOT enabled=%u\n",!radio_paused);
     if(radio_paused)status("Wi-Fi off; saved for restart");
     else if(prefs.ssid[0]){status("Connecting to Wi-Fi...");connect_wifi();retry=esp_timer_get_time()+30000000;}
@@ -229,7 +232,16 @@ static void worker(void *arg)
         }
         int64_t now=esp_timer_get_time();int reason=atomic_exchange(&disconnect_reason,0);
         if(reason&&!online&&!radio_paused){char message[96];snprintf(message,sizeof(message),"Wi-Fi connection failed (%d); check password",reason);status(message);}
-        if(online!=was_online){was_online=online;publish();if(online){status("Wi-Fi connected");weather_at=0;}}
+        if(online!=was_online){
+            was_online=online;publish();signal_at=0;
+            state_lock();state.internet_verified=false;state.signal_known=false;state_unlock();
+            if(online){status("Wi-Fi connected");weather_at=0;}
+        }
+        if(now>=signal_at){
+            wifi_ap_record_t ap;bool known=online&&esp_wifi_sta_get_ap_info(&ap)==ESP_OK;
+            state_lock();state.signal_known=known;if(known)state.signal_dbm=ap.rssi;state_unlock();
+            signal_at=now+5000000;
+        }
         if(!radio_paused&&!online&&prefs.ssid[0]&&now>=retry){status("Wi-Fi unavailable; reconnecting...");esp_wifi_connect();retry=now+30000000;}
         ha_service_poll(online);
         remote_alarm_poll(online);
@@ -267,7 +279,12 @@ void weather_service_init(void)
     if(xTaskCreate(worker,"weather",8192,NULL,2,NULL)!=pdPASS){available=false;ha_service_disable();media_service_disable();status("Weather task unavailable; clock works offline");}
 }
 void weather_service_snapshot(weather_snapshot_t *out)
-{state_lock();*out=state;out->connected=online;state_unlock();}
+{
+    state_lock();*out=state;out->connected=online;
+    if(!out->connected){out->signal_known=false;out->internet_verified=false;}
+    out->internet_age_seconds=state.internet_verified?(esp_timer_get_time()-internet_checked_at)/1000000:0;
+    state_unlock();
+}
 static bool submit(command_t *c)
 {
     if(!available)return false;

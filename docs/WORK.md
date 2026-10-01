@@ -1897,3 +1897,35 @@ Rerun PASS: one complete installed navigation cycle, four valid RTC heartbeats,
 heap77588bytes stable, all eight alarm records equal to pre-flash snapshot.
 Receipt: local-config/clock/navigation-soak-20261001-182320.log. Home restored.
 No real acoustic/Sonos playback or physical finger-coordinate test performed.
+
+## Navigation icons only (2026-10-01)
+
+Owner requests replacing navigation text with standard icons, clarifying nav only.
+Keep the four destinations, selected state, hit areas and all other text unchanged.
+Use built-in home/bell/gear glyphs and a small native sun/cloud weather icon because
+weather is not in the pinned LVGL symbol subset. Verify actual rendered navigation,
+existing callback regressions and IDF build before application-only installation.
+
+Owner also replaces home technical time-source text with useful connectivity and
+asks that tapping signal strength open Wi-Fi. Acceptance: actual associated-AP
+RSSI sampled in network worker, not scan cache or UI; 3 strength bars and a44px
+home Wi-Fi target, Back returns to home. Internet is an aged successful existing
+HTTPS request, not inferred from LAN or NTP; failed requests/disconnection clear
+verification, no new polling endpoint. Keep clock-invalid/audio/storage warnings
+higher priority. No persistence or alarm scheduling change.
+
+Actual LVGL previews passed main navigation25cycles, alarm save/cancel, snooze
+navigation and priority, connectivity age/offline/unknown states, home Wi-Fi/back,
+audio/load warnings, radio controls and successful connect exit. Home rendering
+visually inspected. IDF6.1 build and app-only flash/hash verification passed.
+Installed SHA256 f669d7571190696bd28a00a1f7e8ecf4b110a8645835702ce6740daa1eb57719.
+Receipts: local-config/clock/nav-icons/, nav-icons-build.log, nav-icons-flash.log.
+Internet evidence is a successful existing public HTTPS request with displayed age;
+this is not proof every Internet service is reachable. No ping or added cloud
+service. Display rotation, alarms and settings remain unchanged by this update.
+
+Installed-device verification PASS: home Wi-Fi target → network → Back/home, all
+four navigation icons by coordinate taps, and eight alarm records identical to
+pre-flash snapshot. Real associated RSSI -81dBm and HTTPS success age28seconds
+reported. Receipt: local-config/clock/nav-icons-runtime.log. Home restored; no
+physical testing, sound, power-off, credential or alarm-setting changes requested.
