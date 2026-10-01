@@ -56,3 +56,7 @@ behavior, and unchanged alarm records. `settings` renders the settings hub.
 `connectivity-test` covers verified/unknown/stale Internet status independently
 of Wi-Fi, radio-off/disconnected states, home Wi-Fi shortcut/Back and audio warning
 priority. Navigation uses stable object names so icon changes preserve scenarios.
+
+`brightness-test` exercises the sun shortcut's manual dim/bright toggle and
+scheduled-night-mode settings route. `connectivity-test` also covers the native
+Wi-Fi arc icon's shortcut by its stable name.

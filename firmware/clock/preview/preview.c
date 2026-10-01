@@ -346,6 +346,15 @@ int main(int argc,char **argv)
         assert(!memcmp(before,alarm_state.settings.alarms,sizeof(before)));
         puts("PASS main navigation: 25 cycles, setup returns to origin, no alarm changes");
     }
+    if(argc>3&&!strcmp(argv[3],"brightness-test")){
+        click_text(lv_screen_active(),"Clock");advance();
+        alarm_state.settings.display.enabled=false;alarm_state.settings.brightness=160;advance();
+        click_text(lv_screen_active(),"Brightness");advance();assert(alarm_state.settings.brightness==25);
+        click_text(lv_screen_active(),"Brightness");advance();assert(alarm_state.settings.brightness==160);
+        alarm_state.settings.display.enabled=true;advance();
+        click_text(lv_screen_active(),"Brightness");advance();assert(has_text(lv_screen_active(),"Scheduled night mode"));
+        puts("PASS brightness icon: dim/bright toggle and scheduled display settings");
+    }
     if(argc>3&&!strcmp(argv[3],"connectivity-test")){
         click_text(lv_screen_active(),"Clock");advance();
         weather.connected=true;weather.signal_known=true;weather.signal_dbm=-48;
@@ -361,7 +370,7 @@ int main(int argc,char **argv)
         assert(has_text(lv_screen_active(),LV_SYMBOL_WIFI "  Wi-Fi disconnected"));
         weather.radio_paused=true;advance();
         assert(has_text(lv_screen_active(),LV_SYMBOL_WIFI "  Wi-Fi off"));
-        click_text(lv_screen_active(),LV_SYMBOL_WIFI);advance();
+        click_text(lv_screen_active(),"Wi-Fi shortcut");advance();
         assert(has_text(lv_screen_active(),"Scan"));
         click_text(lv_screen_active(),"Back");advance();
         assert(has_text(lv_screen_active(),"NEXT ALARM"));

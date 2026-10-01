@@ -1929,3 +1929,29 @@ four navigation icons by coordinate taps, and eight alarm records identical to
 pre-flash snapshot. Real associated RSSI -81dBm and HTTPS success age28seconds
 reported. Receipt: local-config/clock/nav-icons-runtime.log. Home restored; no
 physical testing, sound, power-off, credential or alarm-setting changes requested.
+
+## Wi-Fi icon correction (2026-10-01)
+
+Owner notes redundant Wi-Fi glyph plus cellular-looking strength bars. Replace
+with one native Wi-Fi icon: connection dot and three strength arcs. Preserve RSSI
+thresholds and existing shortcut/hitbox; no changes to network behavior. Recheck
+live RSSI rather than inferring poor reception from the display. Verify actual
+rendering and existing connectivity callback scenarios before installing.
+
+Owner adds a sun icon for Dim/Brighten. Keep manual toggle/scheduled-display route
+unchanged; same44px height,48px width. Verify actual callbacks for both brightness
+levels and automatic-night-mode route. Rechecked board RSSI -80/-81dBm with recent
+HTTPS success; weak reception is observed, not a cellular signal or speed estimate.
+
+Native Wi-Fi arc and sun icons rendered and visually inspected. Actual-LVGL
+brightness-test and connectivity-test passed. IDF6.1 build and application-only
+flash/hash verification passed. Installed SHA256:
+62c0bdff4dc4b3da09b892da8bc04ae4321cfc5c612c6a4069cc9845d1e6b254.
+Pre-flash snapshot: eight disabled alarms, idle, storage OK. Receipts under
+local-config/clock: wifi-strength-recheck.log, wifi-arcs-build.log,
+wifi-arcs-flash.log; rendered nav-icons/home-refined.png. No new network requests,
+strength thresholds, sound, settings or physical power-off tests introduced.
+Installed runtime PASS: repositioned Wi-Fi shortcut opened network settings and
+Back returned home; all eight alarm records match before flash. Receipt:
+local-config/clock/wifi-arcs-runtime.log. Physical visual/touch acceptance remains
+separate from these automated logical-coordinate taps.

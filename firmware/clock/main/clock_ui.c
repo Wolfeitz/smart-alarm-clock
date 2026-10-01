@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-static lv_obj_t *root,*time_text,*date_text,*detail,*next_text,*status,*dim_text;
+static lv_obj_t *root,*time_text,*date_text,*detail,*next_text,*status;
 static lv_obj_t *home_place,*home_temperature,*home_forecast,*alarm_caption;
 static bool snooze_collapsed;
 static lv_obj_t *slot,*hours,*minutes,*repeat,*enabled,*days[7],*year,*month,*day,*edit_status,*overlay,*overlay_detail;
@@ -36,7 +36,7 @@ static void show_settings(lv_event_t *e);
 static bool weather_view,network_editing,network_error,location_editing,wifi_listing,network_connecting;
 static unsigned shown_scan;
 static unsigned setup_origin; /* 0 weather, 1 settings, 2 clock */
-static lv_obj_t *wifi_indicator,*wifi_strength[3];
+static lv_obj_t *wifi_indicator,*wifi_dot,*wifi_strength[3];
 static lv_obj_t *network_list;
 static weather_network_t shown_networks[WEATHER_NETWORK_COUNT],chosen_network;
 static lv_obj_t *weather_title,*weather_now,*weather_today,*weather_status,*zone_button;
@@ -308,25 +308,51 @@ static void home_alarm(lv_event_t *e)
     else show_alarms(e);
 }
 static void dismiss(lv_event_t *e){(void)e;alarm_service_dismiss();}
+static void brightness_icon(lv_obj_t *parent)
+{
+    static const lv_point_precise_t rays[8][2]={
+        {{16,1},{16,5}},{{16,27},{16,31}},{{1,16},{5,16}},{{27,16},{31,16}},
+        {{5,5},{8,8}},{{24,24},{27,27}},{{5,27},{8,24}},{{24,8},{27,5}}
+    };
+    for(unsigned i=0;i<8;i++){
+        lv_obj_t *ray=lv_line_create(parent);lv_line_set_points(ray,rays[i],2);
+        lv_obj_set_pos(ray,8,6);lv_obj_set_style_line_width(ray,2,0);
+        lv_obj_set_style_line_color(ray,lv_color_hex(0xffdfaa),0);
+        lv_obj_remove_flag(ray,LV_OBJ_FLAG_CLICKABLE);
+    }
+    lv_obj_t *sun=lv_obj_create(parent);lv_obj_set_pos(sun,18,16);lv_obj_set_size(sun,12,12);
+    lv_obj_set_style_radius(sun,LV_RADIUS_CIRCLE,0);lv_obj_set_style_border_width(sun,2,0);
+    lv_obj_set_style_border_color(sun,lv_color_hex(0xffdfaa),0);lv_obj_set_style_bg_opa(sun,LV_OPA_TRANSP,0);
+    lv_obj_remove_flag(sun,LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
+}
 static void home(void)
 {
     editing=false;time_editing=false;pending=false;reset_screen();
-    date_text=label(root,"Clock",20,23,278,&lv_font_montserrat_16);
+    date_text=label(root,"Clock",20,23,330,&lv_font_montserrat_16);
     lv_obj_set_style_text_color(date_text,lv_color_hex(0xa8bac7),0);
     lv_obj_set_style_text_align(date_text,LV_TEXT_ALIGN_LEFT,0);
     lv_obj_set_height(date_text,22);lv_label_set_long_mode(date_text,LV_LABEL_LONG_DOT);
-    wifi_indicator=button(root,LV_SYMBOL_WIFI,306,10,48,home_network,NULL);
+    wifi_indicator=button(root,"",358,10,48,home_network,NULL);
+    lv_obj_set_user_data(wifi_indicator,"Wi-Fi shortcut");
     lv_obj_set_style_pad_all(wifi_indicator,0,0);
-    lv_obj_t *wifi_label=lv_obj_get_child(wifi_indicator,0);
-    lv_obj_align(wifi_label,LV_ALIGN_TOP_MID,0,5);
     for(unsigned i=0;i<3;i++){
-        wifi_strength[i]=lv_obj_create(wifi_indicator);
+        int radius=8+i*6;
+        wifi_strength[i]=lv_arc_create(wifi_indicator);
+        lv_obj_remove_style_all(wifi_strength[i]);
         lv_obj_remove_flag(wifi_strength[i],LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_pos(wifi_strength[i],13+i*8,35-(i+1)*3);
-        lv_obj_set_size(wifi_strength[i],5,(i+1)*3);
-        lv_obj_set_style_radius(wifi_strength[i],1,0);lv_obj_set_style_border_width(wifi_strength[i],0,0);
+        lv_obj_set_pos(wifi_strength[i],24-radius,32-radius);
+        lv_obj_set_size(wifi_strength[i],radius*2,radius*2);
+        lv_arc_set_bg_angles(wifi_strength[i],225,315);
+        lv_obj_set_style_arc_width(wifi_strength[i],3,LV_PART_MAIN);
+        lv_obj_set_style_arc_rounded(wifi_strength[i],true,LV_PART_MAIN);
+        lv_obj_set_style_arc_opa(wifi_strength[i],LV_OPA_TRANSP,LV_PART_INDICATOR);
     }
-    lv_obj_t *b=button(root,"Dim",365,10,100,dim,NULL);dim_text=lv_obj_get_child(b,0);
+    wifi_dot=lv_obj_create(wifi_indicator);
+    lv_obj_remove_flag(wifi_dot,LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_pos(wifi_dot,21,30);lv_obj_set_size(wifi_dot,6,6);
+    lv_obj_set_style_radius(wifi_dot,LV_RADIUS_CIRCLE,0);lv_obj_set_style_border_width(wifi_dot,0,0);
+    lv_obj_t *b=button(root,"",417,10,48,dim,NULL);
+    lv_obj_set_user_data(b,"Brightness");lv_obj_set_style_pad_all(b,0,0);brightness_icon(b);
     time_text=label(root,"--:--",22,80,270,&lv_font_montserrat_48);
     lv_obj_set_style_text_color(time_text,lv_color_hex(0xffdfaa),0);
     lv_obj_set_style_transform_pivot_x(time_text,LV_PCT(50),0);lv_obj_set_style_transform_pivot_y(time_text,LV_PCT(50),0);lv_obj_set_style_transform_scale(time_text,432,0);
@@ -702,11 +728,11 @@ void clock_ui_update(void)
     }else lv_label_set_text(alarm_caption,"NEXT ALARM");
     lv_label_set_text(next_text,b);
 
-    lv_label_set_text(dim_text,s.settings.display.enabled?"Display":applied_brightness<80?"Brighten":"Dim");
+
     weather_snapshot_t weather;weather_service_snapshot(&weather);
     unsigned bars=weather.connected&&weather.signal_known?(weather.signal_dbm>=-60?3:weather.signal_dbm>=-75?2:1):0;
-    lv_obj_set_style_text_color(wifi_indicator,lv_color_hex(weather.connected?0x9cd4bb:0x71818d),0);
-    for(unsigned i=0;i<3;i++)lv_obj_set_style_bg_color(wifi_strength[i],lv_color_hex(i<bars?0x9cd4bb:0x33434e),0);
+    lv_obj_set_style_bg_color(wifi_dot,lv_color_hex(weather.connected?0x9cd4bb:0x71818d),0);
+    for(unsigned i=0;i<3;i++)lv_obj_set_style_arc_color(wifi_strength[i],lv_color_hex(i<bars?0x9cd4bb:0x33434e),LV_PART_MAIN);
     if(weather.radio_paused)snprintf(b,sizeof(b),LV_SYMBOL_WIFI "  Wi-Fi off");
     else if(!weather.connected)snprintf(b,sizeof(b),LV_SYMBOL_WIFI "  Wi-Fi disconnected");
     else if(weather.internet_verified&&weather.internet_age_seconds<1860){

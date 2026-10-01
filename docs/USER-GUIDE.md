@@ -4,7 +4,7 @@
 
 The bottom navigation icons are house (Clock), bell (Alarms), sun/cloud (Weather),
 and gear (Settings); the current page is highlighted. The home weather card opens the forecast, and the next-alarm
-card opens alarms (or active snooze controls). Dim/Brighten is at the top right.
+card opens alarms (or active snooze controls). The sun icon controls brightness.
 Editors keep explicit Save/Cancel actions instead of the navigation bar.
 
 ## Alarms
@@ -38,7 +38,7 @@ updates the RTC when available. Local time and alarm execution continue without
 Wi-Fi. Complete loss of device power is different from loss of Wi-Fi; RTC retention
 across that event still depends on the board's backup-power arrangement.
 
-The home **Dim / Brighten** button changes manual brightness. Under
+The home **sun icon** changes manual brightness. Under
 **Settings → Display & night mode**, choose a local-time dim interval and enable
 the schedule. Touch temporarily brightens the screen for thirty seconds. Ringing
 alarms brighten the screen. When scheduling is enabled, the home shortcut opens
@@ -47,8 +47,8 @@ these display settings instead of toggling manual brightness.
 ## Weather and connection
 
 Tap the top-right Wi-Fi indicator to open Wi-Fi settings; Back returns to Clock.
-Three bars show strong signal, two good, one weak (associated AP RSSI, sampled
-about every five seconds when the network worker is free). No bars means signal
+Three Wi-Fi arcs show strong signal, two good, one weak (associated AP RSSI, sampled
+about every five seconds when the network worker is free). No lit arcs means signal
 is unavailable or Wi-Fi is disconnected. The Internet status reports the age of
 a successful HTTPS weather/location request; it is not a continuous Internet
 probe. Failed requests or disconnection clear verification, and old results
