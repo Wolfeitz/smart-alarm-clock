@@ -280,3 +280,9 @@ Actual-LVGL `snooze-clock-test` exercises Snooze → Show clock, countdown updat
 Settings/home navigation while snoozed, reopening the alarm card, another ringing
 alarm taking foreground priority and brightness, and Dismiss restoring the normal
 home card. Persistence and timers still belong to the unchanged alarm owner.
+
+Actual-LVGL `calendar-test` checks December/January rollover, Today, and alarm
+foreground priority. `signal-test` checks exact -60/-75 dBm boundaries, separate
+connected/nearby readings and live connected-signal updates without rescanning.
+These use synthetic snapshots; installed `WIFI_SCAN_LINK` records associated RSSI,
+channel, matching-BSSID scan RSSI and best same-SSID RSSI without network identifiers.

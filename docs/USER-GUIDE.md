@@ -104,3 +104,15 @@ Media Setup also offers **Use for alarms (local fallback)**, off by default. Wit
 a saved player/selection, alarms can request that external player; missing or
 unconfirmed playback falls back to the board speaker after eight seconds. See
 [remote alarm behavior and limits](HOME-ASSISTANT.md#optional-external-alarm-with-local-fallback).
+
+Tap the date on the clock to open an offline month calendar. Arrows browse months;
+Today returns to the current month. This shows dates only; external calendar events
+are not connected. Alarms still appear over this view.
+
+The home weather tile now includes condition artwork. Faded artwork with
+“Outdated” means cached weather, not a fresh observation. Wi-Fi settings show
+**Connected** signal strength and channel above the list; **Best nearby** is the
+strongest scanned access point for each network name, which may be a different
+radio or access point. Both use Strong at -60 dBm or better, Good from -75 dBm,
+and Weak below -75 dBm. Connection/reconnection now scans all channels and sorts
+compatible access points by signal. This does not implement continuous roaming.

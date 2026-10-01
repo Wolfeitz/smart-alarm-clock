@@ -11,6 +11,7 @@ typedef struct {
     unsigned scan_revision,network_count;
     bool signal_known,internet_verified;
     int signal_dbm;
+    unsigned signal_channel;
     uint32_t internet_age_seconds;
     weather_network_t networks[WEATHER_NETWORK_COUNT];
 } weather_snapshot_t;
@@ -26,3 +27,7 @@ const char *weather_service_timezone(void);
 
 /* Persisted radio preference; credentials are never changed. */
 bool weather_service_radio(bool enabled);
+
+/* Shared scan/link RSSI categories; zero is reserved for an unknown link. */
+static inline unsigned weather_signal_bars(int dbm){return dbm>=-60?3:dbm>=-75?2:1;}
+static inline const char *weather_signal_name(int dbm){return dbm>=-60?"Strong":dbm>=-75?"Good":"Weak";}

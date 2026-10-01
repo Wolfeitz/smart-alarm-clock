@@ -1955,3 +1955,40 @@ Installed runtime PASS: repositioned Wi-Fi shortcut opened network settings and
 Back returned home; all eight alarm records match before flash. Receipt:
 local-config/clock/wifi-arcs-runtime.log. Physical visual/touch acceptance remains
 separate from these automated logical-coordinate taps.
+
+## Weather artwork, calendar and honest signal readings (2026-10-01)
+
+Acceptance before implementation: keep alarm scheduling/persistence unchanged;
+add a tappable date opening an offline month calendar with today and month
+navigation, explicitly distinguish it from future external event integration.
+Add native condition artwork, including missing/stale weather handling. Wi-Fi
+list must identify its strongest nearby reading separately from the currently
+associated link; share strength thresholds and report channel/matching-AP scan
+evidence without logging SSIDs, BSSIDs or credentials. Verify real LVGL rendering,
+calendar navigation/alarm priority, IDF build and bounded installed diagnostics.
+Background rotation/animated weather remain design work: current SDK config has
+PSRAM disabled, so a full 480x320 RGB565 bitmap exceeds current free internal heap.
+No companion service, online calendar or wallpaper download is introduced here.
+
+Owner asks why connection does not choose the strongest AP. Found zero-initialized
+station scan_method was WIFI_FAST_SCAN: pinned IDF6.1 esp_wifi_types_generic.h
+lines355-367 explicitly says it stops at an SSID match. Set WIFI_ALL_CHANNEL_SCAN
+and WIFI_CONNECT_AP_BY_SIGNAL for initial connections/reconnections. Authentication
+threshold and saved credentials unchanged; no BSSID pin or continuous roaming.
+
+Preview calendar year rollover/Today/alarm foreground, shared signal boundaries and
+live-vs-nearby display passed. Existing navigation25cycles, connectivity, brightness,
+snooze navigation and connect-exit checks passed. Home/calendar/network renders
+visually inspected. IDF6.1 build passed. These are not physical touch acceptance.
+
+Application-only flash/hash verification passed. Installed SHA256:
+c20a7cbb3bcd46922b0766be029726d311e453e6aecebcd87bedcdb69c6f74ed.
+Runtime PASS: connected signal improved from prior -80/-81 dBm to -40/-39 dBm
+on channel149. Exact associated BSSID matched the scan: scan RSSI -39 dBm, best
+same-SSID RSSI -39 dBm. Recent HTTPS success confirmed. Calendar/Wi-Fi/home
+coordinate navigation passed; eight disabled alarm records unchanged, no active
+alarm, RTC healthy. Receipts: local-config/clock/weather-calendar-{build,flash,
+before,after}.log and weather-calendar-before.json. Home restored. No physical
+power-off, acoustic or finger-touch acceptance claimed. Documentation verifier
+passed (documentation only). Wallpaper rotation and animated weather are not yet
+implemented; this delivers condition artwork, a local calendar and the Wi-Fi fix.

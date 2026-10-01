@@ -107,6 +107,9 @@ static esp_err_t connect_wifi(void)
     if(radio_started)esp_wifi_disconnect();
     wifi_config_t config={0};memcpy(config.sta.ssid,prefs.ssid,strlen(prefs.ssid));
     memcpy(config.sta.password,prefs.password,strlen(prefs.password));
+    /* Fast scan stops at the first SSID match, even if another AP is stronger. */
+    config.sta.scan_method=WIFI_ALL_CHANNEL_SCAN;
+    config.sta.sort_method=WIFI_CONNECT_AP_BY_SIGNAL;
     config.sta.pmf_cfg.capable=true;
     config.sta.sae_pwe_h2e=WPA3_SAE_PWE_BOTH;
     config.sta.threshold.authmode=prefs.password[0]?WIFI_AUTH_WPA2_PSK:WIFI_AUTH_OPEN;
@@ -166,18 +169,29 @@ static void scan_networks(void)
     if(!records)err=ESP_ERR_NO_MEM;
     if(err==ESP_OK)err=esp_wifi_scan_get_ap_records(&count,records);
     if(err!=ESP_OK)esp_wifi_clear_ap_list();
+    wifi_ap_record_t associated;
+    bool have_link=online&&esp_wifi_sta_get_ap_info(&associated)==ESP_OK;
+    int matched_rssi=0,best_same_rssi=-128;bool matched=false;
+    if(err==ESP_OK&&have_link)for(unsigned i=0;i<count;i++){
+        if(!memcmp(records[i].bssid,associated.bssid,6)){matched=true;matched_rssi=records[i].rssi;}
+        if(!memcmp(records[i].ssid,associated.ssid,32)&&records[i].rssi>best_same_rssi)best_same_rssi=records[i].rssi;
+    }
     state_lock();state.network_count=0;
-    if(err==ESP_OK)for(unsigned i=0;i<count&&state.network_count<WEATHER_NETWORK_COUNT;i++){
+    if(err==ESP_OK)for(unsigned i=0;i<count;i++){
         char name[33]={0};memcpy(name,records[i].ssid,32);if(!name[0])continue;
-        bool duplicate=false;for(unsigned j=0;j<state.network_count;j++)if(!strcmp(name,state.networks[j].ssid))duplicate=true;
-        if(duplicate)continue;
+        bool duplicate=false;for(unsigned j=0;j<state.network_count;j++)if(!strcmp(name,state.networks[j].ssid)){
+            duplicate=true;if(records[i].rssi>state.networks[j].rssi)state.networks[j].rssi=records[i].rssi;
+        }
+        if(duplicate||state.network_count>=WEATHER_NETWORK_COUNT)continue;
         weather_network_t *n=&state.networks[state.network_count++];strcpy(n->ssid,name);n->rssi=records[i].rssi;
         n->secured=records[i].authmode!=WIFI_AUTH_OPEN;
         wifi_auth_mode_t mode=records[i].authmode;
         n->unsupported=mode!=WIFI_AUTH_OPEN&&mode!=WIFI_AUTH_WPA2_PSK&&mode!=WIFI_AUTH_WPA_WPA2_PSK&&mode!=WIFI_AUTH_WPA3_PSK&&mode!=WIFI_AUTH_WPA2_WPA3_PSK;
     }
+    if(have_link){state.signal_known=true;state.signal_dbm=associated.rssi;state.signal_channel=associated.primary;}
     state.scanning=false;state.scan_revision++;state_unlock();free(records);
     status(err==ESP_OK?"Select your Wi-Fi network":"Scan unavailable; tap Scan again");
+    if(have_link)diagnostics_printf("WIFI_SCAN_LINK dbm=%d channel=%u matched=%u scan_dbm=%d best_same_ssid_dbm=%d\n",associated.rssi,associated.primary,matched,matched_rssi,best_same_rssi);
     diagnostics_printf("WIFI_SCAN result=%s count=%u\n",esp_err_to_name(err),err==ESP_OK?count:0);
 }
 static void worker(void *arg)
@@ -239,7 +253,7 @@ static void worker(void *arg)
         }
         if(now>=signal_at){
             wifi_ap_record_t ap;bool known=online&&esp_wifi_sta_get_ap_info(&ap)==ESP_OK;
-            state_lock();state.signal_known=known;if(known)state.signal_dbm=ap.rssi;state_unlock();
+            state_lock();state.signal_known=known;if(known){state.signal_dbm=ap.rssi;state.signal_channel=ap.primary;}state_unlock();
             signal_at=now+5000000;
         }
         if(!radio_paused&&!online&&prefs.ssid[0]&&now>=retry){status("Wi-Fi unavailable; reconnecting...");esp_wifi_connect();retry=now+30000000;}

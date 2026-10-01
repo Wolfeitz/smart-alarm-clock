@@ -346,6 +346,38 @@ int main(int argc,char **argv)
         assert(!memcmp(before,alarm_state.settings.alarms,sizeof(before)));
         puts("PASS main navigation: 25 cycles, setup returns to origin, no alarm changes");
     }
+    if(argc>3&&!strcmp(argv[3],"calendar-test")){
+        click_text(lv_screen_active(),"Clock");advance();
+        click_text(lv_screen_active(),"Calendar");advance();
+        lv_obj_t *cal=NULL;
+        for(unsigned i=0;i<lv_obj_get_child_count(lv_screen_active());i++){
+            lv_obj_t *o=lv_obj_get_child(lv_screen_active(),i);
+            if(lv_obj_check_type(o,&lv_calendar_class))cal=o;
+        }
+        assert(cal);const lv_calendar_date_t today=*lv_calendar_get_today_date(cal);
+        lv_calendar_set_month_shown(cal,2028,12);
+        click_text(lv_screen_active(),LV_SYMBOL_RIGHT);advance();
+        assert(lv_calendar_get_showed_date(cal)->year==2029&&lv_calendar_get_showed_date(cal)->month==1);
+        click_text(lv_screen_active(),LV_SYMBOL_LEFT);advance();assert(lv_calendar_get_showed_date(cal)->month==12);
+        click_text(lv_screen_active(),"Today");advance();
+        assert(lv_calendar_get_showed_date(cal)->month==today.month&&lv_calendar_get_showed_date(cal)->year==today.year);
+        alarm_state.ringing=1;advance();assert(has_text(lv_layer_top(),"Dismiss"));
+        click_text(lv_obj_get_child(lv_layer_top(),0),"Dismiss");advance();assert(!alarm_state.ringing);
+        assert(has_text(lv_screen_active(),"Local calendar / event accounts not connected"));
+        puts("PASS calendar year rollover, Today and alarm foreground priority");
+    }
+    if(argc>3&&!strcmp(argv[3],"signal-test")){
+        assert(weather_signal_bars(-60)==3&&weather_signal_bars(-61)==2);
+        assert(weather_signal_bars(-75)==2&&weather_signal_bars(-76)==1);
+        click_text(lv_screen_active(),"Clock");advance();
+        weather.signal_dbm=-81;weather.signal_channel=1;
+        click_text(lv_screen_active(),"Wi-Fi shortcut");advance();
+        assert(has_text(lv_screen_active(),"Connected: Weak (-81 dBm) / channel 1"));
+        assert(has_text(lv_screen_active(),"Home Wi-Fi\nBest nearby: Strong (-42 dBm) / Secured"));
+        weather.signal_dbm=-48;weather.signal_channel=36;advance();
+        assert(has_text(lv_screen_active(),"Connected: Strong (-48 dBm) / channel 36"));
+        puts("PASS shared RSSI boundaries and separate live/nearby signals");
+    }
     if(argc>3&&!strcmp(argv[3],"brightness-test")){
         click_text(lv_screen_active(),"Clock");advance();
         alarm_state.settings.display.enabled=false;alarm_state.settings.brightness=160;advance();
