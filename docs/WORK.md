@@ -2088,3 +2088,19 @@ Sonos architecture clarification: direct local UPnP/SOAP adapter, no HA dependen
 clock-hosted local audio URLs are the proposed offline-LAN media path. C5 supports
 BLE only, not Classic A2DP. Requires real Era100 playback qualification; none
 performed. Internet music still depends on its service; local LAN still required.
+
+## Downloaded JPEG rendering boundary (2026-10-01)
+
+Continued requested rotation work without requiring final physical acceptance.
+Added worker-only bounded JPEG decode adapter using pinned LVGL9.4 TJpgDec. Caller
+supplies unpublished RGB565 destination and8192-byte scratch; no LVGL object calls,
+full-source image buffer or heap allocations. Center-crop geometry maps MCU tiles
+to480x320, rejects sources over4096pixels per axis/2MiB compressed, cancellation
+callback allows stale-request rejection and yielding. Complete image must be
+accepted before publication; failure may alter the unpublished destination only.
+Tests caught vendor BGR byte order and correction passed. Wide/portrait/tiny JPEG
+fixtures verify complete coverage, output guard words, cancellation and truncated/
+invalid input. ASan+UBSan PASS; LeakSanitizer unsupported under sandbox ptrace and
+explicitly disabled, not claimed. Command: python scripts/test-background-decode.py.
+Firmware remains0310e14; new decoder is not installed/wired yet. Next implementation:
+network worker, safe frame ownership, source settings and persistent image cache.

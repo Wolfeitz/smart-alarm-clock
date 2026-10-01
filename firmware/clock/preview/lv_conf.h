@@ -9,3 +9,5 @@
 #define LV_FONT_MONTSERRAT_20 1
 #define LV_FONT_MONTSERRAT_48 1
 #define LV_USE_LOG 0
+
+#define LV_USE_TJPGD 1
