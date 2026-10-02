@@ -19,3 +19,8 @@ int sonos_read(sonos_client_t *client,const sonos_device_t *device,media_player_
 int sonos_action(sonos_client_t *client,const sonos_device_t *device,media_action_t action,
     const media_player_t *current,const char *uri,const char *metadata);
 int sonos_stop(sonos_client_t *client,const sonos_device_t *device);
+#define SONOS_FAVORITES_PAGE 6
+typedef struct {char id[96],title[96];} sonos_favorite_t;
+typedef struct {sonos_favorite_t items[SONOS_FAVORITES_PAGE];unsigned count,total,start;} sonos_favorites_t;
+int sonos_favorites(sonos_client_t *client,const sonos_device_t *device,unsigned start,sonos_favorites_t *out);
+int sonos_play_favorite(sonos_client_t *client,const sonos_device_t *device,const char *id);

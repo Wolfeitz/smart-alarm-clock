@@ -25,3 +25,8 @@ void sensor_rotate_touch(bool flipped,int *x,int *y);
 typedef struct {bool known,present,charging,level_known;uint8_t percent;} battery_status_t;
 battery_status_t sensor_battery(bool status_ok,uint8_t status1,uint8_t status2,
     bool detection_enabled,bool gauge_enabled,int percent);
+
+typedef enum { SENSOR_GESTURE_NONE, SENSOR_GESTURE_SNOOZE, SENSOR_GESTURE_WALLPAPER } sensor_gesture_t;
+/* Alarm priority; discard partial gestures across modes, preserve cooldown. */
+sensor_gesture_t sensor_gesture(shake_detector_t *s,sensor_gesture_t *mode,int64_t now,
+    bool snooze_enabled,bool wallpaper_enabled,bool ringing,const int mg[3]);

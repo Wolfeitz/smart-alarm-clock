@@ -2484,3 +2484,321 @@ ESP-IDF6.1 target build with pinned Expat passed; consolidated host suite includ
 XML regressions passed. Logs: local-config/clock/sonos-{dependencies,core-build,
 core-host}.log. Documentation verifier/diff check passed. Simulator test output
 reported PASS directly; rerunnable script carries the actual HTTP assertions.
+
+## Sonos transport integration continuation (2026-10-02)
+
+The preceding battery clarification turn made no implementation progress. Current
+checkout confirms the Sonos core is still disconnected, so there is no external
+wait. Next acceptance: connect its HTTP callback to the existing serialized network
+transport, with SOAP headers, no credentials/redirects, private numeric endpoints,
+a shared operation deadline and bounded responses. Host tests must exercise the
+production transport with an SDK boundary fake, including lock/deadline failures,
+headers, overflow and cleanup; target build must pass before runtime wiring.
+The full Sonos setup/favorites/alarm/device-simulator scope remains open.
+
+Implemented production `sonos_network` callback and shared `network_http_sonos`
+SOAP transport. Numeric private endpoints/fixed paths, quoted SOAPAction, XML
+content type, no inherited credentials, no redirects, bounded response storage.
+Operation deadline10s is checked between requests and on HTTP events; per-socket
+wait <=2s. Source inspection found IDF ignores ON_DATA callback return values:
+now explicitly close on overflow/deadline and guard recursive disconnect events.
+Host fake intentionally ignores callback return values to reproduce this SDK detail.
+This does not establish a strict total deadline for every SDK internal operation,
+particularly partial-header trickling; that limit remains documented rather than
+claiming a hard timing proof. Ordinary stalled sockets have finite timeouts.
+
+Consolidated host suites PASS, including production HTTP wrapper/adapter tests for
+SOAP/JSON header isolation, no redirects, private-address/path/header validation,
+expired budget, lock delay/failure, init/header failures, overflow, socket close,
+cleanup and cancellation between calls. ESP-IDF6.1 target build PASS. Logs:
+local-config/clock/sonos-transport-{host,build}.log. No install performed: this is
+not yet a selectable runtime feature. Current installed battery/rotation firmware
+and saved settings remain untouched. Next action is target-aware media routing,
+then setup/favorites and alarm simulator integration; full goal remains active.
+
+## Target-aware media routing (2026-10-02)
+
+Prior turn progressed production Sonos transport and passing checks. Next acceptance:
+select backend from the persisted target, keep existing HA identities/settings valid,
+route Sonos independently of HA configuration, pin UUID in its target, and keep
+remote-alarm cleanup bound to the original target even after settings change.
+Initially explicit URI controls will exercise the router; favorites/setup remain
+required subsequent work. Preserve generic media owner isolation and test existing
+HA persistence/action behavior plus rejected cross-backend targets.
+
+Target-aware router implemented: HA helpers have explicit names/validation; generic
+routing accepts only valid HA entity or pinned Sonos target. Existing preferences
+schema3 remains unchanged, Sonos identity `sonos-local-v1` is separate from HA.
+All media-owner configuration lookups use the intended target. Remote cleanup uses
+the original target, with a regression that changes selection during playback.
+Sonos controller allocations require external RAM on target and fail closed if
+unavailable. Explicit URI type supported as an interim control path; favorites and
+user-facing device setup are still required. Alarm-session callback cancels between
+Sonos requests; cleanup uses Stop and accepts observed stopped/paused state. No
+relaxation of exact selection/volume/mute proof or independent local fallback.
+
+`python scripts/test-sonos-protocol.py` PASS with production media_sonos/controller/
+XML over localhost HTTP and a host network boundary: URI start/readback/stop,
+unsupported type rejection, cancellation between SetURI and Play, changed UUID.
+Existing transport/fault/group/late-playback checks also PASS. This does not execute
+ESP-IDF sockets; that boundary is checked separately and requires later board HTTP
+traffic. Consolidated host suite PASS including original HA parser/storage/action
+and generic alarm tests; target ESP-IDF6.1 build PASS. Receipts:
+local-config/clock/sonos-routing-{host,build}.log. No flash or setting changes.
+Next: asynchronous speaker lookup/favorites model and setup UI, followed by combined
+alarm/HTTP and device simulator checks. Goal remains active; no external blocker.
+
+## Sonos favorites (2026-10-02)
+
+Previous continuation progressed media routing and alarm cancellation with passing
+host/target checks. Implement bounded ContentDirectory Browse pages and fresh favorite
+resolution, preserving service metadata/resource fields using the pinned SoCo
+reference. Favorites must be selected by ID, not guessed Spotify URI mappings.
+Queueable selections append to the existing queue and seek the returned position;
+radio selections use direct URI. Do not clear a user's queue. Validate nested XML,
+missing/oversized fields and cancellation between all wire operations. Verify actual
+serialized Browse/queue/seek commands against the HTTP simulator before UI wiring.
+
+Owner reports rotation/weather failure during favorites work. Live USB diagnostic
+connection triggered USB_UART_HPSYS processor reset (no power-off). Saved rotation
+was disabled; healthy IMU sampled +Y near1g. Enabled only Auto-rotate through Sensors
+UI, confirmed saved auto_rotate=1 with shake=0 and unchanged alarm revision/slots.
+Radio enabled; connected -43dBm/channel149. Wallpaper initially failed then recovered
+in this session. Weather failed TLS with internal free RAM observed as low as2784B;
+certificate bundle logged PSA -141 (insufficient memory), later mbedTLS handshake
+-0x3000. Thus development files were not the cause: no new firmware was installed.
+
+Targeted correction: use IDF's supported MBEDTLS_EXTERNAL_MEM_ALLOC on verified
+8MB PSRAM, retaining certificate verification and shared network serialization.
+Verified allocator implementation in pinned IDF port/esp_mem.c. Preserve alarm,
+Wi-Fi/location/background preferences and auto-rotate enablement. Acceptance is
+successful live TLS weather/background fetch plus healthy sensor/clock/alarms;
+compile success alone will not establish the correction.
+
+Favorites protocol implemented: six-item ContentDirectory pages, stable FV:2 IDs,
+fresh BrowseMetadata resolution, preserved resMD/service descriptors plus validated
+resource injection, queue append/returned-position seek or direct radio URI. Existing
+queue is never cleared. Added strict repeated-item/nested-metadata XML checks,
+including fake closing tags inside CDATA and rejecting self-closing metadata items.
+Production controller/media adapter HTTP simulator PASS for page/metadata/queue/
+radio/missing-data/cancellation behavior. Host suite and ESP-IDF6.1 build PASS.
+Favorite queue URI is not exact favorite evidence, so local fallback remains active;
+no fake selection confirmation added. User-facing setup/favorites remains unfinished.
+
+Installed application SHA256:
+19d7bd962a682a134fb722afacf185cb09649a7e2469d2bae3f36dd8dbb1d76b.
+Application-only flash/hash verification PASS; includes external-RAM TLS correction
+and tested Sonos core changes. No new Sonos target configured. Receipts:
+sonos-favorites-{host,tls-build,tls-flash}.log in local-config/clock.
+
+Installed runtime check PASS: WEATHER_HTTP200 (728B), background API200 (15799B)
+and JPEG200 (31030B), image displayed, network time written to RTC, Wi-Fi -43dBm,
+internet_verified=1, internal free RAM39376B after update. All eight alarm slots
+match pre-flash values; auto_rotate=1 retained; fresh IMU/environment samples.
+Receipt: local-config/clock/favorites-tls-runtime.log. Actual physical rotation is
+not claimed tested. A separate weather-screen query is checking parsed forecast
+freshness (HTTP success alone is insufficient).
+Weather-screen acceptance PASS: online=1 valid=1 fresh=1 ZIP27358,
+America/New_York, status Weather updated; wallpaper displayed and home restored.
+Receipt: local-config/clock/tls-weather-acceptance.log. This closes the reported
+weather/TLS failure for the observed startup runs, not an unlimited soak claim.
+Goal remains active for Sonos setup/favorites UI and board-to-simulator integration.
+
+## Sonos setup UI and owner (2026-10-02)
+
+Previous continuation verified the weather repair on device and favorites protocol.
+Implement asynchronous numeric-IP lookup (default port1400), pinned identity and
+paged Sonos-app favorites through the existing network worker. UI must never perform
+HTTP; failed lookups must not replace saved media. Navigation after Save waits for
+an explicit persistence receipt. Preserve HA setup and existing media preferences;
+Sonos favorites use local fallback conservatively. Verify production owner boundaries,
+actual LVGL navigation and target build before installation/device simulator work.
+
+Asynchronous Sonos setup owner and actual LVGL UI implemented: manual numeric IP
+(default1400), read-only lookup/identity pinning, six-item favorites pages, controls
+only or favorite, alarm checkbox, tracked media persistence receipt before leaving.
+Existing HA setup remains accessible. Manual lookup is the supported selection path;
+automatic SSDP discovery is not claimed. Save errors retain the previous player.
+No HTTP runs on UI callbacks. USB SONOS_LOOKUP/SONOS_STATE expose read-only setup
+checks without saving a player or triggering playback.
+
+Host owner checks PASS for offline, busy, identity change, groups, pages and worker
+disable. Media owner tests cover explicit successful/failed persistence tickets.
+Actual-LVGL sonos-test PASS for missing lookup, paging, delayed/failed save, duplicate
+Save suppression and receipt-based navigation; rendered screen visually inspected.
+Existing media-test PASS. Full host suite, production C HTTP simulator and target
+build PASS. No claim of real speaker playback. Receipts sonos-ui-{host,build,
+preview-build}.log. Device simulator script added to test actual ESP32 HTTP/SOAP
+lookup, favorites, grouped/malformed refusal and recovery without persisting a test
+target or arming/changing alarms. No power-off gate.
+
+First actual-device simulator attempt exposed main-task stack overflow in LVGL's
+JPEG info path. Large new UI snapshot locals inflated the update stack even outside
+Sonos view. Moved them into UI-owner scratch storage, then consolidated duplicate
+scratch copies. No alarm changes. Installed intermediate correction; host tests and
+UI tests remained passing. LAN simulator connection was separately blocked by the
+host's active firewalld public zone; requested owner permission for a source-limited,
+automatically expiring3-minute TCP18400 rule. No firewall changes made without reply.
+
+The combined production remote_alarm + alarm_output + media_backend + media_sonos +
+Sonos controller/XML test now PASS over actual localhost HTTP, with only wall clock,
+selected preferences and transport boundary simulated. Covers exact URI lease,
+wrong-content fallback, conservative queue-favorite fallback, cancellation during
+SetURI before Play, and timed-out late Play followed by confirmed Stop. No HA calls.
+
+Navigation test initially used a stale HA button position (opened Backgrounds).
+Corrected coordinates and added Sonos setup visit; one complete hardware cycle
+passed, then a synthetic120ms tap was missed after returning home. Diagnostic pulse
+now starts on first LVGL sample, avoiding expiry before it can be delivered; real
+touch handling is unchanged. A longer run also exposed hardware AES internal-buffer
+allocation failures during PSRAM TLS reads, despite successful weather. Disable
+hardware AES through supported IDF config (retain full TLS verification), and rerun
+installed wallpaper/weather plus navigation before claiming reliability. This
+supersedes the prior limited TLS startup success as a complete memory-fix claim.
+
+Installed latest SHA256:
+87d8039c7c2d8f45e8b10659bbb3148701f656fdf28c7467c8469d8a66988fcf.
+Target build/application hash verification PASS. Software AES and external TLS
+allocation verified in SDK config. Actual wallpaper API/JPEG updates and weather
+succeeded on the subsequent run, no stack/AES fault observed. However the bounded
+navigation run still missed the Alarms transition after Media→Clock despite the
+pulse change; do not claim the navigation soak passed. Last log:
+local-config/clock/navigation-soak-20261002-133855.log. Earlier run completed one
+cycle; second did not transition. Further diagnose actual pointer delivery/hit
+handling before completion. Host UI test now also verifies that editing an IP
+invalidates stale lookup selection. No alarm settings were written by these runs.
+
+Pending user reply: temporary firewall rule TCP18400, source192.168.1.0/24,
+automatic180second expiry, for actual device simulator test. No approval received
+and no rule added. Read-only firewall query showed public zone on eno1; full runtime
+list timed out, persisted XML has no temporary simulator-port allowance. Do not
+borrow unrelated allowed service ports or modify shared networking implicitly.
+Goal remains active: resolve navigation observation, run device simulator when
+approved/access permits, and perform full completion audit with actual evidence.
+
+Owner approved the exact temporary LAN firewall rule (TCP18400 from192.168.1.0/24,
+automatic180second expiry). `sudo -n firewall-cmd ... --timeout=180` failed with
+"a password is required"; no rule was added. Owner was given the exact sudo command
+and asked to reply done for the time-limited test. Do not request/collect password.
+Meanwhile a real-LVGL pointer-input host fixture (not direct click callbacks) passes
+Home→Settings→Media→Home→Alarms repeatedly. Added narrow input/nav event diagnostics
+on device to isolate the remaining actual navigation miss without guessing.
+
+Navigation trace follow-up: actual pointer-read host fixture passes three
+Home→Settings→Media→Home→Alarms cycles (not direct callback injection). On-device
+short trace showed press/release and Alarms transitions twice. Full instrumented
+navigation cycle PASS: five RTC heartbeats, identical early/late heap5386824B,
+all eight alarm records unchanged, background displayed, weather Internet proof,
+auto_rotate=1 and fresh sensors. Receipt navigation-soak-20261002-134653.log;
+input trace navigation-input-trace.log. This is bounded acceptance; prior intermittent
+miss is not claimed root-caused solely because the instrumented run passed. Keep
+navigation diagnostics for the next device test. No ongoing process is waiting.
+
+Milestone audit so far: Wallhaven advanced filters/key/source/rotation controls and
+confirmed save-to-home navigation have production host/LVGL plus installed receipts;
+onboard SHTC3/QMI8658 drivers, optional shake, flat-aware orientation and conditional
+battery display have host policies, LVGL and live register evidence. Owner changed
+room-temperature display to explicitly Inside case; physical shake/orientation and
+battery accuracy are unclaimed limits, not gates. Optional-hardware document covers
+voice, Zigbee/coexistence/haptics and rear camera with primary sources and limits.
+Sonos core, transport, setup owner/UI, media routing and combined alarm fallback/
+cancellation now pass scoped host/simulator checks and are installed; real speaker
+sound/Spotify account acceptance is unclaimed. Device-to-simulator acceptance still
+needs the approved local firewall command executed by the owner because sudo needs
+a password. Do not mark full completion until the remaining acceptance is resolved.
+
+Device simulator follow-up: actual board lookup failed cleanly with connection
+timeout and zero simulator requests; no stack crash or playback. Receipt
+local-config/clock/sonos-device-simulator.log. Simulator and serial session closed.
+The approved temporary rule still cannot be queried/applied by this process:
+latest sudo -n query again returns "a password is required". Authorization is
+already granted; execution by the owner remains necessary. After repeated
+unchanged attempts, goal is blocked on this narrow host access prerequisite,
+not on physical testing. Resume with the 180-second simulator run immediately
+after owner confirms the command has been executed.
+
+## Sonos device transport acceptance — 2026-10-02
+
+Owner confirmed execution of the approved temporary TCP18400 firewall rule.
+Ran the ESP-IDF Python environment with scripts/check-sonos-device.py, binding
+192.168.1.203:18400 and the established Espressif USB by-id port. Exit0 PASS:
+actual ESP32 HTTP/SOAP identity lookup, two favorites, grouped-speaker refusal,
+malformed-favorites refusal and successful recovery. Simulator received GET,
+GetZoneGroupState and Browse requests. No playback commands, media saves or alarm
+changes; all alarm records preserved. Receipt:
+local-config/clock/sonos-device-simulator.log. Temporary server and serial session
+closed normally. Firewall rule expires automatically after180seconds; no permanent
+rule was requested or installed by this task.
+
+This resolves the remaining host-access blocker and completes the bounded milestone
+with prior host, real-LVGL, target-build and installed evidence above. Real-speaker
+sound, provider/account compatibility and acoustic wake-up effectiveness remain
+unqualified until a speaker is available. Queue-favorite playback still preserves
+local alarm fallback because queue URI alone cannot prove the selected favorite.
+Physical power-off testing is not a gate. No additional firmware change or flash
+was necessary for this acceptance run.
+
+## Shake wallpaper toggle — acceptance before implementation
+
+Owner requests a separate enable/disable toggle for shake-to-next-wallpaper, using
+current source/settings, never changing wallpaper during an alarm. Add default-off
+bit4 to existing sensor prefs (legacy0–3 preserved); save errors retain preferences.
+Route ringing motion only to optional snooze. Owner clarified: wallpaper gestures
+remain eligible while snoozed; only active ringing suppresses wallpaper gestures.
+Reset gesture detection on action transitions so snoozing cannot also advance the
+wallpaper. Keep existing pulse/cooldown policy and enqueue only the existing async
+background Next action. Local source currently has one built-in image: no cycling
+or switch to online source. Verify policy priority/transitions, UI toggle, build
+and app-only installation; no physical test gate or firewall change.
+
+Shake wallpaper implementation installed: separate default-off checkbox in Sensors
+& gestures, persisted prefs mask4 with legacy0–3 preserved; ringing priority and
+cross-action cooldown in tested pure sensor policy. Snoozed alarms allow explicit
+Next requests (including shake); automatic wallpaper rotation retains its existing
+snooze pause. Current source/filter/list ownership remains with background worker;
+local single-image source stays unchanged. No network operations in sensor task.
+Host suite PASS, actual-LVGL sensors-test PASS, target build PASS, app-only flash
+hash verification PASS. Installed SHA256:
+38dd0b538b543f54e687f6bed9a26002a4cd402c100622f966db68b09670ebec.
+USB read-only receipt shake-wallpaper-installed.log shows fresh IMU samples, clock
+heartbeats, auto_rotate=1 retained and wallpaper_shake=0. Existing shake-to-snooze
+preference is also off; neither opt-in was silently enabled. Physical gesture not
+claimed tested. No power-off test. Build/host/flash logs at /tmp/shake-wallpaper-*.
+
+## Time/date wallpaper contrast — 2026-10-02
+
+Owner requested a background behind time/date, then emphasized preserving wallpaper
+visibility. Added weather-matching navy tint at30% opacity (weather stays60%) and
+faint10% borders; date remains the calendar shortcut, time panel is noninteractive.
+Actual-LVGL home render inspected at /tmp/clock-panels.png: text stays inside panels
+and scenery remains visible. Target build and diff whitespace check PASS.
+App-only installation attempted but serial open returned Errno13 Permission denied;
+no bytes written. Requires renewed /dev/ttyACM0 ACL after hardware re-enumeration.
+This styling is built, not installed. No physical test requirement.
+
+Owner restored serial ACL. Time/date contrast app-only flash completed exit0;
+esptool verified written hash and issued processor reset. SHA256: 0fcca0c180576b14b6eb9f2525de42ed87bbe2b85e0d3d21d4b40f6bc70bbb02.
+Receipt /tmp/clock-panels-flash.log. This supersedes the installation blocker above;
+visual evidence remains the actual-LVGL preview, not a new physical screen report.
+
+## Public repository preparation — 2026-10-02
+
+Owner explicitly authorized publication to Wolfeitz/smart-alarm-clock with README,
+license and repository metadata. Destination verified empty/public. Prepare main
+only; keep companion prototype branch and unrelated install-arch.sh local. Root MIT
+license covers original work; preserve included Espressif Apache2 notices. Bundled
+wallpaper provenance verified original generated asset; no runtime Wallhaven images
+or device flash backups included. README screenshots come from the actual LVGL
+renderer using synthetic service data. Updated portable firmware setup guide and
+added documentation/standalone Sonos CI (no hardware or full-IDF CI claim).
+
+History gitleaks scan found one generic-api-key false positive: prose about bounded
+retries in original docs/PROJECT.md, not a credential. Review redacted report in
+/tmp/esp-release-history-scan.json. Credentials/builds/backups remain ignored.
+
+Release verification: full host logic suite PASS; standalone production Sonos HTTP
+simulator PASS; documentation verifier PASS; git diff --check PASS. Exported214-file
+staged tree for gitleaks scan: same single prose false positive, no additional
+findings. No claim that automated scanning proves absence of every possible secret.
+GitHub description/topics/issues/discussions configured successfully. This release
+includes the previously installed Sonos, gesture and time/date contrast changes.

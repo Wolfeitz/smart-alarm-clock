@@ -7,6 +7,7 @@
 #include "background_service.h"
 #include "ha_service.h"
 #include "media_service.h"
+#include "sonos_setup.h"
 #include "clock_service.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,7 +16,7 @@
 #include <assert.h>
 static sensor_snapshot_t sensor_mock={.available=true,.fresh=true,.imu_ready=true,.celsius=23.5,.humidity=45};
 void sensor_service_snapshot(sensor_snapshot_t *out){*out=sensor_mock;}
-bool sensor_service_configure(bool shake,bool rotate){sensor_mock.shake_enabled=shake;sensor_mock.auto_rotate=rotate;return true;}
+bool sensor_service_configure(bool shake,bool rotate,bool wallpaper){sensor_mock.wallpaper_shake=wallpaper;sensor_mock.shake_enabled=shake;sensor_mock.auto_rotate=rotate;return true;}
 static bool preview_flipped;
 bool board_rotation(bool flipped){preview_flipped=flipped;return true;}
 extern const lv_image_dsc_t home_wallpaper;
@@ -65,6 +66,18 @@ bool media_service_select(const char *entity,const char *content,const char *typ
 bool media_service_select_alarm(const char *entity,const char *content,const char *type,bool remote){if(remote&&!*content)return false;if(!media_service_select(entity,content,type))return false;media_state.remote_alarm=remote;return true;}
 bool media_service_action(media_action_t action){if(action==MEDIA_PLAY||action==MEDIA_START_SAVED)media_state.player.state=MEDIA_PLAYING;if(action==MEDIA_PAUSE)media_state.player.state=MEDIA_PAUSED;return true;}
 bool media_service_refresh(void){return true;}
+static unsigned media_save_requests;
+uint32_t media_service_select_alarm_tracked(const char *entity,const char *content,const char *type,bool remote)
+{if(!media_service_select_alarm(entity,content,type,remote))return 0;media_save_requests++;return media_save_requests;}
+static sonos_setup_snapshot_t setup_mock;
+void sonos_setup_snapshot(sonos_setup_snapshot_t *s){*s=setup_mock;}
+bool sonos_setup_lookup(const char *address)
+{
+    if(strcmp(address,"192.168.1.50")&&strcmp(address,"192.168.1.50:1400"))return false;
+    setup_mock=(sonos_setup_snapshot_t){.ready=true,.revision=setup_mock.revision+1,.target="sonos:192.168.1.50:1400/RINCON_TEST",.name="Duncan room",.status="Choose a favorite",.favorites={.count=1,.total=7,.items={{.id="FV:2/1",.title="Morning music"}}}};return true;
+}
+bool sonos_setup_page(unsigned start){if(start>=7)return false;setup_mock.revision++;setup_mock.favorites.start=start;strcpy(setup_mock.favorites.items[0].title,start?"Evening radio":"Morning music");return true;}
+
 static uint16_t pixels[480*320];
 static uint32_t ticks;
 static bool has_weather,backlight_dim,result_unavailable;
@@ -99,7 +112,12 @@ bool weather_service_scan(void){return true;}
 bool weather_service_radio(bool enabled){weather.radio_paused=!enabled;return true;}
 bool weather_service_refresh(void){return true;}
 const char *weather_service_timezone(void){return "America/New_York";}
+static bool pointer_pressed;static int pointer_x,pointer_y;
+static void pointer_read(lv_indev_t *device,lv_indev_data_t *data)
+{(void)device;data->state=pointer_pressed?LV_INDEV_STATE_PRESSED:LV_INDEV_STATE_RELEASED;data->point=(lv_point_t){pointer_x,pointer_y};}
 static void advance(void){for(unsigned i=0;i<20;i++){ticks+=20;lv_timer_handler();}clock_ui_update();lv_refr_now(NULL);}
+static void pointer_tap(int x,int y)
+{pointer_x=x;pointer_y=y;pointer_pressed=true;advance();pointer_pressed=false;advance();}
 static void click_text(lv_obj_t *parent,const char *text)
 {
     for(unsigned i=0;i<lv_obj_get_child_count(parent);i++){
@@ -142,7 +160,44 @@ int main(int argc,char **argv)
     if(has_weather)strcpy(weather.status,"Weather updated");
     lv_init();lv_tick_set_cb(tick);lv_display_t *d=lv_display_create(480,320);lv_display_set_color_format(d,LV_COLOR_FORMAT_RGB565);
     static uint16_t buffer[480*40];lv_display_set_buffers(d,buffer,NULL,sizeof(buffer),LV_DISPLAY_RENDER_MODE_PARTIAL);lv_display_set_flush_cb(d,flush);
+    lv_indev_t *pointer=lv_indev_create();lv_indev_set_type(pointer,LV_INDEV_TYPE_POINTER);lv_indev_set_read_cb(pointer,pointer_read);
     clock_ui_init();advance();
+    if(argc>3&&!strcmp(argv[3],"pointer-test")){
+        for(unsigned i=0;i<3;i++){
+            pointer_tap(410,288);assert(has_text(lv_screen_active(),"Make it yours"));
+            pointer_tap(355,174);assert(has_text(lv_screen_active(),"Media"));
+            pointer_tap(66,288);
+            pointer_tap(180,288);assert(has_text(lv_screen_active(),"Alarms"));
+            pointer_tap(66,288);
+        }
+        puts("PASS pointer navigation Home-Settings-Media-Home-Alarms");
+    }
+    if(argc>3&&!strcmp(argv[3],"sonos-test")){
+        click_text(lv_screen_active(),"Settings");advance();click_text(lv_screen_active(),"Media");advance();
+        click_text(lv_screen_active(),"Setup");advance();click_text(lv_screen_active(),"Sonos");advance();
+        assert(has_text(lv_screen_active(),"Sonos on your Wi-Fi"));
+        click_text(lv_screen_active(),"Save");advance();assert(has_text(lv_screen_active(),"Find a speaker first"));
+        lv_obj_t *address=NULL,*choices=NULL;
+        for(unsigned i=0;i<lv_obj_get_child_count(lv_screen_active());i++){
+            lv_obj_t *o=lv_obj_get_child(lv_screen_active(),i);
+            if(lv_obj_check_type(o,&lv_textarea_class))address=o;
+            if(lv_obj_check_type(o,&lv_dropdown_class))choices=o;
+        }
+        assert(address&&choices);lv_textarea_set_text(address,"192.168.1.50");
+        click_text(lv_screen_active(),"Find");advance();assert(strstr(lv_dropdown_get_options(choices),"Morning music"));
+        lv_textarea_set_text(address,"192.168.1.51");advance();click_text(lv_screen_active(),"Save");advance();
+        assert(!media_save_requests&&has_text(lv_screen_active(),"Find a speaker first"));
+        lv_textarea_set_text(address,"192.168.1.50");click_text(lv_screen_active(),"Find");advance();
+        click_text(lv_screen_active(),"Next");advance();assert(strstr(lv_dropdown_get_options(choices),"Evening radio"));
+        click_text(lv_screen_active(),"Previous");advance();lv_dropdown_set_selected(choices,1);
+        click_text(lv_screen_active(),"Save");advance();assert(media_save_requests==1&&has_text(lv_screen_active(),"Saving speaker..."));
+        click_text(lv_screen_active(),"Save");advance();assert(media_save_requests==1);
+        media_state.saved_ticket=1;media_state.save_failed=true;advance();assert(has_text(lv_screen_active(),"Save failed; previous player retained"));
+        click_text(lv_screen_active(),"Save");advance();media_state.saved_ticket=2;media_state.save_failed=false;advance();
+        assert(has_text(lv_screen_active(),"Media")&&!strcmp(media_state.content_type,"sonos-favorite"));
+        click_text(lv_screen_active(),"Setup");advance();click_text(lv_screen_active(),"Sonos");advance();
+        puts("PASS Sonos UI lookup, pagination, missing lookup, delayed/failed save, duplicate tap suppression and confirmed navigation");
+    }
     if(argc>3){
         if(!strcmp(argv[3],"media")||!strcmp(argv[3],"media-test")||!strcmp(argv[3],"media-setup")){
             click_text(lv_screen_active(),"Settings");advance();click_text(lv_screen_active(),"Media");advance();
@@ -457,7 +512,14 @@ int main(int argc,char **argv)
             lv_obj_t *o=lv_obj_get_child(lv_screen_active(),i);if(lv_obj_check_type(o,&lv_checkbox_class)&&!strcmp(lv_checkbox_get_text(o),"Shake to snooze"))toggle=o;
         }
         assert(toggle&&!lv_obj_has_state(toggle,LV_STATE_CHECKED));lv_obj_add_state(toggle,LV_STATE_CHECKED);
-        click_text(lv_screen_active(),"Save");advance();assert(sensor_mock.shake_enabled);
+        lv_obj_t *wallpaper_toggle=NULL;
+        for(unsigned i=0;i<lv_obj_get_child_count(lv_screen_active());i++){
+            lv_obj_t *o=lv_obj_get_child(lv_screen_active(),i);
+            if(lv_obj_check_type(o,&lv_checkbox_class)&&!strcmp(lv_checkbox_get_text(o),"Shake to change wallpaper"))wallpaper_toggle=o;
+        }
+        assert(wallpaper_toggle&&!lv_obj_has_state(wallpaper_toggle,LV_STATE_CHECKED));
+        lv_obj_add_state(wallpaper_toggle,LV_STATE_CHECKED);
+        click_text(lv_screen_active(),"Save");advance();assert(sensor_mock.shake_enabled&&sensor_mock.wallpaper_shake);
         assert(has_text(lv_screen_active(),"Make it yours"));
         click_text(lv_screen_active(),"Sensors & gestures");advance();
         sensor_mock.fresh=false;advance();assert(has_text(lv_screen_active(),"Inside case 74.3 F / 45% RH (stale)\nMotion sensor: Ready"));

@@ -18,6 +18,7 @@ typedef struct {
     char path[512];size_t lengths[20];unsigned depth;
     sonos_xml_field_t *fields;unsigned count;
     const char *uuid;unsigned groups,members;bool in_group;
+    bool select_item,didl_root;unsigned item_index,items;long item_end;
 } context_t;
 static void fail(context_t *c){c->error=true;XML_StopParser(c->parser,XML_FALSE);}
 static const char *attribute(const char **attrs,const char *name)
@@ -29,6 +30,8 @@ static void XMLCALL start(void *user,const char *name,const char **attrs)
     context_t *c=user;name=local(name);size_t n=strlen(c->path),m=strlen(name);
     if(c->depth>=20||n+m+2>=sizeof(c->path)){fail(c);return;}
     c->lengths[c->depth++]=n;if(n)c->path[n++]='/';memcpy(c->path+n,name,m+1);
+    if(c->depth==1&&!strcmp(c->path,"DIDL-Lite"))c->didl_root=true;
+    if(!strcmp(c->path,"DIDL-Lite/item"))c->items++;
     if(!strcmp(name,"Fault")){fail(c);return;}
     if(c->uuid){
         if(!strcmp(c->path,"ZoneGroups/ZoneGroup")){
@@ -39,6 +42,7 @@ static void XMLCALL start(void *user,const char *name,const char **attrs)
             c->members++;const char *id=attribute(attrs,"UUID");if(!id||strcmp(id,c->uuid))fail(c);
         }
     }
+    if(c->select_item&&c->items!=c->item_index+1)return;
     for(unsigned i=0;i<c->count;i++){
         sonos_xml_field_t *f=&c->fields[i];if(strcmp(f->path,c->path))continue;
         if(f->found){fail(c);return;}f->found=true;f->value[0]=0;
@@ -48,12 +52,14 @@ static void XMLCALL start(void *user,const char *name,const char **attrs)
 static void XMLCALL end(void *user,const char *name)
 {
     (void)name;context_t *c=user;if(!c->depth){fail(c);return;}
+    if(!strcmp(c->path,"DIDL-Lite/item"))c->item_end=XML_GetCurrentByteCount(c->parser)>0?XML_GetCurrentByteIndex(c->parser):-1;
     if(!strcmp(c->path,"ZoneGroups/ZoneGroup"))c->in_group=false;
     c->path[c->lengths[--c->depth]]=0;
 }
 static void XMLCALL text_data(void *user,const char *text,int count)
 {
     context_t *c=user;
+    if(c->select_item&&c->items!=c->item_index+1)return;
     for(unsigned i=0;i<c->count;i++){
         sonos_xml_field_t *f=&c->fields[i];if(f->attribute||strcmp(c->path,f->path))continue;
         size_t n=strlen(f->value);
@@ -91,4 +97,31 @@ bool sonos_xml_escape(const char *text,char *out,size_t capacity)
         if(entity)memcpy(out+n,entity,size);else out[n]=*p;n+=size;
     }
     out[n]=0;return true;
+}
+
+bool sonos_xml_item_fields(const char *xml,size_t size,unsigned index,sonos_xml_field_t *fields,unsigned count,unsigned *items)
+{
+    if(!items)return false;
+    *items=0;
+    for(unsigned i=0;i<count;i++){if(!fields[i].value||!fields[i].capacity)return false;fields[i].found=false;fields[i].value[0]=0;}
+    context_t c={.fields=fields,.count=count,.select_item=true,.item_index=index};
+    if(!parse(&c,xml,size)||!c.didl_root)return false;
+    *items=c.items;return true;
+}
+bool sonos_xml_add_resource(const char *xml,const char *uri,const char *protocol,char *out,size_t capacity)
+{
+    if(!xml||!uri||!protocol||!out||out==xml)return false;
+    char existing[384];sonos_xml_field_t f={.path="DIDL-Lite/item/res",.value=existing,.capacity=sizeof(existing)};
+    context_t c={.fields=&f,.count=1};size_t size=strlen(xml);
+    if(!parse(&c,xml,size)||c.items!=1||f.found||c.item_end<0||(size_t)c.item_end>=size||xml[c.item_end]!='<')return false;
+    size_t n=(size_t)c.item_end;
+    const char *start="<res xmlns=\"urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/\" protocolInfo=\"";
+    if(n+strlen(start)>=capacity)return false;
+    memcpy(out,xml,n);strcpy(out+n,start);n+=strlen(start);
+    if(!sonos_xml_escape(protocol,out+n,capacity-n))return false;
+    n+=strlen(out+n);if(n+2>=capacity)return false;strcpy(out+n,"\">");n+=2;
+    if(!sonos_xml_escape(uri,out+n,capacity-n))return false;
+    n+=strlen(out+n);if(n+6+size-(size_t)c.item_end>=capacity)return false;
+    strcpy(out+n,"</res>");n+=6;strcpy(out+n,xml+c.item_end);
+    return true;
 }

@@ -135,7 +135,7 @@ static void worker(void *arg)
     }
     xSemaphoreTake(lock,portMAX_DELAY);key_present=*api_key!=0;xSemaphoreGive(lock);
     xSemaphoreTake(lock,portMAX_DELAY);current=config;xSemaphoreGive(lock);
-    int64_t due=0;bool waiting_for_network=false;
+    int64_t due=0;bool waiting_for_network=false,manual_next=false;
     for(;;){
         if(xQueueReceive(changes,&incoming,pdMS_TO_TICKS(250))==pdTRUE){
             esp_err_t err=saved?ESP_OK:ESP_ERR_INVALID_STATE;
@@ -143,7 +143,7 @@ static void worker(void *arg)
             if(err==ESP_OK)err=nvs_set_blob(storage,"config",&incoming.config,sizeof(incoming.config));
             if(err==ESP_OK)err=nvs_set_u32(storage,"version",2);
             if(err==ESP_OK)err=nvs_commit(storage);
-            if(err==ESP_OK){config=incoming.config;cursor=0;last_id[0]=0;due=0;failures=0;
+            if(err==ESP_OK){config=incoming.config;cursor=0;last_id[0]=0;due=0;failures=0;manual_next=false;
                 if(incoming.update_key){strcpy(api_key,incoming.key);xSemaphoreTake(lock,portMAX_DELAY);key_present=*api_key!=0;xSemaphoreGive(lock);}
                 xSemaphoreTake(lock,portMAX_DELAY);current=config;xSemaphoreGive(lock);
                 status("Background settings saved");if(config.source==BACKGROUND_LOCAL)local_image();
@@ -154,7 +154,7 @@ static void worker(void *arg)
             }
         }
         memset(incoming.key,0,sizeof(incoming.key));
-        if(atomic_exchange(&next_requested,false)){due=0;failures=0;}
+        if(atomic_exchange(&next_requested,false)){due=0;failures=0;manual_next=true;}
         if(config.source==BACKGROUND_LOCAL)continue;
         background_options_t options=config.options.version?config.options:background_options_default();
         if(config.source==BACKGROUND_WALLHAVEN&&(options.purity&1)&&!*api_key){status("Wallhaven requires an API key for NSFW");continue;}
@@ -163,7 +163,9 @@ static void worker(void *arg)
         if(waiting_for_network&&network.connected){due=0;waiting_for_network=false;}
         if(esp_timer_get_time()<due)continue;
         if(!network.connected){status("Wi-Fi offline; current background retained");waiting_for_network=true;due=esp_timer_get_time()+30000000;continue;}
-        alarm_snapshot_t alarm;alarm_service_snapshot(&alarm);if(alarm.ringing||alarm.snoozed)continue;
+        alarm_snapshot_t alarm;alarm_service_snapshot(&alarm);if(alarm.ringing){manual_next=false;continue;}
+        if(alarm.snoozed&&!manual_next)continue;
+        manual_next=false;
         xSemaphoreTake(lock,portMAX_DELAY);busy=true;xSemaphoreGive(lock);status("Loading background...");
         bool ok=fetch_image(&config,&cursor,last_id,api_key,data,scratch);
         status(ok?"Background updated":"Image unavailable; current background retained");

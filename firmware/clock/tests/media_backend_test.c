@@ -22,7 +22,7 @@ esp_err_t nvs_get_blob(nvs_handle_t h,const char *k,void *out,size_t *size){(voi
 esp_err_t nvs_set_blob(nvs_handle_t h,const char *k,const void *v,size_t size){(void)h;(void)v;assert(!strcmp(k,"player")&&size>0);return 0;}
 esp_err_t nvs_commit(nvs_handle_t h){(void)h;return 0;}
 void diagnostics_printf(const char *format,...){(void)format;}
-void media_backend_config(media_backend_config_t *out){*out=(media_backend_config_t){.configured=true,.identity="test:local"};}
+void media_backend_config_for(const char *target,media_backend_config_t *out){(void)target;*out=(media_backend_config_t){.configured=true,.identity="test:local"};}
 bool media_backend_identity_valid(const char *s){return s&&!strcmp(s,"test:local");}
 bool media_backend_target_valid(const char *s){return s&&!strcmp(s,"speaker/bedroom");}
 int media_backend_read(const char *target,media_player_t *out)

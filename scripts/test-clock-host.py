@@ -28,6 +28,17 @@ with tempfile.TemporaryDirectory(prefix="esp-link-host-") as directory:
             str(tests / (name + "_test.c")), "-o", binary,
         ], check=True, timeout=60)
         subprocess.run([binary], check=True, timeout=10)
+    binary = str(Path(directory) / "sonos_setup")
+    subprocess.run(["cc", "-std=c11", "-Wall", "-Wextra", "-Werror",
+        "-I" + str(tests / "ha_stubs"), "-I" + str(main), str(main / "sonos_setup.c"),
+        str(tests / "sonos_setup_test.c"), "-o", binary], check=True, timeout=60)
+    subprocess.run([binary], check=True, timeout=10)
+    binary = str(Path(directory) / "network_http")
+    subprocess.run(["cc", "-std=c11", "-Wall", "-Wextra", "-Werror",
+        "-I" + str(tests / "http_stubs"), "-I" + str(tests / "ha_stubs"), "-I" + str(main),
+        *[str(main / (m + ".c")) for m in ("network_http", "sonos_network", "sonos_client", "sonos_xml")],
+        str(tests / "network_http_test.c"), "-lexpat", "-o", binary], check=True, timeout=60)
+    subprocess.run([binary], check=True, timeout=10)
     binary = str(Path(directory) / "sonos_xml")
     subprocess.run(["cc", "-std=c11", "-Wall", "-Wextra", "-Werror",
         "-I" + str(main), str(main / "sonos_xml.c"), str(tests / "sonos_xml_test.c"),
@@ -117,7 +128,9 @@ with tempfile.TemporaryDirectory(prefix="esp-link-host-") as directory:
         subprocess.run([
             "cc", "-std=c11", "-DCJSON_NESTING_LIMIT=16", "-Wall", "-Wextra", "-Werror",
             "-I" + str(tests / "ha_stubs"), "-I" + str(main), "-I" + str(cjson), str(cjson / "cJSON.c"),
-            *[str(main / (module + ".c")) for module in modules], str(tests / (name + "_test.c")), "-lm", "-o", binary,
+            *[str(main / (module + ".c")) for module in modules],
+            *([str(main / "media_backend.c"), str(main / "sonos_client.c"), str(main / "sonos_xml.c"), str(tests / "media_sonos_stub.c"), "-lexpat"] if "media_ha" in modules else []),
+            str(tests / (name + "_test.c")), "-lm", "-o", binary,
         ], check=True, timeout=60)
         subprocess.run([binary], check=True, timeout=10)
         if name == "media_service":

@@ -78,7 +78,8 @@ def alarms():
 
 try:
     connection.open()
-    collect(12)
+    collect(40)  # Allow network/wallpaper startup before the navigation baseline.
+    heaps.clear()
     screen('home')
     original = alarms()
     # Keep this bounded test away from armed or running user alarms.
@@ -88,10 +89,14 @@ try:
         tap(410, 288, 'settings')
         tap(356, 87, 'display')
         tap(130, 282, 'settings')  # Cancel
-        tap(120, 203, 'ha')
+        tap(120, 174, 'ha')
         tap(405, 28, 'ha_setup')
         tap(120, 282, 'ha')       # Cancel; never save credentials
         tap(80, 282, 'settings')
+        tap(355, 174, 'media')
+        tap(405, 28, 'media_setup')
+        tap(290, 28, 'sonos_setup')
+        tap(120, 290, 'media')    # Cancel Sonos setup; never save a target
         tap(66, 288, 'home')
         tap(180, 288, 'alarms')
         tap(220, 85, 'alarm')

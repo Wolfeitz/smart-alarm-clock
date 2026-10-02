@@ -8,6 +8,16 @@
 int main(void)
 {
     assert(media_backend_target_valid("media_player.bedroom"));assert(!media_backend_target_valid("light.bedroom"));assert(!media_backend_target_valid("media_player.a\"}"));
+    const char *sonos="sonos:192.168.1.50:1400/RINCON_TEST";
+    assert(media_backend_target_valid(sonos)&&!media_ha_target_valid(sonos));
+    assert(!media_backend_target_valid("sonos:8.8.8.8:1400/RINCON_TEST"));
+    media_backend_config_t config;media_backend_config_for(sonos,&config);
+    assert(config.configured&&!strcmp(config.identity,"sonos-local-v1"));
+    assert(media_backend_identity_valid(config.identity));
+    media_player_t speaker;assert(media_backend_read(sonos,&speaker)==MEDIA_BACKEND_OK&&!strcmp(speaker.name,"Sonos fixture"));
+    assert(media_backend_action(sonos,MEDIA_PLAY,&speaker,"","")==MEDIA_BACKEND_OK);
+    media_backend_config_for("invalid",&config);assert(!config.configured&&!config.identity[0]);
+    char invalid_body[64];assert(!media_ha_body(sonos,"id","music",invalid_body,sizeof(invalid_body)));
     const char *s="{\"entity_id\":\"media_player.bedroom\",\"state\":\"paused\",\"attributes\":{\"supported_features\":16437,\"volume_level\":0.35,\"media_title\":\"Example\"}}";
     media_player_t p;assert(media_ha_parse(s,strlen(s),"media_player.bedroom",&p));
     assert(p.state==MEDIA_PAUSED&&p.volume_known&&!strcmp(p.title,"Example"));

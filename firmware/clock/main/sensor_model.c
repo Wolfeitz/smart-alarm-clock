@@ -74,3 +74,13 @@ battery_status_t sensor_battery(bool ok,uint8_t status1,uint8_t status2,bool det
     if(s.level_known)s.percent=percent;
     return s;
 }
+
+sensor_gesture_t sensor_gesture(shake_detector_t *s,sensor_gesture_t *mode,int64_t now,
+    bool snooze_enabled,bool wallpaper_enabled,bool ringing,const int mg[3])
+{
+    sensor_gesture_t next=ringing?(snooze_enabled?SENSOR_GESTURE_SNOOZE:SENSOR_GESTURE_NONE):
+        (wallpaper_enabled?SENSOR_GESTURE_WALLPAPER:SENSOR_GESTURE_NONE);
+    if(next!=*mode){int64_t cooldown=s->cooldown;memset(s,0,sizeof(*s));s->cooldown=cooldown;*mode=next;}
+    if(next==SENSOR_GESTURE_NONE)return SENSOR_GESTURE_NONE;
+    return sensor_shake(s,now,true,true,mg)?next:SENSOR_GESTURE_NONE;
+}

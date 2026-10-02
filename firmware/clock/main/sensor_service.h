@@ -3,7 +3,7 @@
 #include "sensor_model.h"
 #include <stdint.h>
 typedef struct {
-    bool available,fresh,imu_ready,shake_enabled,auto_rotate,flipped,pending,save_failed;
+    bool available,fresh,imu_ready,shake_enabled,wallpaper_shake,auto_rotate,flipped,pending,save_failed;
     battery_status_t battery;
     float celsius,humidity;
     int acceleration[3];
@@ -12,5 +12,5 @@ typedef struct {
 } sensor_snapshot_t;
 void sensor_service_init(void);
 void sensor_service_snapshot(sensor_snapshot_t *out);
-bool sensor_service_configure(bool shake,bool rotate);
+bool sensor_service_configure(bool shake,bool rotate,bool wallpaper);
 void sensor_service_diagnostics(void);

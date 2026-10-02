@@ -149,3 +149,85 @@ int sonos_action(sonos_client_t *c,const sonos_device_t *d,media_action_t action
     }
     const char *actions[]={"Previous","Play","Pause","Next"};return transport(c,d,actions[action]);
 }
+static bool favorite_id(const char *id)
+{
+    if(!id||strncmp(id,"FV:2/",5)||!id[5]||strlen(id)>=96)return false;
+    for(const char *p=id+5;*p;p++)if(!isalnum((unsigned char)*p)&&*p!='_'&&*p!='-')return false;
+    return true;
+}
+static int browse(sonos_client_t *c,const sonos_device_t *d,const char *object,bool metadata,unsigned start,unsigned count,unsigned *returned,unsigned *total)
+{
+    char offset[16],limit[16];snprintf(offset,sizeof(offset),"%u",start);snprintf(limit,sizeof(limit),"%u",count);
+    argument_t args[]={{"ObjectID",object},{"BrowseFlag",metadata?"BrowseMetadata":"BrowseDirectChildren"},
+        {"Filter","*"},{"StartingIndex",offset},{"RequestedCount",limit},{"SortCriteria",""}};
+    int result=soap(c,d,"ContentDirectory","Browse",args,6);if(result)return result;
+    char value[16];
+    if(!field(c,"Browse","NumberReturned",value,sizeof(value))||!number(value,count,returned)||
+       !field(c,"Browse","TotalMatches",value,sizeof(value))||!number(value,10000,total)||*returned>*total||
+       !field(c,"Browse","Result",c->body,sizeof(c->body)))return SONOS_ERROR;
+    return SONOS_OK;
+}
+int sonos_favorites(sonos_client_t *c,const sonos_device_t *d,unsigned start,sonos_favorites_t *out)
+{
+    if(!out||start>10000)return SONOS_ERROR;
+    int result=verify(c,d);if(result)return result;
+    unsigned count,total;
+    result=browse(c,d,"FV:2",false,start,SONOS_FAVORITES_PAGE,&count,&total);if(result)return result;
+    sonos_favorites_t page={.count=count,.total=total,.start=start};
+    for(unsigned i=0;i<count;i++){
+        sonos_favorite_t *f=&page.items[i];unsigned items;
+        sonos_xml_field_t fields[]={
+            {.path="DIDL-Lite/item",.attribute="id",.value=f->id,.capacity=sizeof(f->id)},
+            {.path="DIDL-Lite/item/title",.value=f->title,.capacity=sizeof(f->title)}};
+        if(!sonos_xml_item_fields(c->body,strlen(c->body),i,fields,2,&items)||items!=count||
+           !fields[0].found||!fields[1].found||!favorite_id(f->id)||!f->title[0])return SONOS_ERROR;
+        for(unsigned j=0;j<i;j++)if(!strcmp(page.items[j].id,f->id))return SONOS_ERROR;
+    }
+    if(!count){unsigned items;if(!sonos_xml_item_fields(c->body,strlen(c->body),0,NULL,0,&items)||items)return SONOS_ERROR;}
+    *out=page;return SONOS_OK;
+}
+#ifdef ESP_PLATFORM
+#include "esp_heap_caps.h"
+#define favorite_alloc(n) heap_caps_calloc(1,n,MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT)
+#else
+#define favorite_alloc(n) calloc(1,n)
+#endif
+int sonos_play_favorite(sonos_client_t *c,const sonos_device_t *d,const char *id)
+{
+    if(!favorite_id(id))return SONOS_ERROR;
+    int result=verify(c,d);if(result)return result;
+    unsigned count,total;
+    result=browse(c,d,id,true,0,1,&count,&total);if(result)return result;
+    if(count!=1||total!=1)return SONOS_ERROR;
+    typedef struct {char id[96],uri[384],protocol[256],raw[4097],metadata[4097];} selection_t;
+    selection_t *s=favorite_alloc(sizeof(*s));if(!s)return SONOS_ERROR;
+    sonos_xml_field_t fields[]={
+        {.path="DIDL-Lite/item",.attribute="id",.value=s->id,.capacity=sizeof(s->id)},
+        {.path="DIDL-Lite/item/res",.value=s->uri,.capacity=sizeof(s->uri)},
+        {.path="DIDL-Lite/item/res",.attribute="protocolInfo",.value=s->protocol,.capacity=sizeof(s->protocol)},
+        {.path="DIDL-Lite/item/resMD",.value=s->raw,.capacity=sizeof(s->raw)}};
+    unsigned items;result=SONOS_ERROR;
+    if(!sonos_xml_item_fields(c->body,strlen(c->body),0,fields,4,&items)||items!=1)goto done;
+    for(unsigned i=0;i<4;i++)if(!fields[i].found)goto done;
+    if(strcmp(s->id,id)||!s->uri[0]||!s->protocol[0]||!sonos_xml_add_resource(s->raw,s->uri,s->protocol,s->metadata,sizeof(s->metadata)))goto done;
+    bool radio=!strncmp(s->uri,"x-sonosapi-stream:",17)||!strncmp(s->uri,"x-sonosapi-radio:",16)||
+        !strncmp(s->uri,"x-rincon-mp3radio:",17)||!strncmp(s->uri,"hls-radio:",10);
+    if(radio){
+        argument_t args[]={{"InstanceID","0"},{"CurrentURI",s->uri},{"CurrentURIMetaData",s->metadata}};
+        result=soap(c,d,"AVTransport","SetAVTransportURI",args,3);
+    }else{
+        argument_t args[]={{"InstanceID","0"},{"EnqueuedURI",s->uri},{"EnqueuedURIMetaData",s->metadata},
+            {"DesiredFirstTrackNumberEnqueued","0"},{"EnqueueAsNext","0"}};
+        result=soap(c,d,"AVTransport","AddURIToQueue",args,5);if(result)goto done;
+        char position[16];unsigned track;
+        if(!field(c,"AddURIToQueue","FirstTrackNumberEnqueued",position,sizeof(position))||!number(position,100000,&track)||!track){result=SONOS_ERROR;goto done;}
+        char queue_uri[96];snprintf(queue_uri,sizeof(queue_uri),"x-rincon-queue:%s#0",d->uuid);
+        argument_t set[]={{"InstanceID","0"},{"CurrentURI",queue_uri},{"CurrentURIMetaData",""}};
+        result=soap(c,d,"AVTransport","SetAVTransportURI",set,3);if(result)goto done;
+        argument_t seek[]={{"InstanceID","0"},{"Unit","TRACK_NR"},{"Target",position}};
+        result=soap(c,d,"AVTransport","Seek",seek,3);
+    }
+    if(result==SONOS_OK)result=transport(c,d,"Play");
+ done:
+    free(s);return result;
+}

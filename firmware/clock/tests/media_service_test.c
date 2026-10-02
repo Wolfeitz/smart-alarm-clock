@@ -101,6 +101,11 @@ int main(int argc,char **argv)
     storage_error=1;assert(media_service_configure("media_player.other"));media_service_poll(true);
     assert(!strcmp(snapshot().entity,"media_player.bedroom")&&strstr(snapshot().status,"not saved"));
     assert(!strcmp(snapshot().content,"https://example.test/radio")&&snapshot().remote_alarm);
+    uint32_t ticket=media_service_select_alarm_tracked("media_player.other","","",false);assert(ticket);
+    assert(snapshot().saved_ticket!=ticket);media_service_poll(true);
+    assert(snapshot().saved_ticket==ticket&&snapshot().save_failed&&!strcmp(snapshot().entity,"media_player.bedroom"));
+    storage_error=0;ticket=media_service_select_alarm_tracked("media_player.bedroom","https://example.test/radio","music",true);assert(ticket);
+    media_service_poll(true);assert(snapshot().saved_ticket==ticket&&!snapshot().save_failed&&snapshot().remote_alarm);
     media_service_disable();assert(!media_service_refresh()&&!media_service_action(MEDIA_PLAY));
     puts("PASS media owner: explicit actions, observed confirmation, volume, failure expiry, auth, server binding, offline and failed saves");
 }

@@ -24,6 +24,7 @@
 #include "network_http.h"
 #include "ha_service.h"
 #include "media_service.h"
+#include "sonos_setup.h"
 #include "setup_model.h"
 static bool test_touch;static int test_x,test_y;static uint32_t test_until;
 static uint32_t tick(void){return (uint32_t)(esp_timer_get_time()/1000);}
@@ -36,8 +37,9 @@ static void touch_read(lv_indev_t *i,lv_indev_data_t *d)
 {
     (void)i;int x,y;bool pressed;
     if(test_touch){
+        if(!test_until){test_until=tick()+120;diagnostics_printf("UI_INPUT phase=press x=%d y=%d\n",test_x,test_y);}
         x=test_x;y=test_y;pressed=(int32_t)(test_until-tick())>0;
-        if(!pressed)test_touch=false;
+        if(!pressed){test_touch=false;diagnostics_printf("UI_INPUT phase=release x=%d y=%d\n",test_x,test_y);}
     }else pressed=board_touch(&x,&y);
     d->state=pressed?LV_INDEV_STATE_PRESSED:LV_INDEV_STATE_RELEASED;
     if(pressed){clock_ui_touch();d->point.x=x;d->point.y=y;}
@@ -74,10 +76,17 @@ static void serial_poll(void)
                 }
                 diagnostics_printf("BACKGROUND_REQUEST accepted=%u\n",accepted);
             }
+            if(!overflow&&!strncmp(line,"SONOS_LOOKUP ",13))
+                diagnostics_printf("SONOS_LOOKUP accepted=%u\n",sonos_setup_lookup(line+13));
+            if(!overflow&&!strcmp(line,"SONOS_STATE")){
+                static sonos_setup_snapshot_t setup;sonos_setup_snapshot(&setup);
+                diagnostics_printf("SONOS_STATE busy=%u ready=%u revision=%u count=%u total=%u status=%s\n",
+                    setup.busy,setup.ready,setup.revision,setup.favorites.count,setup.favorites.total,setup.status);
+            }
             if(!overflow && strcmp(line,"UI")==0)clock_ui_diagnostics();
             if(!overflow && strncmp(line,"TAP ",4)==0){
                 int x,y;char extra;bool ok=!test_touch && sscanf(line+4,"%d %d %c",&x,&y,&extra)==2 && x>=0 && x<480 && y>=0 && y<320;
-                if(ok){test_x=x;test_y=y;test_until=tick()+120;test_touch=true;}
+                if(ok){test_x=x;test_y=y;test_until=0;test_touch=true;}
                 diagnostics_printf("UI_TAP accepted=%d\n",ok);
             }
             if(!overflow && strncmp(line,"TIME ",5)==0){

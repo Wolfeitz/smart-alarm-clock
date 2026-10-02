@@ -29,6 +29,27 @@ int main(void)
     for(int now=9000;now<11000;now+=20)assert(!sensor_shake(&s,now,true,false,bump));
     /* Missing samples and constant orientation cannot count as three pulses. */
     for(int now=11000;now<15000;now+=500)assert(!sensor_shake(&s,now,true,true,bump));
+    /* Wallpaper gesture and alarm precedence use the same detector policy. */
+    s=(shake_detector_t){0};sensor_gesture_t mode=SENSOR_GESTURE_NONE;
+    for(int now=0;now<2000;now+=20)assert(sensor_gesture(&s,&mode,now,false,true,false,still)==SENSOR_GESTURE_NONE);
+    events=0;
+    for(int now=2000;now<2600;now+=20)events+=sensor_gesture(&s,&mode,now,false,true,false,now%200==0?bump:still)==SENSOR_GESTURE_WALLPAPER;
+    assert(events==1);
+    for(int now=2600;now<8000;now+=20)assert(sensor_gesture(&s,&mode,now,false,true,true,now%200==0?bump:still)==SENSOR_GESTURE_NONE);
+    /* A snoozed alarm has ringing=false: wallpaper motion remains available. */
+    for(int now=8000;now<9400;now+=20)assert(sensor_gesture(&s,&mode,now,true,true,false,still)==SENSOR_GESTURE_NONE);
+    events=0;
+    for(int now=9400;now<10000;now+=20)events+=sensor_gesture(&s,&mode,now,true,true,false,now%200==0?bump:still)==SENSOR_GESTURE_WALLPAPER;
+    assert(events==1);
+    s=(shake_detector_t){0};mode=SENSOR_GESTURE_NONE;
+    for(int now=10000;now<12000;now+=20)assert(sensor_gesture(&s,&mode,now,true,true,true,still)==SENSOR_GESTURE_NONE);
+    events=0;
+    for(int now=12000;now<12600;now+=20){sensor_gesture_t g=sensor_gesture(&s,&mode,now,true,true,true,now%200==0?bump:still);assert(g!=SENSOR_GESTURE_WALLPAPER);events+=g==SENSOR_GESTURE_SNOOZE;}
+    assert(events==1);
+    /* Snooze/dismiss transition must not reuse motion or evade the cooldown. */
+    for(int now=12600;now<16000;now+=20)assert(sensor_gesture(&s,&mode,now,true,true,false,now%200==0?bump:still)==SENSOR_GESTURE_NONE);
+    for(int now=16000;now<18000;now+=20)assert(sensor_gesture(&s,&mode,now,false,false,false,bump)==SENSOR_GESTURE_NONE);
+    puts("PASS wallpaper shake opt-in, ringing priority, snoozed eligibility and cross-mode cooldown");
     orientation_detector_t o={0};int upright[]={0,1000,0},reverse[]={0,-1000,0},flat[]={0,0,1000};
     for(int now=0;now<2000;now+=20)assert(!sensor_orientation(&o,now,true,upright));
     for(int now=2000;now<3400;now+=20)assert(!sensor_orientation(&o,now,true,reverse));

@@ -1,7 +1,10 @@
 # Direct Sonos integration
 
-Status2026-10-02: implementation pending. Existing media backend is HA only;
-this document defines the next accepted scope, not a working feature claim.
+Status2026-10-02: core, transport and media routing implemented and tested.
+Setup/favorites UI is implemented and installed. Actual ESP32-to-simulator
+HTTP/SOAP lookup, favorites, group/malformed refusal and recovery pass, alongside
+localhost protocol, adapter and combined alarm tests. Real-speaker audio remains
+unqualified.
 
 The clock is a local controller. Sonos fetches/plays the selected music; the clock
 does not stream Spotify audio, and HA/cloud control is not mandatory. Both devices
@@ -76,8 +79,61 @@ or HA endpoint is contacted. Tests cover identity/target formatting, transport,
 volume, XML escaping, grouped/changed-device refusal, faults, malformed/oversized
 responses, cancelled selection before Play and late playback followed by Stop.
 
-Not yet connected to firmware network transport or setup UI. Favorites/discovery,
-backend routing, alarm-adapter integration and device-to-simulator acceptance are
-still unfinished. Current installed clock does not gain Sonos support from these
-host results. SoCo reference revision:
+The production ESP-IDF HTTP callback is now implemented in `sonos_network.c`
+and `network_http_sonos`, using the existing shared network mutex. It sets SOAP
+headers, accepts only private numeric endpoints and fixed Sonos paths, sends no
+HA or Wallhaven credentials, and disables redirects. A ten-second operation
+deadline is checked before each request and on response events; each socket wait
+is capped at two seconds or the remaining budget. This is not a proven strict
+wall-clock bound for all ESP-IDF internals (for example, partial-header delivery).
+Overflow/expired events explicitly close the socket because ESP-IDF ignores data
+callback return values. SDK-boundary tests cover this behavior and lock/cleanup
+paths. The large controller remains caller-owned and must live in external RAM.
+
+Media routing now selects HA or Sonos from the saved target. Sonos requires no
+HA endpoint or token; its IP/port plus pinned UUID live in the existing target
+field, with a separate connection identity. Existing HA schema/migrations remain.
+The production Sonos media adapter is exercised over HTTP by the simulator, using
+a host transport boundary; the ESP-IDF transport has separate SDK-boundary tests.
+Explicit URI selection currently uses type `uri`. Favorites now resolve fresh Sonos metadata at playback time.
+Remote alarm starts pass a session-cancellation callback into multi-request Sonos
+operations; cleanup uses Sonos Stop and remains bound to the original target.
+HA retains its existing pause cleanup. Local fallback confirmation remains strict.
+
+Setup UI and combined production alarm-to-HTTP simulator scenarios now pass.
+Actual device-to-simulator lookup/favorites, rejection and recovery checks pass;
+see WORK for the approved temporary firewall access and corrected stack/memory
+findings. Board checks performed no playback or preference writes. Playback and
+alarm control paths have host simulator evidence, not real-speaker audio proof.
+SoCo reference revision:
 18effdc21312fa6e9a3c87e01741632275c3b481.
+
+## Favorites protocol
+
+Browse reads six favorites at a time from `FV:2`, retaining stable IDs and decoded
+titles. Playback browses the selected favorite ID again, validates the returned ID,
+resource URI/protocol and nested `resMD`, and adds the resource to that reference
+metadata as in pinned SoCo. Service descriptors are preserved. Malformed, duplicate,
+missing or oversized fields reject the selection instead of guessing.
+
+Radio schemes use SetAVTransportURI; queueable selections append with AddURIToQueue,
+select the device queue, seek to FirstTrackNumberEnqueued, then Play. Existing queue
+contents are not cleared. Cancellation can leave appended tracks without playing;
+there is no unsafe attempt to delete a potentially changed user queue. HTTP simulator
+covers Browse pagination, escaping, resource/service metadata, append/seek, radio,
+missing metadata and cancellation. It does not prove any real Spotify/Sonos account.
+
+A queue URI does not prove which favorite is playing. Existing exact-content alarm
+confirmation deliberately cannot suppress local fallback for these queue favorites
+until matching evidence exists; remote music may accompany the local alarm.
+No API acknowledgement is treated as proof that anyone can hear the speaker.
+
+## Device verification
+
+`check-sonos-device.py --bind <host LAN IP> --http-port 18400 --port <USB path>`
+starts a temporary simulator and asks the real clock to look up its identity and
+favorites, reject grouped/malformed responses and recover. It neither saves a media
+target nor plays anything, and verifies alarm records remain unchanged. Host ingress
+must permit the connection. Do not modify shared firewall policy without approval.
+The server terminates on test exit. A successful localhost test is not equivalent
+to this device transport test.

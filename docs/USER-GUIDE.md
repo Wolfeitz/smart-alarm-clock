@@ -178,3 +178,35 @@ AXP2101 detects a connected battery. It shows the reported percentage, or `?` if
 level data is unavailable. No battery means no indicator. No charger configuration
 is changed. Percentage/charging behavior is simulated until a battery is installed;
 its actual accuracy and usable runtime have not been qualified.
+
+### Direct Sonos setup
+
+Open **Settings → Media → Setup → Sonos**. Enter the speaker's local IP address
+(from the Sonos app's system information) and tap **Find**. The default port is1400;
+`IP:port` is accepted for diagnostics. Both devices must be reachable on the same
+LAN. Home Assistant is not required. This version uses explicit IP lookup, not
+automatic network discovery; a DHCP reservation avoids address changes.
+
+Choose **Controls only**, or select a favorite already configured in the Sonos app.
+**Previous/Next** page through favorites. Enable **Use for alarms** only with a
+favorite selected. **Save** returns to Media after storage confirms the setting.
+Grouped/bonded speakers are currently rejected; use a standalone speaker. The
+speaker identity is pinned so IP reassignment cannot silently select another room.
+
+The clock triggers Sonos playback; Sonos handles the music service and credentials.
+A queued favorite is not sufficient proof of the exact music playing, so local
+alarm fallback remains active. Speaker audio and real Spotify behavior still need
+qualification with an actual speaker. No Internet-independent music guarantee is
+implied by LAN control.
+
+### Shake to change wallpaper
+
+In **Settings → Sensors & gestures**, enable **Shake to change wallpaper** and
+Save. It starts disabled and is independent of Shake to snooze. A deliberate shake
+requests the next image using your saved Backgrounds source, list and filters.
+Wallhaven/selected online images need connectivity; the current image stays visible
+if loading fails. Onboard mode currently contains one image, so it stays unchanged.
+
+While an alarm is ringing, shakes only snooze it if Shake to snooze is enabled;
+they never request another wallpaper. Wallpaper shaking is available while snoozed.
+A five-second gesture cooldown prevents the snooze shake from also changing an image.

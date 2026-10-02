@@ -11,20 +11,22 @@ static media_player_t last_player;
 static int64_t poll_at,stop_until;
 static unsigned stop_attempts;
 static bool may_be_playing;
+static bool session_current(void *context)
+{return alarm_output_session()==*(const uint32_t *)context;}
 void remote_alarm_poll(bool online)
 {
     uint32_t desired=alarm_output_session();int64_t now=esp_timer_get_time();
-    media_backend_config_t config;media_backend_config(&config);
+    media_backend_config_t config;media_backend_config_for(target,&config);
     if(may_be_playing&&desired!=active){
         if(!stop_until){stop_until=now+10000000;poll_at=0;}
         if(!config.configured||strcmp(identity,config.identity)||now>=stop_until||stop_attempts>=3){
             diagnostics_printf("REMOTE_ALARM stop=unconfirmed\n");may_be_playing=false;
         }else if(online&&now>=poll_at){
-            stop_attempts++;int result=media_backend_action(target,MEDIA_PAUSE,&last_player,"","");
+            stop_attempts++;int result=media_backend_stop(target,&last_player);
             if(result==MEDIA_BACKEND_OK){
                 media_player_t observed;
-                if(media_backend_read(target,&observed)==MEDIA_BACKEND_OK&&observed.state==MEDIA_PAUSED){
-                    may_be_playing=false;diagnostics_printf("REMOTE_ALARM stop=paused\n");
+                if(media_backend_read(target,&observed)==MEDIA_BACKEND_OK&&(observed.state==MEDIA_PAUSED||observed.state==MEDIA_IDLE)){
+                    may_be_playing=false;diagnostics_printf("REMOTE_ALARM stop=confirmed\n");
                 }
             }
             poll_at=esp_timer_get_time()+1000000;
@@ -35,6 +37,7 @@ void remote_alarm_poll(bool online)
     if(desired!=attempted){
         attempted=desired;active=desired;stop_until=0;stop_attempts=0;poll_at=0;
         media_snapshot_t selected;media_service_snapshot(&selected);
+        media_backend_config_for(selected.entity,&config);
         if(!online||!selected.remote_alarm||!selected.configured||!selected.content[0]||!config.configured)return;
         strcpy(target,selected.entity);strcpy(content,selected.content);strcpy(type,selected.content_type);strcpy(identity,config.identity);
         if(media_backend_read(target,&last_player)!=MEDIA_BACKEND_OK||
@@ -42,7 +45,7 @@ void remote_alarm_poll(bool online)
         if(alarm_output_session()!=active)return;
         /* A timeout may still have delivered the command: always attempt cleanup. */
         may_be_playing=true;
-        int result=media_backend_action(target,MEDIA_START_SAVED,&last_player,content,type);
+        int result=media_backend_action_guarded(target,MEDIA_START_SAVED,&last_player,content,type,session_current,&active);
         diagnostics_printf("REMOTE_ALARM start=%s\n",result==MEDIA_BACKEND_OK?"accepted":"unconfirmed");
         if(alarm_output_session()!=active)return;
     }

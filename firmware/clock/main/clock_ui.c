@@ -10,6 +10,7 @@
 #include "background_service.h"
 #include "ha_service.h"
 #include "media_service.h"
+#include "sonos_setup.h"
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "lvgl.h"
@@ -29,7 +30,7 @@ static void show_backgrounds(lv_event_t *e);
 static lv_obj_t *root,*time_text,*date_text,*detail,*next_text,*status;
 static bool sensors_view,sensor_save_pending,screen_flipped;
 static int64_t rotation_touch_until;
-static lv_obj_t *sensor_readings,*sensor_status,*sensor_shake_toggle,*sensor_rotate_toggle;
+static lv_obj_t *sensor_readings,*sensor_status,*sensor_shake_toggle,*sensor_rotate_toggle,*sensor_wallpaper_toggle;
 static void show_sensors(lv_event_t *e);
 static lv_obj_t *home_place,*home_temperature,*home_forecast,*alarm_caption;
 static bool snooze_collapsed,calendar_view;
@@ -68,6 +69,14 @@ static void show_location(lv_event_t *e);
 static void show_ha(lv_event_t *e);
 static void show_media(lv_event_t *e);
 static bool media_view,media_editing,media_error;
+static bool sonos_editing,sonos_requested;
+static uint32_t sonos_save_ticket;
+static int64_t sonos_save_since;
+static unsigned sonos_revision;
+static sonos_setup_snapshot_t sonos_shown,sonos_scratch;
+static media_snapshot_t sonos_media;
+static lv_obj_t *sonos_address,*sonos_choices,*sonos_remote,*sonos_status;
+static void show_sonos(lv_event_t *e);
 static lv_obj_t *media_name,*media_title,*media_artist,*media_info,*media_status,*media_entity,*media_content,*media_type,*media_remote,*media_controls[7];
 static bool ha_view,ha_editing,ha_error;
 static lv_obj_t *ha_name,*ha_state,*ha_status,*ha_toggle,*ha_url,*ha_entity,*ha_token;
@@ -89,6 +98,7 @@ static void show_editor(void);
 static void show_time_editor(lv_event_t *e);
 static void reset_screen(void)
 {
+    sonos_editing=false;sonos_save_ticket=0;
     sensors_view=false;sensor_save_pending=false;scenic_home=false;background_editing=false;background_save_ticket=0;bg_panel=NULL;bg_toast=NULL;bg_advanced=false;calendar_view=false;weather_art=NULL;artwork_code=-999;alarm_list_view=false;settings_view=false;display_editing=false;display_pending=false;ha_view=false;ha_editing=false;ha_error=false;media_view=false;media_editing=false;media_error=false;
     weather_view=false;network_editing=false;location_editing=false;wifi_listing=false;network_connecting=false;
     lv_obj_clean(root);lv_obj_set_style_bg_color(root,lv_color_hex(0x0c141b),0);
@@ -119,6 +129,12 @@ static void weather_nav_icon(lv_obj_t *button, bool selected)
     lv_obj_set_style_bg_color(base,lv_color_hex(ink),0);
 }
 /* Main destinations have identical positions; editors retain explicit Save/Cancel. */
+static void navigation_trace(lv_event_t *e)
+{
+    lv_event_code_t code=lv_event_get_code(e);
+    if(code==LV_EVENT_PRESSED||code==LV_EVENT_PRESS_LOST||code==LV_EVENT_RELEASED||code==LV_EVENT_CLICKED)
+        diagnostics_printf("UI_NAV name=%s event=%u\n",(const char *)lv_event_get_user_data(e),(unsigned)code);
+}
 static void navigation(unsigned selected)
 {
     const char *names[]={"Clock","Alarms","Weather","Settings"};
@@ -127,6 +143,7 @@ static void navigation(unsigned selected)
     for(unsigned i=0;i<4;i++){
         lv_obj_t *b=button(root,icons[i],12+i*116,266,108,callbacks[i],NULL);
         lv_obj_set_user_data(b,(void *)names[i]);
+        lv_obj_add_event_cb(b,navigation_trace,LV_EVENT_ALL,(void *)names[i]);
         lv_obj_set_style_pad_all(b,0,0);
         lv_obj_set_style_text_font(b,&lv_font_montserrat_20,0);
         lv_obj_set_style_radius(b,10,0);
@@ -237,7 +254,7 @@ static void show_settings(lv_event_t *e)
 static void save_sensors(lv_event_t *e)
 {
     (void)e;if(sensor_save_pending)return;
-    sensor_save_pending=sensor_service_configure(lv_obj_has_state(sensor_shake_toggle,LV_STATE_CHECKED),lv_obj_has_state(sensor_rotate_toggle,LV_STATE_CHECKED));
+    sensor_save_pending=sensor_service_configure(lv_obj_has_state(sensor_shake_toggle,LV_STATE_CHECKED),lv_obj_has_state(sensor_rotate_toggle,LV_STATE_CHECKED),lv_obj_has_state(sensor_wallpaper_toggle,LV_STATE_CHECKED));
     lv_label_set_text(sensor_status,sensor_save_pending?"Saving...":"Sensor service busy or unavailable");
 }
 static void show_sensors(lv_event_t *e)
@@ -246,14 +263,17 @@ static void show_sensors(lv_event_t *e)
     sensor_snapshot_t s;sensor_service_snapshot(&s);
     label(root,"Sensors & motion",15,12,450,&lv_font_montserrat_20);
     sensor_readings=label(root,"Reading sensors...",15,52,450,&lv_font_montserrat_20);
-    label(root,"Onboard temperature can read warm from the case.\nRotation holds when flat; shake snoozes when ringing.",15,128,450,&lv_font_montserrat_16);
+    label(root,"Rotation holds when flat. Alarms take shake priority.",15,128,450,&lv_font_montserrat_16);
     sensor_shake_toggle=lv_checkbox_create(root);lv_checkbox_set_text(sensor_shake_toggle,"Shake to snooze");
-    lv_obj_set_pos(sensor_shake_toggle,30,185);lv_obj_set_style_min_height(sensor_shake_toggle,40,0);
+    lv_obj_set_pos(sensor_shake_toggle,30,164);lv_obj_set_style_min_height(sensor_shake_toggle,40,0);
     if(s.shake_enabled)lv_obj_add_state(sensor_shake_toggle,LV_STATE_CHECKED);
     sensor_rotate_toggle=lv_checkbox_create(root);lv_checkbox_set_text(sensor_rotate_toggle,"Auto-rotate");
-    lv_obj_set_pos(sensor_rotate_toggle,265,185);lv_obj_set_style_min_height(sensor_rotate_toggle,40,0);
+    lv_obj_set_pos(sensor_rotate_toggle,265,164);lv_obj_set_style_min_height(sensor_rotate_toggle,40,0);
     if(s.auto_rotate)lv_obj_add_state(sensor_rotate_toggle,LV_STATE_CHECKED);
-    sensor_status=label(root,"Optional; works without Wi-Fi",15,232,450,&lv_font_montserrat_16);
+    sensor_wallpaper_toggle=lv_checkbox_create(root);lv_checkbox_set_text(sensor_wallpaper_toggle,"Shake to change wallpaper");
+    lv_obj_set_pos(sensor_wallpaper_toggle,30,207);lv_obj_set_style_min_height(sensor_wallpaper_toggle,36,0);
+    if(s.wallpaper_shake)lv_obj_add_state(sensor_wallpaper_toggle,LV_STATE_CHECKED);
+    sensor_status=label(root,"Wallpaper uses your selected source",15,244,450,&lv_font_montserrat_16);
     button(root,"Back",30,267,190,show_settings,NULL);button(root,"Save",260,267,190,save_sensors,NULL);
 }
 static void save_display(lv_event_t *e)
@@ -455,8 +475,11 @@ static void home(void)
     lv_obj_remove_flag(scrim,LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_t *date_button=button(root,"",15,8,335,show_calendar,NULL);date_card=date_button;
     lv_obj_set_user_data(date_button,"Calendar");lv_obj_set_height(date_button,48);
-    lv_obj_set_style_pad_all(date_button,0,0);lv_obj_set_style_bg_opa(date_button,LV_OPA_TRANSP,0);
-    lv_obj_set_style_border_width(date_button,0,0);
+    lv_obj_set_style_pad_all(date_button,0,0);
+    lv_obj_set_style_bg_color(date_button,lv_color_hex(0x102038),0);
+    lv_obj_set_style_bg_opa(date_button,LV_OPA_30,0);
+    lv_obj_set_style_border_color(date_button,lv_color_hex(0xbdcadb),0);
+    lv_obj_set_style_border_opa(date_button,LV_OPA_10,0);
     date_text=label(date_button,"Calendar",5,12,325,&lv_font_montserrat_20);
     lv_obj_set_style_text_color(date_text,lv_color_hex(0xe6e9f2),0);
     lv_obj_set_style_text_align(date_text,LV_TEXT_ALIGN_LEFT,0);
@@ -485,6 +508,15 @@ static void home(void)
     lv_obj_t *b=button(root,"",417,10,48,dim,NULL);
     lv_obj_set_style_bg_opa(b,LV_OPA_50,0);lv_obj_set_style_border_opa(b,LV_OPA_20,0);
     lv_obj_set_user_data(b,"Brightness");lv_obj_set_style_pad_all(b,0,0);brightness_icon(b);
+    lv_obj_t *time_panel=lv_obj_create(root);lv_obj_remove_style_all(time_panel);
+    lv_obj_set_pos(time_panel,15,64);lv_obj_set_size(time_panel,285,112);
+    lv_obj_set_style_radius(time_panel,12,0);
+    lv_obj_set_style_bg_color(time_panel,lv_color_hex(0x102038),0);
+    lv_obj_set_style_bg_opa(time_panel,LV_OPA_30,0);
+    lv_obj_set_style_border_width(time_panel,1,0);
+    lv_obj_set_style_border_color(time_panel,lv_color_hex(0xbdcadb),0);
+    lv_obj_set_style_border_opa(time_panel,LV_OPA_10,0);
+    lv_obj_remove_flag(time_panel,LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
     time_text=label(root,"--:--",22,80,270,&lv_font_montserrat_48);
     lv_obj_set_style_text_color(time_text,lv_color_hex(0xfff6ec),0);
     lv_obj_set_style_transform_pivot_x(time_text,LV_PCT(50),0);lv_obj_set_style_transform_pivot_y(time_text,LV_PCT(50),0);lv_obj_set_style_transform_scale(time_text,432,0);
@@ -727,19 +759,75 @@ static void media_save(lv_event_t *e)
 static void media_setup(lv_event_t *e)
 {
     (void)e;media_snapshot_t s;media_service_snapshot(&s);reset_screen();media_editing=true;
-    label(root,"External player",10,12,310,&lv_font_montserrat_20);
+    label(root,"External player",10,12,225,&lv_font_montserrat_20);
     media_entity=network_field("Player",s.entity,58,95,false);
     media_content=network_field("Media ID",s.content,104,383,false);
     media_type=network_field("Type",s.content_type,150,47,false);
     lv_textarea_set_placeholder_text(media_type,"music or playlist (optional)");
     lv_textarea_set_placeholder_text(media_entity,"media_player.bedroom");
     media_status=label(root,"Leave media ID and type blank for controls only",10,196,460,&lv_font_montserrat_16);
+    button(root,"Sonos",245,8,95,show_sonos,NULL);
     button(root,"HA setup",350,8,115,ha_setup,NULL);
     media_remote=lv_checkbox_create(root);lv_checkbox_set_text(media_remote,"Use for alarms (local fallback)");
     lv_obj_set_pos(media_remote,30,230);if(s.remote_alarm)lv_obj_add_state(media_remote,LV_STATE_CHECKED);
     button(root,"Cancel",40,265,180,show_media,NULL);button(root,"Save",260,265,180,media_save,NULL);
     keyboard=lv_keyboard_create(root);lv_obj_set_size(keyboard,480,130);lv_obj_align(keyboard,LV_ALIGN_BOTTOM_MID,0,0);
     lv_obj_add_flag(keyboard,LV_OBJ_FLAG_HIDDEN);lv_obj_add_event_cb(keyboard,keyboard_event,LV_EVENT_ALL,NULL);
+}
+static void sonos_address_changed(lv_event_t *e)
+{
+    (void)e;if(sonos_save_ticket)return;
+    sonos_requested=false;sonos_shown.ready=false;
+    lv_obj_add_state(sonos_choices,LV_STATE_DISABLED);
+    lv_label_set_text(sonos_status,"Tap Find to check this speaker address");
+}
+static void sonos_lookup(lv_event_t *e)
+{
+    (void)e;if(sonos_save_ticket)return;
+    if(sonos_setup_lookup(lv_textarea_get_text(sonos_address))){sonos_requested=true;sonos_revision=~0u;lv_obj_add_flag(keyboard,LV_OBJ_FLAG_HIDDEN);}
+    else lv_label_set_text(sonos_status,"Enter a local IP address, or wait for lookup");
+}
+static void sonos_page(lv_event_t *e)
+{
+    if(sonos_save_ticket||!sonos_shown.ready)return;
+    unsigned start=sonos_shown.favorites.start;
+    if(lv_event_get_user_data(e))start+=SONOS_FAVORITES_PAGE;
+    else start=start>=SONOS_FAVORITES_PAGE?start-SONOS_FAVORITES_PAGE:0;
+    if(!sonos_setup_page(start))lv_label_set_text(sonos_status,"No more favorites, or lookup in progress");
+}
+static void sonos_save(lv_event_t *e)
+{
+    (void)e;if(sonos_save_ticket)return;
+    sonos_setup_snapshot_t *current=&sonos_scratch;sonos_setup_snapshot(current);
+    unsigned selected=lv_dropdown_get_selected(sonos_choices);
+    if(!sonos_requested||!current->ready||current->revision!=sonos_shown.revision||selected>sonos_shown.favorites.count){lv_label_set_text(sonos_status,"Find a speaker first");return;}
+    const char *id=selected?sonos_shown.favorites.items[selected-1].id:"";
+    bool remote=lv_obj_has_state(sonos_remote,LV_STATE_CHECKED);
+    sonos_save_ticket=media_service_select_alarm_tracked(sonos_shown.target,id,selected?"sonos-favorite":"",remote);
+    sonos_save_since=esp_timer_get_time();
+    lv_label_set_text(sonos_status,sonos_save_ticket?"Saving speaker...":remote&&!selected?"Choose a favorite for alarms":"Media service busy; try again");
+}
+static void show_sonos(lv_event_t *e)
+{
+    (void)e;media_snapshot_t *media=&sonos_media;media_service_snapshot(media);reset_screen();sonos_editing=true;sonos_requested=false;sonos_revision=~0u;
+    memset(&sonos_shown,0,sizeof(sonos_shown));char address[48]="";
+    if(!strncmp(media->entity,"sonos:",6)){const char *end=strchr(media->entity+6,'/');if(end&&end-media->entity-6<48){memcpy(address,media->entity+6,end-media->entity-6);}}
+    label(root,"Sonos on your Wi-Fi",10,10,460,&lv_font_montserrat_20);
+    sonos_address=network_field("Speaker IP",address,50,47,false);
+    lv_textarea_set_placeholder_text(sonos_address,"192.168.1.50");
+    button(root,"Find",15,99,125,sonos_lookup,NULL);
+    button(root,"Previous",155,99,145,sonos_page,NULL);button(root,"Next",315,99,150,sonos_page,(void*)1);
+    sonos_choices=lv_dropdown_create(root);lv_obj_set_pos(sonos_choices,15,151);lv_obj_set_size(sonos_choices,450,42);
+    lv_dropdown_set_options(sonos_choices,"Controls only");
+    sonos_remote=lv_checkbox_create(root);lv_checkbox_set_text(sonos_remote,"Use for alarms (local fallback)");lv_obj_set_pos(sonos_remote,20,204);
+    if(!strncmp(media->entity,"sonos:",6)&&media->remote_alarm)lv_obj_add_state(sonos_remote,LV_STATE_CHECKED);
+    sonos_status=label(root,"Find IP in Sonos app; no HA required",10,232,460,&lv_font_montserrat_16);
+    lv_obj_set_height(sonos_status,35);lv_label_set_long_mode(sonos_status,LV_LABEL_LONG_DOT);
+    button(root,"Cancel",25,270,190,show_media,NULL);button(root,"Save",265,270,190,sonos_save,NULL);
+    keyboard=lv_keyboard_create(root);lv_obj_set_size(keyboard,480,130);lv_obj_align(keyboard,LV_ALIGN_BOTTOM_MID,0,0);
+    lv_obj_add_flag(keyboard,LV_OBJ_FLAG_HIDDEN);lv_obj_add_event_cb(keyboard,keyboard_event,LV_EVENT_ALL,NULL);
+    lv_obj_add_event_cb(sonos_address,sonos_address_changed,LV_EVENT_VALUE_CHANGED,NULL);
+    if(address[0])sonos_lookup(NULL);
 }
 static void media_action(lv_event_t *e)
 {
@@ -876,6 +964,34 @@ void clock_ui_update(void)
     if(motion.imu_ready&&motion.auto_rotate&&motion.flipped!=screen_flipped&&esp_timer_get_time()>=rotation_touch_until){
         if(board_rotation(motion.flipped)){screen_flipped=motion.flipped;lv_obj_invalidate(root);lv_obj_invalidate(lv_layer_top());}
     }
+    if(sonos_editing){
+        if(sonos_save_ticket){
+            media_snapshot_t *media=&sonos_media;media_service_snapshot(media);
+            if(media->saved_ticket==sonos_save_ticket){
+                sonos_save_ticket=0;
+                if(media->save_failed)lv_label_set_text(sonos_status,"Save failed; previous player retained");
+                else {show_media(NULL);return;}
+            }else if(esp_timer_get_time()-sonos_save_since>10000000){sonos_save_ticket=0;lv_label_set_text(sonos_status,"Save result unavailable; check Media setup");}
+        }else if(sonos_requested){
+            sonos_setup_snapshot_t *setup=&sonos_scratch;sonos_setup_snapshot(setup);
+            if(sonos_revision!=setup->revision){
+                sonos_shown=*setup;sonos_revision=setup->revision;
+                char options[640]="Controls only";
+                if(setup->ready)for(unsigned i=0;i<setup->favorites.count;i++){
+                    strcat(options,"\n");char title[96];strcpy(title,setup->favorites.items[i].title);
+                    for(char *p=title;*p;p++)if((unsigned char)*p<32)*p=' ';
+                    strcat(options,title);
+                }
+                lv_dropdown_set_options(sonos_choices,options);
+                media_snapshot_t *saved=&sonos_media;media_service_snapshot(saved);
+                if(setup->ready&&!strcmp(saved->entity,setup->target))for(unsigned i=0;i<setup->favorites.count;i++)
+                    if(!strcmp(saved->content,setup->favorites.items[i].id))lv_dropdown_set_selected(sonos_choices,i+1);
+                if(setup->ready)lv_obj_remove_state(sonos_choices,LV_STATE_DISABLED);else lv_obj_add_state(sonos_choices,LV_STATE_DISABLED);
+                char message[192];snprintf(message,sizeof(message),"%.63s%s%.95s",setup->ready?setup->name:"",setup->ready?": ":"",setup->status);
+                lv_label_set_text(sonos_status,message);
+            }
+        }
+    }
     if(sensors_view){
         sensor_snapshot_t sensor;sensor_service_snapshot(&sensor);char text[160];
         if(sensor.available)snprintf(text,sizeof(text),"Inside case %.1f F / %.0f%% RH%s\nMotion sensor: %s",sensor.celsius*1.8f+32,sensor.humidity,sensor.fresh?"":" (stale)",sensor.imu_ready?"Ready":"Unavailable");
@@ -957,7 +1073,7 @@ void clock_ui_update(void)
         else lv_obj_add_state(ha_toggle,LV_STATE_DISABLED);
         return;
     }
-    if(settings_view||sensors_view)return;
+    if(settings_view||sensors_view||sonos_editing)return;
     if(weather_view||network_editing||location_editing){
         weather_snapshot_t w;weather_service_snapshot(&w);
         if(network_editing||location_editing){
@@ -1088,7 +1204,7 @@ static void dropdown_diagnostics(const char *name,lv_obj_t *o)
 }
 void clock_ui_diagnostics(void)
 {
-    diagnostics_printf("UI_SCREEN name=%s overlay=%u pending=%u\n",sensors_view?"sensors":background_editing?"backgrounds":calendar_view?"calendar":media_editing?"media_setup":media_view?"media":alarm_list_view?"alarms":ha_editing?"ha_setup":ha_view?"ha":display_editing?"display":settings_view?"settings":location_editing?"location":network_editing?"network":weather_view?"weather":time_editing?"time":editing?"alarm":"home",overlay!=NULL&&!lv_obj_has_flag(overlay,LV_OBJ_FLAG_HIDDEN),pending);
+    diagnostics_printf("UI_SCREEN name=%s overlay=%u pending=%u\n",sonos_editing?"sonos_setup":sensors_view?"sensors":background_editing?"backgrounds":calendar_view?"calendar":media_editing?"media_setup":media_view?"media":alarm_list_view?"alarms":ha_editing?"ha_setup":ha_view?"ha":display_editing?"display":settings_view?"settings":location_editing?"location":network_editing?"network":weather_view?"weather":time_editing?"time":editing?"alarm":"home",overlay!=NULL&&!lv_obj_has_flag(overlay,LV_OBJ_FLAG_HIDDEN),pending);
     if(weather_view||network_editing||location_editing){weather_snapshot_t w;weather_service_snapshot(&w);
         diagnostics_printf("WEATHER_STATE online=%u valid=%u fresh=%u zip=%s zone=%s status=%s\n",w.connected,w.has_data,w.has_data&&weather_fresh(&w.data,time(NULL)),w.zip,w.location.timezone,w.status);
     }

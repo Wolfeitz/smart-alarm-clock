@@ -21,6 +21,7 @@ static QueueHandle_t queue;
 static nvs_handle_t storage;
 static bool opened;
 static atomic_bool accepting;
+static atomic_uint save_ticket=0x80000000u;
 static int64_t observed,next_poll,deadline;
 static media_state_t expected;
 static bool selection_pending;
@@ -59,12 +60,17 @@ bool media_service_configure(const char *entity)
 static bool configure(const char *entity,const char *content,const char *type,uint32_t tag,bool remote)
 {
     if(!media_backend_target_valid(entity)||!media_selection_valid(content,type)||(remote&&!*content))return false;
-    media_backend_config_t h;media_backend_config(&h);if(!h.configured)return false;
+    media_backend_config_t h;media_backend_config_for(entity,&h);if(!h.configured)return false;
     command_t c={.kind=1,.tag=tag,.prefs={.version=3,.remote_alarm=remote}};strcpy(c.prefs.endpoint,h.identity);strcpy(c.prefs.entity,entity);
     strcpy(c.prefs.content,content);strcpy(c.prefs.content_type,type);return submit(&c);
 }
 bool media_service_select(const char *entity,const char *content,const char *type)
 {return configure(entity,content,type,0,false);}
+uint32_t media_service_select_alarm_tracked(const char *entity,const char *content,const char *type,bool remote)
+{
+    uint32_t ticket=atomic_fetch_add(&save_ticket,1);if(!ticket)ticket=atomic_fetch_add(&save_ticket,1);
+    return configure(entity,content,type,ticket,remote)?ticket:0;
+}
 bool media_service_select_alarm(const char *entity,const char *content,const char *type,bool remote)
 {return configure(entity,content,type,0,remote);}
 bool media_service_configure_tagged(const char *entity,uint32_t tag)
@@ -78,7 +84,7 @@ bool media_service_action(media_action_t action)
 {
     media_snapshot_t s;media_service_snapshot(&s);if(!s.fresh||!media_action_supported(&s.player,action)||(action==MEDIA_START_SAVED&&!s.content[0]))return false;
     command_t c={.kind=2,.action=action};strcpy(c.prefs.entity,s.entity);
-    media_backend_config_t h;media_backend_config(&h);strcpy(c.prefs.endpoint,h.identity);return submit(&c);
+    media_backend_config_t h;media_backend_config_for(s.entity,&h);strcpy(c.prefs.endpoint,h.identity);return submit(&c);
 }
 static void unavailable(int code)
 {take();state.fresh=false;give();message(code==MEDIA_BACKEND_DENIED?"Player access denied":code==MEDIA_BACKEND_NOT_FOUND?"Player entity not found":"Player unavailable; local alarms still work");}
@@ -86,7 +92,7 @@ void media_service_poll(bool online)
 {
     if(!accepting)return;
     command_t c={0};bool received=xQueueReceive(queue,&c,0)==pdTRUE;
-    media_backend_config_t h;media_backend_config(&h);
+    media_backend_config_t h;media_backend_config_for(received&&c.kind==1?c.prefs.entity:prefs.entity,&h);
     if(received){
         take();state.busy=false;give();next_poll=0;
         if(c.kind==1){
@@ -94,6 +100,7 @@ void media_service_poll(bool online)
             if(opened&&h.configured&&!strcmp(h.identity,c.prefs.endpoint)&&valid(&c.prefs)){
                 err=nvs_set_blob(storage,"player",&c.prefs,sizeof(c.prefs));if(err==ESP_OK)err=nvs_commit(storage);
             }
+            take();state.saved_ticket=c.tag;state.save_failed=err!=ESP_OK;give();
             if(c.tag)diagnostics_printf("SETUP_MEDIA tag=%lu saved=%u\n",(unsigned long)c.tag,err==ESP_OK);
             if(err!=ESP_OK){message("Player not saved; check connection and storage");next_poll=esp_timer_get_time()+10000000;return;}
             prefs=c.prefs;alarm_output_enable(prefs.remote_alarm!=0);expected=MEDIA_UNKNOWN;deadline=0;selection_pending=false;

@@ -5,7 +5,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-bool media_backend_target_valid(const char *s)
+bool media_ha_target_valid(const char *s)
 {
     if(!s||strncmp(s,"media_player.",13)||!s[13]||strlen(s)>95)return false;
     for(s+=13;*s;s++)if(!((*s>='a'&&*s<='z')||(*s>='0'&&*s<='9')||*s=='_'))return false;
@@ -19,7 +19,7 @@ static void text_field(const cJSON *attrs,const char *key,char *out,size_t capac
 }
 bool media_ha_parse(const char *json,size_t size,const char *entity,media_player_t *out)
 {
-    if(!json||!out||!media_backend_target_valid(entity)||!size||size>12288||memchr(json,0,size))return false;
+    if(!json||!out||!media_ha_target_valid(entity)||!size||size>12288||memchr(json,0,size))return false;
     for(size_t i=0;i+6<=size;i++)if(!memcmp(json+i,"\\u0000",6))return false;
     const char *end; cJSON *root=cJSON_ParseWithLengthOpts(json,size,&end,false);if(!root)return false;
     while(end<json+size&&(*end==' '||*end=='\n'||*end=='\r'||*end=='\t'))end++;
@@ -48,30 +48,30 @@ bool media_ha_parse(const char *json,size_t size,const char *entity,media_player
 }
 bool media_ha_body(const char *entity,const char *id,const char *type,char *out,size_t capacity)
 {
-    if(!out||capacity>2147483647||!media_backend_target_valid(entity)||!media_selection_valid(id,type)||!*id)return false;
+    if(!out||capacity>2147483647||!media_ha_target_valid(entity)||!media_selection_valid(id,type)||!*id)return false;
     cJSON *root=cJSON_CreateObject();if(!root)return false;
     bool ok=cJSON_AddStringToObject(root,"entity_id",entity)&&cJSON_AddStringToObject(root,"media_content_id",id)&&
         cJSON_AddStringToObject(root,"media_content_type",type)&&cJSON_PrintPreallocated(root,out,(int)capacity,false);
     cJSON_Delete(root);return ok;
 }
 
-void media_backend_config(media_backend_config_t *out)
+void media_ha_config(media_backend_config_t *out)
 {ha_snapshot_t h;ha_service_snapshot(&h);out->configured=h.configured;strcpy(out->identity,h.endpoint);}
-bool media_backend_identity_valid(const char *identity){return ha_endpoint_valid(identity);}
+bool media_ha_identity_valid(const char *identity){return ha_endpoint_valid(identity);}
 static int result(int http)
 {return http==200?MEDIA_BACKEND_OK:http==401||http==403?MEDIA_BACKEND_DENIED:http==404?MEDIA_BACKEND_NOT_FOUND:MEDIA_BACKEND_ERROR;}
-int media_backend_read(const char *target,media_player_t *out)
+int media_ha_read(const char *target,media_player_t *out)
 {
-    if(!media_backend_target_valid(target))return MEDIA_BACKEND_ERROR;
+    if(!media_ha_target_valid(target))return MEDIA_BACKEND_ERROR;
     char *response=malloc(12289);if(!response)return MEDIA_BACKEND_ERROR;
     char path[164];snprintf(path,sizeof(path),"/api/states/%s",target);size_t size=0;
     int status=result(ha_service_request(path,NULL,response,12289,&size));
     if(status==MEDIA_BACKEND_OK&&!media_ha_parse(response,size,target,out))status=MEDIA_BACKEND_ERROR;
     free(response);return status;
 }
-int media_backend_action(const char *target,media_action_t action,const media_player_t *current,const char *content,const char *type)
+int media_ha_action(const char *target,media_action_t action,const media_player_t *current,const char *content,const char *type)
 {
-    if(!media_backend_target_valid(target)||!media_action_supported(current,action))return MEDIA_BACKEND_ERROR;
+    if(!media_ha_target_valid(target)||!media_action_supported(current,action))return MEDIA_BACKEND_ERROR;
     char *response=malloc(12289+1152);if(!response)return MEDIA_BACKEND_ERROR;
     char *body=response+12289;char path[164];size_t size=0;
     const char *actions[]={"media_previous_track","media_play","media_pause","media_next_track","volume_down","volume_up","play_media"};
