@@ -151,8 +151,8 @@ choice is the bundled image only. Background rotation never requires HA/a server
 
 ## Indoor readings and shake-to-snooze
 
-The weather card includes the onboard temperature and relative humidity. These
-come from the SHTC3 inside the case, not the weather provider, and work offline.
+The Sensors & gestures screen includes temperature and relative humidity from
+the SHTC3 inside the case, not the weather provider, and works offline.
 The electronics can warm the sensor considerably; this is not yet a calibrated
 room-temperature measurement. Readings older than30seconds are marked stale.
 
@@ -163,4 +163,10 @@ snooze request as the touchscreen. It does not dismiss alarms. Gestures are igno
 when disabled or no alarm is ringing, with a startup delay and cooldown to avoid
 single bumps/repeated triggers. Detection thresholds are host-tested and live
 accelerometer sampling is verified; real hand-motion sensitivity is not yet tuned.
-Automatic screen rotation is separate and is not yet installed.
+**Auto-rotate** is a separate saved option on the same screen, off by default.
+It flips display and touch180degrees after1.5seconds of steady upright orientation.
+Flat, nearly flat, sideways, moving, or missing sensor readings hold the last
+orientation. It waits for a touch to finish before flipping. Portrait layout is
+not included. Disabling the option locks the current orientation until restart.
+The case reading was removed from the home weather card because device heat makes
+it unsuitable as an uncalibrated room thermometer; it is labeled Inside case here.

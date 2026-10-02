@@ -44,3 +44,22 @@ bool sensor_shake(shake_detector_t *s,int64_t now,bool enabled,bool ringing,cons
     if(++s->pulses<3)return false;
     s->pulses=0;s->cooldown=now+5000;return true;
 }
+
+bool sensor_orientation(orientation_detector_t *s,int64_t now,bool enabled,const int mg[3])
+{
+    int64_t magnitude=0,movement=0;
+    for(unsigned i=0;i<3;i++){
+        magnitude+=(int64_t)mg[i]*mg[i];int d=mg[i]-s->previous[i];movement+=(int64_t)d*d;
+    }
+    bool valid=enabled&&s->started&&now>s->last&&now-s->last<=250&&
+        magnitude>=800*800&&magnitude<=1200*1200&&movement<=150*150&&
+        mg[2]>=-500&&mg[2]<=500&&mg[0]>=-500&&mg[0]<=500&&
+        (mg[1]>=750||mg[1]<=-750);
+    memcpy(s->previous,mg,sizeof(s->previous));s->last=now;s->started=true;
+    bool candidate=mg[1]<0;
+    if(!valid||candidate!=s->candidate){s->since=now;s->candidate=candidate;}
+    else if(now-s->since>=1500)s->flipped=candidate;
+    return s->flipped;
+}
+void sensor_rotate_touch(bool flipped,int *x,int *y)
+{if(flipped){*x=479-*x;*y=319-*y;}}

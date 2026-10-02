@@ -15,7 +15,9 @@
 #include <assert.h>
 static sensor_snapshot_t sensor_mock={.available=true,.fresh=true,.imu_ready=true,.celsius=23.5,.humidity=45};
 void sensor_service_snapshot(sensor_snapshot_t *out){*out=sensor_mock;}
-bool sensor_service_set_shake(bool enabled){sensor_mock.shake_enabled=enabled;return true;}
+bool sensor_service_configure(bool shake,bool rotate){sensor_mock.shake_enabled=shake;sensor_mock.auto_rotate=rotate;return true;}
+static bool preview_flipped;
+bool board_rotation(bool flipped){preview_flipped=flipped;return true;}
 extern const lv_image_dsc_t home_wallpaper;
 static background_config_t preview_background={.source=BACKGROUND_LOCAL,.count=1,.images={"blue-hour"}};
 static unsigned background_next_count;
@@ -427,20 +429,28 @@ int main(int argc,char **argv)
         }
         puts("PASS background confirmed-save return, delayed receipt, duplicate suppression, failure/retry, validation and Next");
     }
+    if(argc>3&&!strcmp(argv[3],"rotation-test")){
+        click_text(lv_screen_active(),"Clock");advance();
+        sensor_mock.auto_rotate=true;sensor_mock.flipped=true;
+        clock_ui_touch();clock_ui_update();assert(!preview_flipped);
+        advance();assert(!preview_flipped);advance();assert(preview_flipped);
+        sensor_mock.auto_rotate=false;sensor_mock.flipped=false;advance();assert(preview_flipped);
+        sensor_mock.auto_rotate=true;advance();assert(!preview_flipped);
+        puts("PASS paired rotation request, active-touch deferral and disabled orientation lock");
+    }
     if(argc>3&&!strcmp(argv[3],"sensors-test")){
         click_text(lv_screen_active(),"Clock");advance();
-        assert(has_text(lv_screen_active(),"In 74° / 45%"));
         click_text(lv_screen_active(),"Settings");advance();click_text(lv_screen_active(),"Sensors & gestures");advance();
-        assert(has_text(lv_screen_active(),"Indoor 74.3 F / 45% humidity\nMotion sensor: Ready"));
+        assert(has_text(lv_screen_active(),"Inside case 74.3 F / 45% RH\nMotion sensor: Ready"));
         lv_obj_t *toggle=NULL;
         for(unsigned i=0;i<lv_obj_get_child_count(lv_screen_active());i++){
-            lv_obj_t *o=lv_obj_get_child(lv_screen_active(),i);if(lv_obj_check_type(o,&lv_checkbox_class))toggle=o;
+            lv_obj_t *o=lv_obj_get_child(lv_screen_active(),i);if(lv_obj_check_type(o,&lv_checkbox_class)&&!strcmp(lv_checkbox_get_text(o),"Shake to snooze"))toggle=o;
         }
         assert(toggle&&!lv_obj_has_state(toggle,LV_STATE_CHECKED));lv_obj_add_state(toggle,LV_STATE_CHECKED);
         click_text(lv_screen_active(),"Save");advance();assert(sensor_mock.shake_enabled);
         assert(has_text(lv_screen_active(),"Make it yours"));
         click_text(lv_screen_active(),"Sensors & gestures");advance();
-        sensor_mock.fresh=false;advance();assert(has_text(lv_screen_active(),"Indoor 74.3 F / 45% humidity (stale)\nMotion sensor: Ready"));
+        sensor_mock.fresh=false;advance();assert(has_text(lv_screen_active(),"Inside case 74.3 F / 45% RH (stale)\nMotion sensor: Ready"));
         alarm_state.ringing=1;advance();assert(has_text(lv_layer_top(),"Dismiss"));
         click_text(lv_obj_get_child(lv_layer_top(),0),"Dismiss");advance();assert(!alarm_state.ringing);
         puts("PASS indoor reading, stale state, opt-in saved shake setting and alarm foreground");

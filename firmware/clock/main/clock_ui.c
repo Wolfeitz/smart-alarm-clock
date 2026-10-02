@@ -27,8 +27,9 @@ static bool bg_advanced;
 
 static void show_backgrounds(lv_event_t *e);
 static lv_obj_t *root,*time_text,*date_text,*detail,*next_text,*status;
-static bool sensors_view,sensor_save_pending;
-static lv_obj_t *sensor_readings,*sensor_status,*sensor_shake_toggle,*home_indoor;
+static bool sensors_view,sensor_save_pending,screen_flipped;
+static int64_t rotation_touch_until;
+static lv_obj_t *sensor_readings,*sensor_status,*sensor_shake_toggle,*sensor_rotate_toggle;
 static void show_sensors(lv_event_t *e);
 static lv_obj_t *home_place,*home_temperature,*home_forecast,*alarm_caption;
 static bool snooze_collapsed,calendar_view;
@@ -235,19 +236,22 @@ static void show_settings(lv_event_t *e)
 static void save_sensors(lv_event_t *e)
 {
     (void)e;if(sensor_save_pending)return;
-    sensor_save_pending=sensor_service_set_shake(lv_obj_has_state(sensor_shake_toggle,LV_STATE_CHECKED));
+    sensor_save_pending=sensor_service_configure(lv_obj_has_state(sensor_shake_toggle,LV_STATE_CHECKED),lv_obj_has_state(sensor_rotate_toggle,LV_STATE_CHECKED));
     lv_label_set_text(sensor_status,sensor_save_pending?"Saving...":"Sensor service busy or unavailable");
 }
 static void show_sensors(lv_event_t *e)
 {
     (void)e;editing=false;time_editing=false;reset_screen();sensors_view=true;
     sensor_snapshot_t s;sensor_service_snapshot(&s);
-    label(root,"Room & motion",15,12,450,&lv_font_montserrat_20);
+    label(root,"Sensors & motion",15,12,450,&lv_font_montserrat_20);
     sensor_readings=label(root,"Reading sensors...",15,52,450,&lv_font_montserrat_20);
-    label(root,"Onboard temperature can read warm from the case.\nShake deliberately while ringing to snooze.",15,128,450,&lv_font_montserrat_16);
+    label(root,"Onboard temperature can read warm from the case.\nRotation holds when flat; shake snoozes when ringing.",15,128,450,&lv_font_montserrat_16);
     sensor_shake_toggle=lv_checkbox_create(root);lv_checkbox_set_text(sensor_shake_toggle,"Shake to snooze");
     lv_obj_set_pos(sensor_shake_toggle,30,185);lv_obj_set_style_min_height(sensor_shake_toggle,40,0);
     if(s.shake_enabled)lv_obj_add_state(sensor_shake_toggle,LV_STATE_CHECKED);
+    sensor_rotate_toggle=lv_checkbox_create(root);lv_checkbox_set_text(sensor_rotate_toggle,"Auto-rotate");
+    lv_obj_set_pos(sensor_rotate_toggle,265,185);lv_obj_set_style_min_height(sensor_rotate_toggle,40,0);
+    if(s.auto_rotate)lv_obj_add_state(sensor_rotate_toggle,LV_STATE_CHECKED);
     sensor_status=label(root,"Optional; works without Wi-Fi",15,232,450,&lv_font_montserrat_16);
     button(root,"Back",30,267,190,show_settings,NULL);button(root,"Save",260,267,190,save_sensors,NULL);
 }
@@ -495,7 +499,7 @@ static void home(void)
     status=label(root,"",15,242,450,&lv_font_montserrat_16);
     lv_obj_set_style_text_color(status,lv_color_hex(0xcbd8e5),0);
     lv_obj_t *card=button(root,"",310,64,155,show_weather,NULL);
-    lv_obj_set_height(card,122);lv_obj_set_style_pad_all(card,0,0);
+    lv_obj_set_height(card,112);lv_obj_set_style_pad_all(card,0,0);
     lv_obj_set_style_bg_color(card,lv_color_hex(0x102038),0);
     lv_obj_set_style_bg_opa(card,LV_OPA_60,0);lv_obj_set_style_border_color(card,lv_color_hex(0xbdcadb),0);
     lv_obj_set_style_border_opa(card,LV_OPA_30,0);lv_obj_remove_flag(card,LV_OBJ_FLAG_SCROLLABLE);
@@ -508,7 +512,6 @@ static void home(void)
     lv_obj_set_style_text_color(home_temperature,lv_color_hex(0xb4d8e9),0);
     home_forecast=label(card,"Set up Wi-Fi",4,81,147,&lv_font_montserrat_16);
     lv_obj_set_height(home_forecast,22);lv_label_set_long_mode(home_forecast,LV_LABEL_LONG_DOT);
-    home_indoor=label(card,"Indoor --",4,102,147,&lv_font_montserrat_16);
     navigation(0);
 }
 static void keyboard_event(lv_event_t *e)
@@ -867,10 +870,14 @@ void clock_ui_init(void)
 }
 void clock_ui_update(void)
 {
+    sensor_snapshot_t motion;sensor_service_snapshot(&motion);
+    if(motion.imu_ready&&motion.auto_rotate&&motion.flipped!=screen_flipped&&esp_timer_get_time()>=rotation_touch_until){
+        if(board_rotation(motion.flipped)){screen_flipped=motion.flipped;lv_obj_invalidate(root);lv_obj_invalidate(lv_layer_top());}
+    }
     if(sensors_view){
         sensor_snapshot_t sensor;sensor_service_snapshot(&sensor);char text[160];
-        if(sensor.available)snprintf(text,sizeof(text),"Indoor %.1f F / %.0f%% humidity%s\nMotion sensor: %s",sensor.celsius*1.8f+32,sensor.humidity,sensor.fresh?"":" (stale)",sensor.imu_ready?"Ready":"Unavailable");
-        else snprintf(text,sizeof(text),"Indoor readings unavailable\nMotion sensor: %s",sensor.imu_ready?"Ready":"Unavailable");
+        if(sensor.available)snprintf(text,sizeof(text),"Inside case %.1f F / %.0f%% RH%s\nMotion sensor: %s",sensor.celsius*1.8f+32,sensor.humidity,sensor.fresh?"":" (stale)",sensor.imu_ready?"Ready":"Unavailable");
+        else snprintf(text,sizeof(text),"Case readings unavailable\nMotion sensor: %s",sensor.imu_ready?"Ready":"Unavailable");
         lv_label_set_text(sensor_readings,text);
         if(sensor_save_pending&&!sensor.pending){
             sensor_save_pending=false;
@@ -1050,10 +1057,6 @@ void clock_ui_update(void)
         else snprintf(b,sizeof(b),LV_SYMBOL_OK "  Internet checked %u min ago",(unsigned)(weather.internet_age_seconds/60));
     }else snprintf(b,sizeof(b),LV_SYMBOL_WARNING "  Internet not verified");
     lv_label_set_text(status,audio_status()!=ESP_OK?"Local audio unavailable":s.load_failed?"Saved alarms unavailable - review Alarms":s.storage_status!=ESP_OK?"Settings storage error":!clock_valid()?"Set time to enable alarms":b);
-    sensor_snapshot_t indoor;sensor_service_snapshot(&indoor);
-    if(indoor.fresh)snprintf(b,sizeof(b),"In %.0f° / %.0f%%",indoor.celsius*1.8f+32,indoor.humidity);
-    else snprintf(b,sizeof(b),indoor.available?"Indoor stale":"Indoor --");
-    lv_label_set_text(home_indoor,b);
     lv_label_set_text(home_place,weather.location.name[0]?weather.location.name:"Local weather");
     update_weather_art(weather.has_data?weather.data.code:-1,weather.has_data&&weather_fresh(&weather.data,time(NULL)));
     if(weather.has_data){
@@ -1073,7 +1076,7 @@ static void dropdown_diagnostics(const char *name,lv_obj_t *o)
 }
 void clock_ui_diagnostics(void)
 {
-    diagnostics_printf("UI_SCREEN name=%s overlay=%u pending=%u\n",background_editing?"backgrounds":calendar_view?"calendar":media_editing?"media_setup":media_view?"media":alarm_list_view?"alarms":ha_editing?"ha_setup":ha_view?"ha":display_editing?"display":settings_view?"settings":location_editing?"location":network_editing?"network":weather_view?"weather":time_editing?"time":editing?"alarm":"home",overlay!=NULL&&!lv_obj_has_flag(overlay,LV_OBJ_FLAG_HIDDEN),pending);
+    diagnostics_printf("UI_SCREEN name=%s overlay=%u pending=%u\n",sensors_view?"sensors":background_editing?"backgrounds":calendar_view?"calendar":media_editing?"media_setup":media_view?"media":alarm_list_view?"alarms":ha_editing?"ha_setup":ha_view?"ha":display_editing?"display":settings_view?"settings":location_editing?"location":network_editing?"network":weather_view?"weather":time_editing?"time":editing?"alarm":"home",overlay!=NULL&&!lv_obj_has_flag(overlay,LV_OBJ_FLAG_HIDDEN),pending);
     if(weather_view||network_editing||location_editing){weather_snapshot_t w;weather_service_snapshot(&w);
         diagnostics_printf("WEATHER_STATE online=%u valid=%u fresh=%u zip=%s zone=%s status=%s\n",w.connected,w.has_data,w.has_data&&weather_fresh(&w.data,time(NULL)),w.zip,w.location.timezone,w.status);
     }
@@ -1098,6 +1101,7 @@ void clock_ui_diagnostics(void)
 
 void clock_ui_touch(void)
 {
+    rotation_touch_until=esp_timer_get_time()+500000;
     wake_until=esp_timer_get_time()/1000+30000;
     alarm_snapshot_t s;alarm_service_snapshot(&s);
     if(s.settings.display.enabled&&applied_brightness<80){applied_brightness=160;board_brightness(false);}

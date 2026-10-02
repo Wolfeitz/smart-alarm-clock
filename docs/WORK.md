@@ -2398,3 +2398,37 @@ passed, including foreground alarm overlay while sensor screen open. Receipts:
 local-config/clock/sensors-{build,flash,runtime,host,preview-build}.log.
 Next work remains auto-rotation with flat-position hold, direct Sonos simulator
 adapter and consolidated feasibility notes. No physical-test gate.
+
+## Rotation and case-temperature correction (2026-10-02)
+
+Owner rejects misleading room-temperature display. Supersedes original home indoor
+reading scope: removed it from weather card and renamed sensor details Inside case.
+No guessed offset applied. Added separate saved Auto-rotate option, default off;
+existing shake preference migrates to a compact combined preference byte without
+altering clock/alarm storage.180degree display mirroring and touch-coordinate
+reflection change together from the UI owner after touch is released. Policy
+requires1.5seconds of stable upright samples, Y gravity >=750mg, Z <=500mg,
+valid0.8–1.2g magnitude and bounded motion; flat/near-flat, sideways, shake and missing
+samples hold the last orientation. Axis sign derives from measured current upright
+pose (+Y~1g), not a user-confirmed flip test. Disabling locks runtime orientation;
+restart begins the fixed default and can orient after new steady samples.
+
+Host policy tests cover flat hold after inversion, near-flat, shaking, delayed
+reversal, disabled lock and corner mapping. Actual LVGL tests cover touch deferral
+and sensor settings; target build and application-only flash/hash verification
+passed. Installed SHA256:
+b9dcdb1ac9c9fe8832659d6651bb337eb2a328bb4889dfd45431ccfc297c2315.
+Live runtime: fresh33.41C/40.75% RH, IMU samples increasing, motion options remain
+off, save/navigation succeeds and all eight alarms unchanged. Receipts:
+rotation-{build,flash,runtime,host,preview-build}.log under local-config/clock.
+Runtime script reused sensors-runtime.log; current copy is rotation-runtime.log.
+Physical orientation/motion sensitivity is not claimed verified and is not a gate.
+Voice/Zigbee/camera and accessory limits are now consolidated in OPTIONAL-HARDWARE.md.
+Direct Sonos implementation/simulator remains the principal unfinished goal item.
+
+Owner addition: show a compact battery indicator on home only when a battery is
+present. Use verified AXP2101 presence/charging/fuel-gauge registers, distinguish
+unknown from0percent, leave indicator hidden with no battery connected. Battery
+is not installed yet; register parsing/UI can be tested synthetically and absent
+battery behavior verified now. Real battery accuracy remains unverified, not a
+reason to halt development. Do not change charger configuration.

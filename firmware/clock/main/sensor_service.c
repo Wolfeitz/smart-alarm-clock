@@ -21,11 +21,12 @@ void sensor_service_snapshot(sensor_snapshot_t *out)
     xSemaphoreTake(lock,portMAX_DELAY);*out=state;xSemaphoreGive(lock);
     out->fresh=out->available&&esp_timer_get_time()/1000-out->updated_ms<30000;
 }
-bool sensor_service_set_shake(bool enabled)
+bool sensor_service_configure(bool shake,bool rotate)
 {
+    uint8_t flags=(shake?1:0)|(rotate?2:0);
     if(!running)return false;
     xSemaphoreTake(lock,portMAX_DELAY);
-    bool ok=!state.pending&&xQueueSend(changes,&enabled,0)==pdTRUE;
+    bool ok=!state.pending&&xQueueSend(changes,&flags,0)==pdTRUE;
     if(ok){state.pending=true;state.save_failed=false;}
     xSemaphoreGive(lock);return ok;
 }
@@ -56,19 +57,24 @@ static bool imu_start(void)
 static void worker(void *arg)
 {
     (void)arg;nvs_handle_t storage;bool stored=nvs_open_from_partition("clockcfg","sensors",NVS_READWRITE,&storage)==ESP_OK;
-    uint8_t value=0;if(stored&&nvs_get_u8(storage,"shake",&value)!=ESP_OK)value=0;
-    bool enabled=value==1,imu_ok=imu_start();
-    xSemaphoreTake(lock,portMAX_DELAY);state.shake_enabled=enabled;state.imu_ready=imu_ok;xSemaphoreGive(lock);
+    uint8_t value=0;
+    if(stored&&nvs_get_u8(storage,"prefs",&value)==ESP_ERR_NVS_NOT_FOUND){
+        if(nvs_get_u8(storage,"shake",&value)!=ESP_OK||value>1)value=0;
+    }
+    if(value>3)value=0;
+    bool enabled=(value&1)!=0,rotate=(value&2)!=0,imu_ok=imu_start();
+    xSemaphoreTake(lock,portMAX_DELAY);state.shake_enabled=enabled;state.auto_rotate=rotate;state.imu_ready=imu_ok;xSemaphoreGive(lock);
     diagnostics_printf("SENSORS_INIT environment=%u imu=%u shake=%u\n",environment!=NULL,imu_ok,enabled);
+    orientation_detector_t orientation={0};
     shake_detector_t detector={0};int64_t due=0,retry=0;
     for(;;){
-        bool next;
+        uint8_t next;
         if(xQueueReceive(changes,&next,0)==pdTRUE){
-            esp_err_t err=stored?nvs_set_u8(storage,"shake",next):ESP_ERR_INVALID_STATE;
+            esp_err_t err=stored?nvs_set_u8(storage,"prefs",next):ESP_ERR_INVALID_STATE;
             if(err==ESP_OK)err=nvs_commit(storage);
-            if(err==ESP_OK)enabled=next;
+            if(err==ESP_OK){enabled=(next&1)!=0;rotate=(next&2)!=0;}
             memset(&detector,0,sizeof(detector));
-            xSemaphoreTake(lock,portMAX_DELAY);state.shake_enabled=enabled;state.pending=false;state.save_failed=err!=ESP_OK;xSemaphoreGive(lock);
+            xSemaphoreTake(lock,portMAX_DELAY);state.shake_enabled=enabled;state.auto_rotate=rotate;state.pending=false;state.save_failed=err!=ESP_OK;xSemaphoreGive(lock);
         }
         int64_t now=esp_timer_get_time()/1000;
         if(now>=due){
@@ -88,7 +94,8 @@ static void worker(void *arg)
                     alarm_snapshot_t alarm;alarm_service_snapshot(&alarm);
                     bool shake=sensor_shake(&detector,esp_timer_get_time()/1000,enabled,alarm.ringing!=0,mg);
                     bool accepted=shake&&alarm_service_snooze();
-                    xSemaphoreTake(lock,portMAX_DELAY);memcpy(state.acceleration,mg,sizeof(mg));state.samples++;if(accepted)state.gestures++;xSemaphoreGive(lock);
+                    bool flipped=sensor_orientation(&orientation,esp_timer_get_time()/1000,rotate,mg);
+                    xSemaphoreTake(lock,portMAX_DELAY);memcpy(state.acceleration,mg,sizeof(mg));state.flipped=flipped;state.samples++;if(accepted)state.gestures++;xSemaphoreGive(lock);
                     if(shake)diagnostics_printf("SHAKE_SNOOZE accepted=%u\n",accepted);
                 }
             }
@@ -100,7 +107,7 @@ static void worker(void *arg)
 }
 void sensor_service_init(void)
 {
-    lock=xSemaphoreCreateMutex();changes=xQueueCreate(1,sizeof(bool));if(!lock||!changes)return;
+    lock=xSemaphoreCreateMutex();changes=xQueueCreate(1,sizeof(uint8_t));if(!lock||!changes)return;
     i2c_device_config_t cfg={.dev_addr_length=I2C_ADDR_BIT_LEN_7,.scl_speed_hz=100000,.device_address=0x70};
     if(i2c_master_bus_add_device(board_bus(),&cfg,&environment)!=ESP_OK)environment=NULL;
     for(unsigned addr=0x6a;addr<=0x6b;addr++){
@@ -113,5 +120,5 @@ void sensor_service_init(void)
 void sensor_service_diagnostics(void)
 {
     sensor_snapshot_t s;sensor_service_snapshot(&s);
-    diagnostics_printf("SENSOR_STATE available=%u fresh=%u temperature_c=%.2f humidity=%.2f imu=%u samples=%u mg=%d,%d,%d shake=%u gestures=%u pending=%u save_failed=%u\n",s.available,s.fresh,s.celsius,s.humidity,s.imu_ready,s.samples,s.acceleration[0],s.acceleration[1],s.acceleration[2],s.shake_enabled,s.gestures,s.pending,s.save_failed);
+    diagnostics_printf("SENSOR_STATE available=%u fresh=%u temperature_c=%.2f humidity=%.2f imu=%u samples=%u mg=%d,%d,%d shake=%u gestures=%u pending=%u save_failed=%u auto_rotate=%u flipped=%u\n",s.available,s.fresh,s.celsius,s.humidity,s.imu_ready,s.samples,s.acceleration[0],s.acceleration[1],s.acceleration[2],s.shake_enabled,s.gestures,s.pending,s.save_failed,s.auto_rotate,s.flipped);
 }

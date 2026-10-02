@@ -21,5 +21,20 @@ int main(void)
     for(int now=9000;now<11000;now+=20)assert(!sensor_shake(&s,now,true,false,bump));
     /* Missing samples and constant orientation cannot count as three pulses. */
     for(int now=11000;now<15000;now+=500)assert(!sensor_shake(&s,now,true,true,bump));
+    orientation_detector_t o={0};int upright[]={0,1000,0},reverse[]={0,-1000,0},flat[]={0,0,1000};
+    for(int now=0;now<2000;now+=20)assert(!sensor_orientation(&o,now,true,upright));
+    for(int now=2000;now<3400;now+=20)assert(!sensor_orientation(&o,now,true,reverse));
+    for(int now=3400;now<4000;now+=20)sensor_orientation(&o,now,true,reverse);
+    assert(o.flipped);
+    for(int now=4000;now<8000;now+=20)assert(sensor_orientation(&o,now,true,flat));
+    int nearflat[]={0,600,800};
+    for(int now=8000;now<10000;now+=20)assert(sensor_orientation(&o,now,true,nearflat));
+    for(int now=10000;now<12000;now+=20)assert(sensor_orientation(&o,now,false,upright));
+    for(int now=12000;now<14000;now+=20)assert(sensor_orientation(&o,now,true,now%40?upright:reverse));
+    for(int now=14000;now<16000;now+=20)sensor_orientation(&o,now,true,upright);
+    assert(!o.flipped);
+    int x=0,y=0;sensor_rotate_touch(true,&x,&y);assert(x==479&&y==319);
+    sensor_rotate_touch(true,&x,&y);assert(!x&&!y);
+    puts("PASS orientation stable delay, flat/near-flat hold, disabled lock, shaking and touch corner mapping");
     puts("PASS sensor CRC/conversion, shake arming, single bump, three pulses, cooldown, disabled and sample gaps");
 }

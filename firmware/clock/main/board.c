@@ -1,3 +1,4 @@
+#include "sensor_model.h"
 #include "diagnostics.h"
 #include "board.h"
 #include <stdio.h>
@@ -18,6 +19,7 @@
 #define H 320
 static esp_lcd_panel_handle_t panel;
 static SemaphoreHandle_t done;
+static bool flipped;
 static i2c_master_bus_handle_t bus;
 static i2c_master_dev_handle_t expander;
 static i2c_master_dev_handle_t touch;
@@ -95,10 +97,18 @@ bool board_touch(int *x,int *y)
     int rx=((data[1]&15)<<8)|data[2],ry=((data[3]&15)<<8)|data[4];
     if(rx>=320 || ry>=480)return false;
     /* Keep touch aligned with the owner-requested 180-degree panel rotation. */
-    *x=ry;*y=319-rx;return true;
+    *x=ry;*y=319-rx;sensor_rotate_touch(flipped,x,y);return true;
 }
 void board_brightness(bool dim)
 {
     uint8_t data[]={5,dim?25:160};
     ESP_ERROR_CHECK(i2c_master_transmit(expander,data,sizeof(data),100));
+}
+
+/* Called only from the UI owner; board_flush waits for all pixels to finish. */
+bool board_rotation(bool desired)
+{
+    if(desired==flipped)return true;
+    if(esp_lcd_panel_mirror(panel,desired,desired)!=ESP_OK)return false;
+    flipped=desired;return true;
 }
