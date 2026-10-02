@@ -22,7 +22,7 @@ static esp_err_t http_event(esp_http_client_event_t *event)
     }
     return ESP_OK;
 }
-int network_http_request(const char *url,const char *token,const char *post_body,char *buffer,size_t capacity,size_t *size)
+static int request(const char *url,const char *token,const char *post_body,const char *api_key,char *buffer,size_t capacity,size_t *size)
 {
     *size=0;if(!buffer||capacity<2)return -1;
     if(!request_lock||xSemaphoreTake(request_lock,pdMS_TO_TICKS(8000))!=pdTRUE)return -1;
@@ -33,6 +33,7 @@ int network_http_request(const char *url,const char *token,const char *post_body
     if(!client){xSemaphoreGive(request_lock);return -1;}
     char authorization[520]={0};esp_err_t err=ESP_OK;
     if(token){snprintf(authorization,sizeof(authorization),"Bearer %s",token);err=esp_http_client_set_header(client,"Authorization",authorization);}
+    if(api_key&&*api_key&&err==ESP_OK)err=esp_http_client_set_header(client,"X-API-Key",api_key);
     if(post_body&&err==ESP_OK){
         err=esp_http_client_set_method(client,HTTP_METHOD_POST);
         if(err==ESP_OK)err=esp_http_client_set_header(client,"Content-Type","application/json");
@@ -42,4 +43,13 @@ int network_http_request(const char *url,const char *token,const char *post_body
     int result=err==ESP_OK&&!response.overflow?esp_http_client_get_status_code(client):-1;
     *size=response.size;esp_http_client_cleanup(client);memset(authorization,0,sizeof(authorization));
     xSemaphoreGive(request_lock);return result;
+}
+
+int network_http_request(const char *url,const char *token,const char *body,char *buffer,size_t capacity,size_t *size)
+{return request(url,token,body,NULL,buffer,capacity,size);}
+int network_http_wallhaven(const char *url,const char *key,char *buffer,size_t capacity,size_t *size)
+{
+    const char *prefix="https://wallhaven.cc/api/v1/";
+    if(strncmp(url,prefix,strlen(prefix))){*size=0;return -1;}
+    return request(url,NULL,NULL,key,buffer,capacity,size);
 }

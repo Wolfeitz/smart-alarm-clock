@@ -20,6 +20,10 @@ static bool scenic_home,background_editing,background_error;
 static uint32_t background_save_ticket;
 static lv_obj_t *home_image,*background_source,*background_interval,*background_input,*background_status;
 static background_config_t background_draft;
+static lv_obj_t *bg_panel,*bg_categories[3],*bg_purity[3],*bg_sort,*bg_order,*bg_range,*bg_resolution_mode,*bg_resolution,*bg_ratios,*bg_color,*bg_seed,*bg_position,*bg_seconds,*bg_retry_seconds,*bg_retries,*bg_notify[2],*bg_key,*bg_clear_key,*bg_toast;
+static unsigned bg_notice_seen;static int64_t bg_toast_until;
+static bool bg_advanced;
+
 static void show_backgrounds(lv_event_t *e);
 static lv_obj_t *root,*time_text,*date_text,*detail,*next_text,*status;
 static lv_obj_t *home_place,*home_temperature,*home_forecast,*alarm_caption;
@@ -79,7 +83,7 @@ static void show_editor(void);
 static void show_time_editor(lv_event_t *e);
 static void reset_screen(void)
 {
-    scenic_home=false;background_editing=false;background_save_ticket=0;calendar_view=false;weather_art=NULL;artwork_code=-999;alarm_list_view=false;settings_view=false;display_editing=false;display_pending=false;ha_view=false;ha_editing=false;ha_error=false;media_view=false;media_editing=false;media_error=false;
+    scenic_home=false;background_editing=false;background_save_ticket=0;bg_panel=NULL;bg_toast=NULL;bg_advanced=false;calendar_view=false;weather_art=NULL;artwork_code=-999;alarm_list_view=false;settings_view=false;display_editing=false;display_pending=false;ha_view=false;ha_editing=false;ha_error=false;media_view=false;media_editing=false;media_error=false;
     weather_view=false;network_editing=false;location_editing=false;wifi_listing=false;network_connecting=false;
     lv_obj_clean(root);lv_obj_set_style_bg_color(root,lv_color_hex(0x0c141b),0);
     lv_obj_remove_flag(root,LV_OBJ_FLAG_SCROLLABLE);
@@ -486,6 +490,7 @@ static void keyboard_event(lv_event_t *e)
 {
     if(lv_event_get_code(e)==LV_EVENT_READY||lv_event_get_code(e)==LV_EVENT_CANCEL){
         lv_obj_add_flag(keyboard,LV_OBJ_FLAG_HIDDEN);lv_keyboard_set_textarea(keyboard,NULL);
+        if(bg_panel)lv_obj_set_height(bg_panel,176);
     }
 }
 static void field_focus(lv_event_t *e)
@@ -497,6 +502,70 @@ static void field_focus(lv_event_t *e)
 static void background_focus(lv_event_t *e)
 {
     lv_keyboard_set_textarea(keyboard,lv_event_get_target(e));lv_obj_remove_flag(keyboard,LV_OBJ_FLAG_HIDDEN);lv_obj_move_foreground(keyboard);
+    if(bg_advanced){lv_obj_set_height(bg_panel,105);lv_obj_scroll_to_view_recursive(lv_event_get_target(e),LV_ANIM_OFF);}
+}
+static lv_obj_t *bg_choice(lv_obj_t *parent,const char *title,const char *options,int x,int y,int width,unsigned value)
+{
+    label(parent,title,x,y,width,&lv_font_montserrat_16);
+    lv_obj_t *o=dropdown(options,x,y+23,width);lv_obj_set_parent(o,parent);lv_obj_set_user_data(o,(void *)title);lv_dropdown_set_selected(o,value);return o;
+}
+static lv_obj_t *bg_text(lv_obj_t *parent,const char *title,const char *value,int x,int y,int width,unsigned limit)
+{
+    label(parent,title,x,y,width,&lv_font_montserrat_16);
+    lv_obj_t *o=lv_textarea_create(parent);lv_obj_set_pos(o,x,y+23);lv_obj_set_size(o,width,42);lv_textarea_set_one_line(o,true);lv_textarea_set_max_length(o,limit);lv_textarea_set_text(o,value);
+    lv_obj_add_event_cb(o,background_focus,LV_EVENT_CLICKED,NULL);lv_obj_set_user_data(o,(void *)title);return o;
+}
+static lv_obj_t *bg_check(lv_obj_t *parent,const char *text,int x,int y,bool checked)
+{
+    lv_obj_t *o=lv_checkbox_create(parent);lv_obj_set_pos(o,x,y);lv_checkbox_set_text(o,text);lv_obj_set_style_text_font(o,&lv_font_montserrat_16,0);lv_obj_set_style_min_height(o,40,0);
+    if(checked)lv_obj_add_state(o,LV_STATE_CHECKED);
+    lv_obj_set_user_data(o,(void *)text);return o;
+}
+static void background_advanced(lv_event_t *e)
+{
+    (void)e;if(background_save_ticket)return;
+    bg_advanced=!bg_advanced;lv_obj_add_flag(keyboard,LV_OBJ_FLAG_HIDDEN);lv_keyboard_set_textarea(keyboard,NULL);
+    if(bg_advanced){lv_obj_remove_flag(bg_panel,LV_OBJ_FLAG_HIDDEN);lv_obj_set_height(bg_panel,176);}
+    else lv_obj_add_flag(bg_panel,LV_OBJ_FLAG_HIDDEN);
+}
+static void background_interval_changed(lv_event_t *e)
+{
+    (void)e;const unsigned values[]={0,300,900,3600};unsigned i=lv_dropdown_get_selected(background_interval);if(i>3)return;
+    char text[16];snprintf(text,sizeof(text),"%u",values[i]);lv_textarea_set_text(bg_seconds,text);
+}
+static bool bg_number(lv_obj_t *field,unsigned maximum,unsigned *value)
+{
+    const char *text=lv_textarea_get_text(field);if(!*text)return false;
+    unsigned n=0;for(;*text;text++){if(*text<'0'||*text>'9'||n>maximum/10)return false;n=n*10+*text-'0';if(n>maximum)return false;}*value=n;return true;
+}
+static void background_advanced_create(void)
+{
+    background_options_t o=background_draft.options.version?background_draft.options:background_options_default();
+    bg_panel=lv_obj_create(root);lv_obj_set_pos(bg_panel,8,50);lv_obj_set_size(bg_panel,464,176);lv_obj_set_scroll_dir(bg_panel,LV_DIR_VER);lv_obj_set_style_pad_all(bg_panel,6,0);
+    label(bg_panel,"Categories",0,0,430,&lv_font_montserrat_16);
+    const char *cats[]={"General","Anime","People"},*purities[]={"SFW","Sketchy","NSFW"};
+    for(unsigned i=0;i<3;i++)bg_categories[i]=bg_check(bg_panel,cats[i],i*143,24,o.categories&(4>>i));
+    label(bg_panel,"Content filters",0,72,430,&lv_font_montserrat_16);
+    for(unsigned i=0;i<3;i++)bg_purity[i]=bg_check(bg_panel,purities[i],i*143,96,o.purity&(4>>i));
+    bg_sort=bg_choice(bg_panel,"Sort","Random\nDate added\nRelevance\nViews\nFavorites\nToplist",0,148,210,o.sorting);
+    bg_order=bg_choice(bg_panel,"Order","Descending\nAscending",224,148,210,o.ascending);
+    bg_range=bg_choice(bg_panel,"Toplist period","Month\nDay\n3 days\nWeek\n3 months\n6 months\nYear",0,224,210,o.top_range);
+    bg_position=bg_choice(bg_panel,"Positioning","Fill / crop\nFit / borders\nStretch",224,224,210,o.position);
+    bg_resolution_mode=bg_choice(bg_panel,"Resolution mode","At least\nExactly",0,300,210,o.exact_resolution);
+    bg_resolution=bg_text(bg_panel,"Resolution(s)",o.resolution,224,300,210,63);
+    bg_ratios=bg_text(bg_panel,"Ratios: e.g. 16x9,3x2 (blank=any)",o.ratios,0,376,434,47);
+    bg_color=bg_text(bg_panel,"Color: hex or blank",o.color,0,452,210,6);
+    bg_seed=bg_text(bg_panel,"Random seed / blank",o.seed,224,452,210,6);
+    char text[16];snprintf(text,sizeof(text),"%lu",(unsigned long)background_draft.interval_seconds);
+    bg_seconds=bg_text(bg_panel,"Rotation seconds (0=fixed)",text,0,528,434,5);
+    snprintf(text,sizeof(text),"%u",o.retry_seconds);bg_retry_seconds=bg_text(bg_panel,"Retry delay seconds",text,0,604,210,4);
+    snprintf(text,sizeof(text),"%u",o.retries);bg_retries=bg_text(bg_panel,"Retries (0-10)",text,224,604,210,2);
+    bg_notify[0]=bg_check(bg_panel,"Notify refresh",0,685,o.notify_refresh);bg_notify[1]=bg_check(bg_panel,"Notify error",224,685,o.notify_error);
+    bg_key=bg_text(bg_panel,"Wallhaven API key (masked)","",0,744,434,128);lv_textarea_set_password_mode(bg_key,true);
+    lv_textarea_set_placeholder_text(bg_key,background_service_has_key()?"Saved; blank keeps existing key":"Optional; required by provider for NSFW");
+    bg_clear_key=bg_check(bg_panel,"Remove saved key",0,820,false);
+    label(bg_panel,"No key needed for SFW or Sketchy.\nResolution filters select source images.\nDisplay always remains 480 x 320.",0,872,434,&lv_font_montserrat_16);
+    lv_obj_add_flag(bg_panel,LV_OBJ_FLAG_HIDDEN);
 }
 static void background_source_changed(lv_event_t *e)
 {
@@ -510,7 +579,19 @@ static void background_save(lv_event_t *e)
 {
     (void)e;if(background_save_ticket)return;background_error=true;memset(&background_draft,0,sizeof(background_draft));
     background_draft.source=lv_dropdown_get_selected(background_source);
-    const unsigned seconds[]={0,300,900,3600};background_draft.interval_seconds=seconds[lv_dropdown_get_selected(background_interval)];
+    unsigned seconds,retry,attempts;
+    if(!bg_number(bg_seconds,86400,&seconds)||!bg_number(bg_retry_seconds,3600,&retry)||!bg_number(bg_retries,10,&attempts)){
+        lv_label_set_text(background_status,"Check rotation/retry numbers in Advanced");return;}
+    background_draft.interval_seconds=seconds;
+    background_options_t *o=&background_draft.options;*o=background_options_default();o->categories=0;o->purity=0;
+    for(unsigned i=0;i<3;i++){if(lv_obj_has_state(bg_categories[i],LV_STATE_CHECKED))o->categories|=4>>i;if(lv_obj_has_state(bg_purity[i],LV_STATE_CHECKED))o->purity|=4>>i;}
+    o->sorting=lv_dropdown_get_selected(bg_sort);o->ascending=lv_dropdown_get_selected(bg_order);o->top_range=lv_dropdown_get_selected(bg_range);o->position=lv_dropdown_get_selected(bg_position);o->exact_resolution=lv_dropdown_get_selected(bg_resolution_mode);
+    o->retry_seconds=retry;o->retries=attempts;o->notify_refresh=lv_obj_has_state(bg_notify[0],LV_STATE_CHECKED);o->notify_error=lv_obj_has_state(bg_notify[1],LV_STATE_CHECKED);
+    strcpy(o->resolution,lv_textarea_get_text(bg_resolution));strcpy(o->ratios,lv_textarea_get_text(bg_ratios));strcpy(o->color,lv_textarea_get_text(bg_color));strcpy(o->seed,lv_textarea_get_text(bg_seed));
+    const char *new_key=lv_textarea_get_text(bg_key);if(!*new_key)new_key=NULL;if(lv_obj_has_state(bg_clear_key,LV_STATE_CHECKED))new_key="";
+    if(background_draft.source==BACKGROUND_WALLHAVEN&&(o->purity&1)&&!(new_key?*new_key:background_service_has_key())){
+        lv_label_set_text(background_status,"Wallhaven requires an API key for NSFW");return;}
+    if(!background_options_valid(o)){lv_label_set_text(background_status,"Check Advanced filters and retry settings");return;}
     const char *text=lv_textarea_get_text(background_input);
     if(background_draft.source==BACKGROUND_LOCAL){background_draft.count=1;strcpy(background_draft.images[0],"blue-hour");}
     else if(background_draft.source==BACKGROUND_WALLHAVEN){
@@ -524,7 +605,7 @@ static void background_save(lv_event_t *e)
             text=end+1;
         }
     }
-    background_save_ticket=background_service_configure_tracked(&background_draft);
+    background_save_ticket=background_service_configure_credentials(&background_draft,new_key);
     bool ok=background_save_ticket!=0;
     lv_label_set_text(background_status,ok?"Saving...":"Invalid source or busy; check entries");
     if(ok){background_error=false;lv_obj_add_flag(keyboard,LV_OBJ_FLAG_HIDDEN);lv_keyboard_set_textarea(keyboard,NULL);}
@@ -534,11 +615,12 @@ static void show_backgrounds(lv_event_t *e)
 {
     (void)e;editing=false;time_editing=false;reset_screen();background_editing=true;background_error=false;
     char message[96];bool busy;background_service_snapshot(&background_draft,message,&busy);
-    label(root,"Backgrounds",12,10,456,&lv_font_montserrat_20);
+    label(root,"Backgrounds",12,10,280,&lv_font_montserrat_20);
+    button(root,"Advanced",326,0,144,background_advanced,NULL);
     background_source=dropdown("Local: Blue hour\nSelected image links\nWallhaven search",12,45,270);
     lv_dropdown_set_selected(background_source,background_draft.source);
-    background_interval=dropdown("Keep fixed\nEvery 5 min\nEvery 15 min\nEvery hour",294,45,174);
-    unsigned interval=background_draft.interval_seconds;lv_dropdown_set_selected(background_interval,interval==300?1:interval==900?2:interval?3:0);
+    background_interval=dropdown("Keep fixed\nEvery 5 min\nEvery 15 min\nEvery hour\nCustom (Advanced)",294,45,174);
+    unsigned interval=background_draft.interval_seconds;lv_dropdown_set_selected(background_interval,interval==300?1:interval==900?2:interval==3600?3:interval?4:0);
     background_input=lv_textarea_create(root);lv_obj_set_pos(background_input,12,96);lv_obj_set_size(background_input,456,96);
     lv_textarea_set_max_length(background_input,BACKGROUND_MAX_IMAGES*BACKGROUND_URL_SIZE);
     if(background_draft.source==BACKGROUND_WALLHAVEN)lv_textarea_set_text(background_input,background_draft.query);
@@ -546,9 +628,11 @@ static void show_backgrounds(lv_event_t *e)
         if(i)lv_textarea_add_text(background_input,"\n");
         lv_textarea_add_text(background_input,background_draft.images[i]);}}
     lv_obj_add_event_cb(background_input,background_focus,LV_EVENT_CLICKED,NULL);
-    background_status=label(root,message,12,202,456,&lv_font_montserrat_16);
-    label(root,"JPEG links / Wallhaven public SFW",12,235,456,&lv_font_montserrat_16);
+    background_status=label(root,message,12,226,456,&lv_font_montserrat_16);
+
     button(root,"Back",12,267,144,show_settings,NULL);button(root,"Next image",168,267,144,background_next,NULL);button(root,"Save",324,267,144,background_save,NULL);
+    background_advanced_create();
+    lv_obj_add_event_cb(background_interval,background_interval_changed,LV_EVENT_VALUE_CHANGED,NULL);
     keyboard=lv_keyboard_create(root);lv_obj_set_size(keyboard,480,150);lv_obj_align(keyboard,LV_ALIGN_BOTTOM_MID,0,0);
     lv_obj_add_flag(keyboard,LV_OBJ_FLAG_HIDDEN);lv_obj_add_event_cb(keyboard,keyboard_event,LV_EVENT_ALL,NULL);
     lv_obj_add_event_cb(background_source,background_source_changed,LV_EVENT_VALUE_CHANGED,NULL);background_source_changed(NULL);
@@ -896,6 +980,12 @@ void clock_ui_update(void)
     }
     const lv_image_dsc_t *image=background_service_image();
     if(lv_image_get_src(home_image)!=image)lv_image_set_src(home_image,image);
+    bool image_error;
+    if(background_service_notice(&bg_notice_seen,&image_error)){
+        if(!bg_toast){bg_toast=label(root,"",12,242,456,&lv_font_montserrat_16);lv_obj_set_style_bg_color(bg_toast,lv_color_hex(0x142c40),0);lv_obj_set_style_bg_opa(bg_toast,LV_OPA_90,0);}
+        lv_label_set_text(bg_toast,image_error?"Background unavailable; previous image retained":"Background updated");lv_obj_remove_flag(bg_toast,LV_OBJ_FLAG_HIDDEN);bg_toast_until=esp_timer_get_time()+3000000;
+    }
+    if(bg_toast&&esp_timer_get_time()>bg_toast_until)lv_obj_add_flag(bg_toast,LV_OBJ_FLAG_HIDDEN);
     char b[80];
     if(clock_valid()){
         time_t now=time(NULL);struct tm local;localtime_r(&now,&local);

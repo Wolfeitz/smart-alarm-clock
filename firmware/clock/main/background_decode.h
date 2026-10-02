@@ -13,3 +13,7 @@
 bool background_decode_jpeg(const uint8_t *data,size_t size,uint16_t *destination,
                             void *scratch,size_t scratch_size,
                             bool (*proceed)(void *),void *context);
+
+/* position: 0 fill/crop, 1 fit with dark bars, 2 stretch. */
+bool background_decode_jpeg_position(const uint8_t *data,size_t size,uint16_t *destination,
+    void *scratch,size_t scratch_size,bool (*proceed)(void *),void *context,unsigned position);

@@ -2300,3 +2300,54 @@ home; no edits to existing background form, all eight alarms unchanged. Receipts
 background-save-{build,flash,runtime,preview}.log under local-config/clock.
 Failure injection is host-preview evidence only, not physical storage corruption.
 No alarm engine, settings schema, radio config or power-off test changed.
+
+## Configurable wallpaper advanced controls (2026-10-02)
+
+Owner rejects fixed SFW-only/General-only filtering. Replace fixed choices with
+editable categories, purity, sort/order, top range, ratio/resolution/color/seed,
+positioning, rotation/retry and notification controls. Preserve existing settings
+on upgrade; expose their retained choices. Store optional Wallhaven key separately
+from non-secret config, mask input, use X-API-Key only for provider API calls, never
+log it or send it to image hosts. Provider requires key for NSFW; show that actual
+constraint rather than silently stripping the filter. Track persistence receipt
+before leaving settings, preserve errors/drafts. Version migration and URL/parser,
+rendering and actual-LVGL settings tests precede app-only install. Clock independent.
+
+## Active next milestone recovered (2026-10-02)
+
+Owner called out stopping after feasibility replies. Goal tool reported no active
+objective; created an active next-milestone goal covering Advanced wallpaper
+completion, onboard indoor temperature/humidity, optional local shake-to-snooze,
+and direct Sonos adapter/simulator proof without HA. Voice/Zigbee/camera findings
+must be recorded with supported-target and hardware limits. No power-off gate.
+This is not a claim that these features are already installed. Complete each with
+bounded acceptance and tests; real Sonos acoustic acceptance needs a real speaker
+but does not block controller/protocol implementation and failure-path tests.
+
+Advanced implementation: editable categories/purity/sort/order/top range,
+resolution/ratio/color/seed, positioning and rotation/retry/notification controls;
+separate masked API-key entry and provider-only header, no image-host credential.
+Legacy blob prefix migration preserves previous settings; key storage is ordinary
+NVS, not encrypted by this feature. Provider NSFW key requirement is explicit.
+Host logic tests include legacy layout, filter masks, malformed query fields and
+key injection rejection. Decoder ASan/UBSan checks fill/fit/stretch, guards,
+cancellation and malformed input. Actual LVGL tests passed Advanced roundtrip,
+missing-key feedback, masked entry, save failure/retry and25 navigation cycles.
+ESP-IDF6.1 target build passed; application-only flash verified hash, preserving
+partitions/settings. Installed runtime acceptance and hash recorded below.
+
+Next bounded work: verify SHTC3/QMI8658 register/command definitions against
+matching vendor/datasheet sources, use existing board I2C bus from a separate
+bounded sensor owner, expose freshness/errors, never block UI/alarm owner. Shake
+must be opt-in, ringing-only, deliberate motion with cooldown and use the existing
+snooze command; synthetic tests cover bumps, steady gravity, repeated gestures
+and disabled/non-ringing cases. Do not silently arm alarms or enable gestures.
+
+Installed Advanced image SHA256:
+21b4738ba12afdbf8578c9f20157b72c55c154098fd43d8188c9d291f5020f46.
+Live serial test passed two Advanced open/close and unchanged-settings save cycles,
+matching successful persistence receipts and automatic return home. Exact eight
+alarm records preserved. Receipts: local-config/clock/background-advanced-{build,
+flash,runtime,host,preview-build}.log. API-key/filter combinations were tested with
+synthetic data only; no real key was supplied or private-content download claimed.
+Sensor, shake and direct Sonos implementations remain active goal work.

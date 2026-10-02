@@ -27,6 +27,15 @@ uint32_t background_service_configure_tracked(const background_config_t *config)
     if(!background_config_valid(config))return 0;
     preview_save_draft=*config;preview_save_done=false;return ++preview_save_ticket;
 }
+static bool preview_key_present;
+uint32_t background_service_configure_credentials(const background_config_t *config,const char *key){
+    if(key&&!background_api_key_valid(key))return 0;
+    uint32_t ticket=background_service_configure_tracked(config);
+    if(ticket&&key)preview_key_present=*key!=0;
+    return ticket;
+}
+bool background_service_has_key(void){return preview_key_present;}
+bool background_service_notice(unsigned *revision,bool *error){(void)revision;(void)error;return false;}
 bool background_service_save_result(uint32_t ticket,bool *success){
     if(ticket!=preview_save_ticket||!preview_save_done)return false;
     *success=preview_save_ok;if(*success)preview_background=preview_save_draft;return true;
@@ -106,6 +115,15 @@ static bool has_text(lv_obj_t *parent,const char *text)
     if(lv_obj_check_type(parent,&lv_label_class)&&!strcmp(lv_label_get_text(parent),text))return true;
     for(unsigned i=0;i<lv_obj_get_child_count(parent);i++)if(has_text(lv_obj_get_child(parent,i),text))return true;
     return false;
+}
+static lv_obj_t *named(lv_obj_t *parent,const char *name)
+{
+    const char *value=lv_obj_get_user_data(parent);
+    if(value&&!strcmp(value,name))return parent;
+    for(unsigned i=0;i<lv_obj_get_child_count(parent);i++){
+        lv_obj_t *found=named(lv_obj_get_child(parent,i),name);if(found)return found;
+    }
+    return NULL;
 }
 int main(int argc,char **argv)
 {
@@ -381,7 +399,7 @@ int main(int argc,char **argv)
             click_text(lv_screen_active(),"Next image");advance();assert(background_next_count==scenario+1);
             lv_dropdown_set_selected(source,scenario==0?2:scenario==1?1:0);
             lv_obj_send_event(source,LV_EVENT_VALUE_CHANGED,NULL);advance();
-            if(scenario==0){lv_textarea_set_text(input,"forest lake");lv_dropdown_set_selected(period,2);}
+            if(scenario==0){lv_textarea_set_text(input,"forest lake");lv_dropdown_set_selected(period,2);lv_obj_send_event(period,LV_EVENT_VALUE_CHANGED,NULL);}
             if(scenario==1){
                 lv_textarea_set_text(input,"http://bad.example/a");click_text(lv_screen_active(),"Save");advance();
                 assert(has_text(lv_screen_active(),"Invalid source or busy; check entries"));
@@ -404,6 +422,39 @@ int main(int argc,char **argv)
             if(scenario==1)assert(preview_background.count==2);
         }
         puts("PASS background confirmed-save return, delayed receipt, duplicate suppression, failure/retry, validation and Next");
+    }
+    if(argc>3&&!strcmp(argv[3],"background-advanced-test")){
+        click_text(lv_screen_active(),"Clock");advance();click_text(lv_screen_active(),"Settings");advance();
+        click_text(lv_screen_active(),"Backgrounds");advance();click_text(lv_screen_active(),"Advanced");advance();
+        lv_obj_t *general=named(lv_screen_active(),"General"),*nsfw=named(lv_screen_active(),"NSFW");
+        assert(general&&nsfw);assert(lv_obj_has_state(general,LV_STATE_CHECKED));
+        lv_obj_t *source=NULL;
+        for(unsigned i=0;i<lv_obj_get_child_count(lv_screen_active());i++){
+            lv_obj_t *o=lv_obj_get_child(lv_screen_active(),i);
+            if(lv_obj_check_type(o,&lv_dropdown_class)){source=o;break;}
+        }
+        assert(source);lv_dropdown_set_selected(source,2);lv_obj_send_event(source,LV_EVENT_VALUE_CHANGED,NULL);
+        lv_obj_add_state(nsfw,LV_STATE_CHECKED);click_text(lv_screen_active(),"Save");advance();
+        assert(has_text(lv_screen_active(),"Wallhaven requires an API key for NSFW"));assert(!preview_save_ticket);
+        lv_obj_t *key=named(lv_screen_active(),"Wallhaven API key (masked)");assert(key&&lv_textarea_get_password_mode(key));
+        lv_textarea_set_text(key,"synthetic-test-key");
+        lv_obj_add_state(named(lv_screen_active(),"Anime"),LV_STATE_CHECKED);
+        lv_obj_add_state(named(lv_screen_active(),"Sketchy"),LV_STATE_CHECKED);
+        lv_dropdown_set_selected(named(lv_screen_active(),"Positioning"),1);
+        lv_dropdown_set_selected(named(lv_screen_active(),"Sort"),5);
+        lv_textarea_set_text(named(lv_screen_active(),"Rotation seconds (0=fixed)"),"1200");
+        lv_textarea_set_text(named(lv_screen_active(),"Ratios: e.g. 16x9,3x2 (blank=any)"),"16x9,3x2");
+        click_text(lv_screen_active(),"Save");advance();assert(has_text(lv_screen_active(),"Saving..."));
+        preview_save_done=true;preview_save_ok=true;advance();
+        assert(preview_background.options.categories==6&&preview_background.options.purity==7);
+        assert(preview_background.options.position==1&&preview_background.options.sorting==5);
+        assert(preview_background.interval_seconds==1200);
+        click_text(lv_screen_active(),"Settings");advance();click_text(lv_screen_active(),"Backgrounds");advance();
+        click_text(lv_screen_active(),"Advanced");advance();
+        assert(lv_obj_has_state(named(lv_screen_active(),"NSFW"),LV_STATE_CHECKED));
+        assert(!*lv_textarea_get_text(named(lv_screen_active(),"Wallhaven API key (masked)")));
+        assert(!strcmp(lv_textarea_get_text(named(lv_screen_active(),"Rotation seconds (0=fixed)")),"1200"));
+        puts("PASS advanced editable filters, missing-key feedback, masked credentials and saved options round trip");
     }
     if(argc>3&&!strcmp(argv[3],"calendar-test")){
         click_text(lv_screen_active(),"Clock");advance();

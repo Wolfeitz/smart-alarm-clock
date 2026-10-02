@@ -121,15 +121,25 @@ compatible access points by signal. This does not implement continuous roaming.
 
 Under **Settings → Backgrounds**, choose the bundled **Local: Blue hour** image,
 **Selected image links** (one HTTPS JPEG URL or Wallhaven wallpaper-page link per
-line, up to eight), or **Wallhaven search** (public SFW search, no API key).
-Leave the Wallhaven search blank for random SFW General-category images; enter
-a search to narrow the random selection.
+line, up to eight), or **Wallhaven search**. Leave search blank for images matching
+just your Advanced filters; enter a search to narrow the selection.
+
+**Advanced** exposes General/Anime/People and SFW/Sketchy/NSFW checkboxes,
+sort/order and toplist period, source resolution and aspect ratios, color and random
+seed, fill/crop versus fit/borders or stretch, custom rotation seconds, retry delay
+and count, and refresh/error notifications. Scroll the panel for additional controls.
+Existing General/SFW choices are preserved on upgrade and can now be changed.
+Wallhaven requires an API key for NSFW; SFW and Sketchy searches need none. Enter
+an optional key in the masked field; blank retains it, Remove saved key clears it.
+The key is stored separately from image settings and sent only to the Wallhaven
+API, never image hosts. It is not encrypted at rest by this feature.
+Resolution filters select source images; output remains 480×320.
 Choose Keep fixed, 5 minutes, 15 minutes, or an hour; tap Save. The screen shows
 Saving, then returns to the clock after settings are stored. A failed save stays
 on the settings screen with your entries intact. Image downloading happens in the
 background and does not hold you on that screen. Next image requests
 another image using the saved settings. A failed download keeps the visible image.
-Wallhaven thumbnails are center-cropped to fill the display; some images suit this
+Wallhaven thumbnails use your selected positioning; some images suit this
 small screen better than others. Direct links currently require baseline JPEG,
 up to2MiB and4096pixels per axis; unsupported images leave the previous one visible.
 

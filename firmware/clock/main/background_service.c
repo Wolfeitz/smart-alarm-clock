@@ -17,9 +17,10 @@
 extern const lv_image_dsc_t home_wallpaper;
 static SemaphoreHandle_t lock;
 static QueueHandle_t changes;
-typedef struct {background_config_t config;uint32_t ticket;} change_t;
+typedef struct {background_config_t config;uint32_t ticket;bool update_key;char key[129];} change_t;
 static uint32_t next_ticket,save_ticket;
-static bool save_done,save_ok;
+static bool save_done,save_ok,key_present;
+static unsigned notice_revision;static bool notice_error;
 static background_config_t current={.source=BACKGROUND_LOCAL,.count=1,.images={"blue-hour"}};
 static char message[96]="Local wallpaper";
 static bool busy;
@@ -41,21 +42,31 @@ const lv_image_dsc_t *background_service_image(void)
     const lv_image_dsc_t *image=displayed<0?&home_wallpaper:&frames[displayed];
     xSemaphoreGive(lock);return image;
 }
-static uint32_t configure(const background_config_t *config,bool tracked)
+static uint32_t configure(const background_config_t *config,bool tracked,const char *key)
 {
-    if(!atomic_load(&ready)||!background_config_valid(config))return 0;
+    if(!atomic_load(&ready)||!background_config_valid(config)||(key&&!background_api_key_valid(key)))return 0;
     if(config->source==BACKGROUND_LOCAL&&(config->count!=1||strcmp(config->images[0],"blue-hour")))return 0;
     xSemaphoreTake(lock,portMAX_DELAY);
     if(tracked&&save_ticket&&!save_done){xSemaphoreGive(lock);return 0;}
     uint32_t ticket=0;
     if(tracked){if(++next_ticket==0)++next_ticket;ticket=next_ticket;}
-    static change_t change;change.config=*config;change.ticket=ticket;
+    static change_t change;change.config=*config;change.ticket=ticket;change.update_key=key!=NULL;memset(change.key,0,sizeof(change.key));if(key)strcpy(change.key,key);
     bool accepted=xQueueSend(changes,&change,0)==pdTRUE;
+    memset(change.key,0,sizeof(change.key));
     if(accepted&&tracked){save_ticket=ticket;save_done=false;}
     xSemaphoreGive(lock);return accepted?(tracked?ticket:1):0;
 }
-bool background_service_configure(const background_config_t *config){return configure(config,false)!=0;}
-uint32_t background_service_configure_tracked(const background_config_t *config){return configure(config,true);}
+bool background_service_configure(const background_config_t *config){return configure(config,false,NULL)!=0;}
+uint32_t background_service_configure_tracked(const background_config_t *config){return configure(config,true,NULL);}
+uint32_t background_service_configure_credentials(const background_config_t *c,const char *key){return configure(c,true,key);}
+bool background_service_has_key(void){if(!atomic_load(&ready))return false;xSemaphoreTake(lock,portMAX_DELAY);bool value=key_present;xSemaphoreGive(lock);return value;}
+bool background_service_notice(unsigned *seen,bool *error)
+{
+    if(!atomic_load(&ready))return false;
+    xSemaphoreTake(lock,portMAX_DELAY);background_options_t o=current.options.version?current.options:background_options_default();
+    bool changed=*seen!=notice_revision;*seen=notice_revision;*error=notice_error;
+    bool enabled=notice_error?o.notify_error:o.notify_refresh;xSemaphoreGive(lock);return changed&&enabled;
+}
 bool background_service_save_result(uint32_t ticket,bool *success)
 {
     if(!atomic_load(&ready)||!ticket||!success)return false;
@@ -70,34 +81,35 @@ static bool proceed(void *context)
     if(esp_timer_get_time()>deadline||uxQueueMessagesWaiting(changes))return false;
     taskYIELD();return true;
 }
-static bool request(const char *url,uint8_t *data,size_t capacity,size_t *size)
+static bool request(const char *url,const char *key,uint8_t *data,size_t capacity,size_t *size)
 {
-    int code=network_http_request(url,NULL,NULL,(char *)data,capacity,size);
+    int code=key?network_http_wallhaven(url,key,(char *)data,capacity,size):network_http_request(url,NULL,NULL,(char *)data,capacity,size);
     diagnostics_printf("BACKGROUND_HTTP status=%d bytes=%u\n",code,(unsigned)*size);
     return code==200&&*size>0;
 }
-static bool fetch_image(const background_config_t *config,unsigned *cursor,char last_id[7],uint8_t *data,void *scratch)
+static bool fetch_image(const background_config_t *config,unsigned *cursor,char last_id[7],const char *key,uint8_t *data,void *scratch)
 {
-    char url[BACKGROUND_URL_SIZE];size_t size=0;
+    char url[1024];size_t size=0;
+    background_options_t options=config->options.version?config->options:background_options_default();
     if(config->source==BACKGROUND_WALLHAVEN){
-        if(!background_search_url(config->query,url,sizeof(url))||!request(url,data,BACKGROUND_JSON_LIMIT+1,&size))return false;
+        if(!background_search_url_options(config,url,sizeof(url))||!request(url,key,data,BACKGROUND_JSON_LIMIT+1,&size))return false;
     }else if(!background_selected_url(config->images[(*cursor)++%config->count],url,sizeof(url)))return false;
     else if(strncmp(url,"https://wallhaven.cc/api/v1/w/",strlen("https://wallhaven.cc/api/v1/w/")))goto download;
-    else if(!request(url,data,BACKGROUND_JSON_LIMIT+1,&size))return false;
+    else if(!request(url,key,data,BACKGROUND_JSON_LIMIT+1,&size))return false;
     {
         background_candidate_t candidates[BACKGROUND_MAX_IMAGES];
-        unsigned count=background_parse_search((char *)data,size,candidates,BACKGROUND_MAX_IMAGES);
+        unsigned count=background_parse_search_filtered((char *)data,size,candidates,BACKGROUND_MAX_IMAGES,config->source==BACKGROUND_SELECTED?7:options.purity);
         if(!count)return false;
-        unsigned pick=0;while(pick+1<count&&!strcmp(candidates[pick].id,last_id))pick++;
+        unsigned pick=(*cursor)++%count;if(count>1&&!strcmp(candidates[pick].id,last_id))pick=(pick+1)%count;
         strcpy(url,candidates[pick].url);strcpy(last_id,candidates[pick].id);
     }
  download:
-    if(uxQueueMessagesWaiting(changes)||!request(url,data,BACKGROUND_JPEG_LIMIT+1,&size))return false;
+    if(uxQueueMessagesWaiting(changes)||!request(url,NULL,data,BACKGROUND_JPEG_LIMIT+1,&size))return false;
     int target=-1;xSemaphoreTake(lock,portMAX_DELAY);
     for(int i=0;i<3;i++)if(i!=published&&i!=displayed){target=i;break;}
     xSemaphoreGive(lock);if(target<0)return false;
     int64_t deadline=esp_timer_get_time()+10000000;
-    if(!background_decode_jpeg(data,size,(uint16_t *)frames[target].data,scratch,8192,proceed,&deadline))return false;
+    if(!background_decode_jpeg_position(data,size,(uint16_t *)frames[target].data,scratch,8192,proceed,&deadline,options.position))return false;
     if(uxQueueMessagesWaiting(changes))return false;
     xSemaphoreTake(lock,portMAX_DELAY);published=target;revision++;unsigned shown=revision;xSemaphoreGive(lock);
     diagnostics_printf("BACKGROUND_READY revision=%u source=%u bytes=%u id=%s\n",shown,config->source,(unsigned)size,last_id);return true;
@@ -113,19 +125,26 @@ static void worker(void *arg)
         if(!pixels)memory=false;
     }
     nvs_handle_t storage;bool saved=nvs_open_from_partition("clockcfg","background",NVS_READWRITE,&storage)==ESP_OK;
-    background_config_t config=current;change_t incoming;unsigned cursor=0;char last_id[7]={0};
-    if(saved){size_t size=sizeof(incoming.config);uint32_t version=0;
-        if(nvs_get_u32(storage,"version",&version)==ESP_OK&&version==1&&nvs_get_blob(storage,"config",&incoming.config,&size)==ESP_OK&&size==sizeof(incoming.config)&&background_config_valid(&incoming.config)&&
+    background_config_t config=current;change_t incoming;unsigned cursor=0,failures=0;char last_id[7]={0},api_key[129]={0};
+    if(saved){
+        size_t size=sizeof(incoming.config);uint32_t version=0;memset(&incoming,0,sizeof(incoming));
+        if(nvs_get_u32(storage,"version",&version)==ESP_OK&&(version==1||version==2)&&nvs_get_blob(storage,"config",&incoming.config,&size)==ESP_OK&&
+           size==(version==1?offsetof(background_config_t,options):sizeof(incoming.config))&&background_config_valid(&incoming.config)&&
            (incoming.config.source!=BACKGROUND_LOCAL||(incoming.config.count==1&&!strcmp(incoming.config.images[0],"blue-hour"))))config=incoming.config;
+        size=sizeof(api_key);if(nvs_get_str(storage,"api_key",api_key,&size)!=ESP_OK||!background_api_key_valid(api_key))memset(api_key,0,sizeof(api_key));
     }
+    xSemaphoreTake(lock,portMAX_DELAY);key_present=*api_key!=0;xSemaphoreGive(lock);
     xSemaphoreTake(lock,portMAX_DELAY);current=config;xSemaphoreGive(lock);
     int64_t due=0;bool waiting_for_network=false;
     for(;;){
         if(xQueueReceive(changes,&incoming,pdMS_TO_TICKS(250))==pdTRUE){
-            esp_err_t err=saved?nvs_set_blob(storage,"config",&incoming.config,sizeof(incoming.config)):ESP_ERR_INVALID_STATE;
-            if(err==ESP_OK)err=nvs_set_u32(storage,"version",1);
+            esp_err_t err=saved?ESP_OK:ESP_ERR_INVALID_STATE;
+            if(err==ESP_OK&&incoming.update_key)err=nvs_set_str(storage,"api_key",incoming.key);
+            if(err==ESP_OK)err=nvs_set_blob(storage,"config",&incoming.config,sizeof(incoming.config));
+            if(err==ESP_OK)err=nvs_set_u32(storage,"version",2);
             if(err==ESP_OK)err=nvs_commit(storage);
-            if(err==ESP_OK){config=incoming.config;cursor=0;last_id[0]=0;due=0;
+            if(err==ESP_OK){config=incoming.config;cursor=0;last_id[0]=0;due=0;failures=0;
+                if(incoming.update_key){strcpy(api_key,incoming.key);xSemaphoreTake(lock,portMAX_DELAY);key_present=*api_key!=0;xSemaphoreGive(lock);}
                 xSemaphoreTake(lock,portMAX_DELAY);current=config;xSemaphoreGive(lock);
                 status("Background settings saved");if(config.source==BACKGROUND_LOCAL)local_image();
             }else status("Save failed; previous background retained");
@@ -134,8 +153,11 @@ static void worker(void *arg)
                 diagnostics_printf("BACKGROUND_SAVE ticket=%lu success=%u\n",(unsigned long)incoming.ticket,err==ESP_OK);
             }
         }
-        if(atomic_exchange(&next_requested,false))due=0;
+        memset(incoming.key,0,sizeof(incoming.key));
+        if(atomic_exchange(&next_requested,false)){due=0;failures=0;}
         if(config.source==BACKGROUND_LOCAL)continue;
+        background_options_t options=config.options.version?config.options:background_options_default();
+        if(config.source==BACKGROUND_WALLHAVEN&&(options.purity&1)&&!*api_key){status("Wallhaven requires an API key for NSFW");continue;}
         if(!memory){status("Image memory unavailable; local background retained");continue;}
         weather_snapshot_t network;weather_service_snapshot(&network);
         if(waiting_for_network&&network.connected){due=0;waiting_for_network=false;}
@@ -143,10 +165,13 @@ static void worker(void *arg)
         if(!network.connected){status("Wi-Fi offline; current background retained");waiting_for_network=true;due=esp_timer_get_time()+30000000;continue;}
         alarm_snapshot_t alarm;alarm_service_snapshot(&alarm);if(alarm.ringing||alarm.snoozed)continue;
         xSemaphoreTake(lock,portMAX_DELAY);busy=true;xSemaphoreGive(lock);status("Loading background...");
-        bool ok=fetch_image(&config,&cursor,last_id,data,scratch);
+        bool ok=fetch_image(&config,&cursor,last_id,api_key,data,scratch);
         status(ok?"Background updated":"Image unavailable; current background retained");
-        xSemaphoreTake(lock,portMAX_DELAY);busy=false;xSemaphoreGive(lock);
-        due=ok?(config.interval_seconds?esp_timer_get_time()+(int64_t)config.interval_seconds*1000000:INT64_MAX):esp_timer_get_time()+60000000;
+        xSemaphoreTake(lock,portMAX_DELAY);busy=false;notice_error=!ok;notice_revision++;xSemaphoreGive(lock);
+        if(ok){failures=0;due=config.interval_seconds?esp_timer_get_time()+(int64_t)config.interval_seconds*1000000:INT64_MAX;}
+        else if(failures++<options.retries)due=esp_timer_get_time()+(int64_t)options.retry_seconds*1000000;
+        else {failures=0;due=config.interval_seconds?esp_timer_get_time()+(int64_t)config.interval_seconds*1000000:INT64_MAX;}
+        memset(incoming.key,0,sizeof(incoming.key));
     }
 }
 void background_service_init(void)

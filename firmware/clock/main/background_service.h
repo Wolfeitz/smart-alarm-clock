@@ -12,3 +12,7 @@ void background_service_snapshot(background_config_t *config,char status[96],boo
 /* UI thread only. Pins immutable pixels until the next UI acquisition. */
 const lv_image_dsc_t *background_service_image(void);
 void background_service_diagnostics(void);
+
+uint32_t background_service_configure_credentials(const background_config_t *config,const char *new_key);
+bool background_service_has_key(void);
+bool background_service_notice(unsigned *revision,bool *error);

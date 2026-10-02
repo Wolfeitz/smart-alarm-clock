@@ -4,7 +4,7 @@
 typedef struct {
     const uint8_t *data;size_t size,position;
     uint16_t *pixels;
-    unsigned crop_x,crop_y,crop_width,crop_height;
+    unsigned crop_x,crop_y,crop_width,crop_height,width,height,offset_x,offset_y;
     bool (*proceed)(void *);void *context;
 } decode_t;
 static size_t read_jpeg(JDEC *decoder,uint8_t *buffer,size_t count)
@@ -24,37 +24,49 @@ static int write_tile(JDEC *decoder,void *bitmap,JRECT *r)
     if(right>s->crop_x+s->crop_width)right=s->crop_x+s->crop_width;
     if(bottom>s->crop_y+s->crop_height)bottom=s->crop_y+s->crop_height;
     if(left>=right||top>=bottom)return 1;
-    unsigned x0=ceiling_div((left-s->crop_x)*BACKGROUND_WIDTH,s->crop_width);
-    unsigned x1=ceiling_div((right-s->crop_x)*BACKGROUND_WIDTH,s->crop_width);
-    unsigned y0=ceiling_div((top-s->crop_y)*BACKGROUND_HEIGHT,s->crop_height);
-    unsigned y1=ceiling_div((bottom-s->crop_y)*BACKGROUND_HEIGHT,s->crop_height);
+    unsigned x0=ceiling_div((left-s->crop_x)*s->width,s->crop_width);
+    unsigned x1=ceiling_div((right-s->crop_x)*s->width,s->crop_width);
+    unsigned y0=ceiling_div((top-s->crop_y)*s->height,s->crop_height);
+    unsigned y1=ceiling_div((bottom-s->crop_y)*s->height,s->crop_height);
     unsigned stride=r->right-r->left+1;
     /* LVGL 9.4 vendor decoder emits B,G,R bytes in JD_FORMAT=0. */
     const uint8_t *rgb=bitmap;
     for(unsigned y=y0;y<y1;y++){
-        unsigned sy=s->crop_y+y*s->crop_height/BACKGROUND_HEIGHT;
+        unsigned sy=s->crop_y+y*s->crop_height/s->height;
         for(unsigned x=x0;x<x1;x++){
-            unsigned sx=s->crop_x+x*s->crop_width/BACKGROUND_WIDTH;
+            unsigned sx=s->crop_x+x*s->crop_width/s->width;
             const uint8_t *p=rgb+((sy-r->top)*stride+sx-r->left)*3;
-            s->pixels[y*BACKGROUND_WIDTH+x]=(uint16_t)(((p[2]>>3)<<11)|((p[1]>>2)<<5)|(p[0]>>3));
+            s->pixels[(y+s->offset_y)*BACKGROUND_WIDTH+x+s->offset_x]=(uint16_t)(((p[2]>>3)<<11)|((p[1]>>2)<<5)|(p[0]>>3));
         }
     }
     return 1;
 }
-bool background_decode_jpeg(const uint8_t *data,size_t size,uint16_t *destination,
-                            void *scratch,size_t scratch_size,bool (*proceed)(void *),void *context)
+bool background_decode_jpeg_position(const uint8_t *data,size_t size,uint16_t *destination,
+                            void *scratch,size_t scratch_size,bool (*proceed)(void *),void *context,unsigned position)
 {
-    if(!data||size<4||size>BACKGROUND_JPEG_LIMIT||!destination||!scratch||scratch_size<8192||
+    if(position>2||!data||size<4||size>BACKGROUND_JPEG_LIMIT||!destination||!scratch||scratch_size<8192||
        data[0]!=0xff||data[1]!=0xd8)return false;
     decode_t state={.data=data,.size=size,.pixels=destination,.proceed=proceed,.context=context};
     JDEC decoder;
     if(jd_prepare(&decoder,read_jpeg,scratch,scratch_size,&state)!=JDR_OK)return false;
     if(!decoder.width||!decoder.height||decoder.width>4096||decoder.height>4096)return false;
-    state.crop_width=decoder.width;state.crop_height=decoder.height;
+    state.crop_width=decoder.width;state.crop_height=decoder.height;state.width=BACKGROUND_WIDTH;state.height=BACKGROUND_HEIGHT;
+    if(position==0){
     if((unsigned)decoder.width*BACKGROUND_HEIGHT>(unsigned)decoder.height*BACKGROUND_WIDTH)
         state.crop_width=(unsigned)decoder.height*BACKGROUND_WIDTH/BACKGROUND_HEIGHT;
     else state.crop_height=(unsigned)decoder.width*BACKGROUND_HEIGHT/BACKGROUND_WIDTH;
+    }
+    if(position==1){
+        if((unsigned)decoder.width*BACKGROUND_HEIGHT>(unsigned)decoder.height*BACKGROUND_WIDTH)state.height=(unsigned)decoder.height*BACKGROUND_WIDTH/decoder.width;
+        else state.width=(unsigned)decoder.width*BACKGROUND_HEIGHT/decoder.height;
+        if(!state.width||!state.height)return false;
+        state.offset_x=(BACKGROUND_WIDTH-state.width)/2;state.offset_y=(BACKGROUND_HEIGHT-state.height)/2;
+        memset(destination,0,BACKGROUND_PIXELS*sizeof(*destination));
+    }
     if(!state.crop_width||!state.crop_height)return false;
     state.crop_x=(decoder.width-state.crop_width)/2;state.crop_y=(decoder.height-state.crop_height)/2;
     return jd_decomp(&decoder,write_tile,0)==JDR_OK;
 }
+
+bool background_decode_jpeg(const uint8_t *data,size_t size,uint16_t *destination,void *scratch,size_t scratch_size,bool (*proceed)(void *),void *context)
+{return background_decode_jpeg_position(data,size,destination,scratch,scratch_size,proceed,context,0);}
