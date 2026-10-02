@@ -23,7 +23,7 @@ are `background-worker-flash.log` and `background-worker-live.log` under
 | Local scheduled trigger | Once alarm triggered on physical board; consumption saved before playback | State transition demonstrated |
 | Audible local sound | Owner confirms clear audible tone; factory music louder but distorted; accepts current tone for now | Audibility demonstrated; owner now reports wake-up loudness insufficient |
 | Snooze and dismiss | Real five-minute snooze re-rang after300.01 seconds; dismissal cleared state | Scheduler and on-device LVGL event paths demonstrated; physical button check pending |
-| Restart recovery | Ringing, snooze, dismissal and brightness survive MCU resets | Demonstrated |
+| Restart recovery | Current1fa9f06 image: offline ringing, snooze and dismissal survived three processor resets; RTC valid, alarm overlay restored and saved slots preserved (offline-recovery-1fa9f06-runtime.log). Brightness persistence was previously demonstrated | Processor reset demonstrated; full power-loss remains unqualified |
 | Saved brightness | Owner confirmed Dim/Brighten; brightness25 survived reset, restored160 | Demonstrated |
 | Power-return startup | Owner reports powered back on and current application looks good; prior battery state disconnected | Display/application recovery observed by owner; offline RTC retention without backup power is not established |
 | Independence from Wi-Fi | RTC, engine, NVS, UI and audio remain local; HTTPS in separate lower-priority worker | Current1fa9f06 image: SDK radio-off RTC deadline triggered persisted alarm, local audio writes succeeded, snooze/dismiss passed; all eight alarm records restored exactly and network reconnection verified (offline-background-1fa9f06-runtime.log) |

@@ -2190,3 +2190,22 @@ offline deadline. Receipt: offline-background-1fa9f06-runtime.log and original.j
 under local-config/clock. No firmware update, clock adjustment or full power-off.
 Audio transfer is measured; acoustic loudness and final physical/power acceptance
 remain as previously recorded and owner-deferred. Goal remains incomplete.
+
+
+Current-image recovery check: prior goal turn made progress by measuring offline
+trigger/audio/snooze/dismiss. Remaining automated gap after adding the worker is
+active-phase recovery on this exact image. Reuse bounded existing recovery test,
+adding ringing reset before snooze/dismiss resets. Validate restored RTC, radio-off,
+NVS consumption/phase and visible alarm overlay; restore exact alarm slots/radio.
+Processor reset only; no power-loss equivalence or acoustic claim.
+
+Current-image processor recovery PASS on1fa9f06/8247c382: offline RTC deadline
+triggered persisted slot0, audio transfers succeeded. Three processor resets
+restored ringing with visible LVGL overlay, preserved snooze/consumption, then
+preserved dismissal without re-ringing. RTC/system remained within one second;
+radio stayed disabled across each reset, no background/weather HTTP during offline
+boots. Exact eight-slot alarm restoration and Wi-Fi/weather recovery passed.
+Receipt: local-config/clock/offline-recovery-1fa9f06-runtime.log; original snapshot
+and bounded test script retained privately. Firmware unchanged. This closes the
+current-worker software reset regression, not full power-loss/RTC battery or final
+physical acoustic/touch acceptance. Those remain owner-deferred; goal incomplete.
