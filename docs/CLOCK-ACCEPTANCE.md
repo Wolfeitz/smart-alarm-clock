@@ -1,5 +1,16 @@
 # Offline clock acceptance
 
+## Current owner direction — power-off requirement removed (2026-10-01)
+
+Power-off, full power-loss, battery/RTC-retention and interrupted-power testing
+are not required for this project milestone, goal completion, or continued
+development. Do not request these tests, defer them as future gates, or mark work
+blocked because they are absent. This supersedes historical checklists, blocked
+audits and the original goal wording. Do not claim those unperformed tests passed.
+Keep offline operation, normal processor-restart recovery and settings integrity
+requirements. Continue authorized development independently of optional physical
+qualification; ask for physical action only when necessary to establish feasibility.
+
 **Current board:** clock with Wi-Fi picker, manually selected Summerfield weather,
 current/day forecast, network time/RTC sync and dark home/weather UI. Owner previously accepted
 the clear local tone provisionally, but on September30 explicitly reported it is
@@ -18,33 +29,24 @@ are `background-worker-flash.log` and `background-worker-live.log` under
 | Installed ESP-IDF clock application | Application-only esptool hash verification; CLOCK_READY and RTC heartbeat in local-time-runtime.log | Demonstrated |
 | Readable display and aligned touch | Owner confirmed time/date, drawing/CLEAR and Dim/Brighten | Clock foundation demonstrated; owner reports current screen looks good after power return |
 | RTC-backed offline time | RTC write/readback and reset without TIME command; system/RTC agree within one second | Demonstrated across MCU reset |
-| Local time/date entry | Set time installed; host calendar/leap/DST tests pass; RTC adapter already hardware-tested | On-device LVGL navigation/save tested; physical editor use pending |
-| Editable persistent alarms | Eight-slot editor installed; NVS save/reset readback preserved disabled06:43 weekdays62; exact save acknowledgment implemented | Persistence and on-device LVGL editing/save demonstrated; physical editor pending |
+| Local time/date entry | Set time installed; host calendar/leap/DST tests pass; RTC adapter already hardware-tested | On-device LVGL navigation/save tested; further physical UX review optional |
+| Editable persistent alarms | Eight-slot editor installed; NVS save/reset readback preserved disabled06:43 weekdays62; exact save acknowledgment implemented | Persistence and on-device LVGL editing/save demonstrated |
 | Local scheduled trigger | Once alarm triggered on physical board; consumption saved before playback | State transition demonstrated |
 | Audible local sound | Owner confirms clear audible tone; factory music louder but distorted; accepts current tone for now | Audibility demonstrated; owner now reports wake-up loudness insufficient |
-| Snooze and dismiss | Real five-minute snooze re-rang after300.01 seconds; dismissal cleared state | Scheduler and on-device LVGL event paths demonstrated; physical button check pending |
-| Restart recovery | Current1fa9f06 image: offline ringing, snooze and dismissal survived three processor resets; RTC valid, alarm overlay restored and saved slots preserved (offline-recovery-1fa9f06-runtime.log). Brightness persistence was previously demonstrated | Processor reset demonstrated; full power-loss remains unqualified |
+| Snooze and dismiss | Real five-minute snooze re-rang after300.01 seconds; dismissal cleared state | Scheduler and on-device LVGL event paths demonstrated; touch alignment previously owner-confirmed |
+| Restart recovery | Current1fa9f06 image: offline ringing, snooze and dismissal survived three processor resets; RTC valid, alarm overlay restored and saved slots preserved (offline-recovery-1fa9f06-runtime.log). Brightness persistence was previously demonstrated | Processor reset demonstrated; power-loss testing excluded from requirements |
 | Saved brightness | Owner confirmed Dim/Brighten; brightness25 survived reset, restored160 | Demonstrated |
-| Power-return startup | Owner reports powered back on and current application looks good; prior battery state disconnected | Display/application recovery observed by owner; offline RTC retention without backup power is not established |
 | Independence from Wi-Fi | RTC, engine, NVS, UI and audio remain local; HTTPS in separate lower-priority worker | Current1fa9f06 image: SDK radio-off RTC deadline triggered persisted alarm, local audio writes succeeded, snooze/dismiss passed; all eight alarm records restored exactly and network reconnection verified (offline-background-1fa9f06-runtime.log) |
 | Factory recovery preserved | Private32MB factory backup and prior whole-image restoration/hash proof; factory partitions retained | Demonstrated; no further factory rewrite needed |
 
-Build/host tests cannot prove sound, physical controls or a complete power cycle.
-Owner has confirmed successful power-return startup. Battery-backed RTC retention,
-alarm recovery across full power loss, and physical alarm controls on the final
-combined application remain separate acceptance checks.
+The functional offline-clock milestone is supported by the evidence above under
+the owner's revised requirements. Power-loss testing has been removed entirely.
+Additional acoustic/physical UX qualification remains optional and cannot block
+feature development. No unperformed test is claimed as passed.
 
 Evidence and commands are recorded in WORK.md; private runtime receipts are under
-local-config/clock. Reproduce pure logic checks with python scripts/test-clock-host.py.
-Weather connection, HTTPS success, fresh parsed snapshot and RTC sync were
-observed on-device; see WEATHER.md. The remaining human checks have been requested. Do not infer successful checks
-from unanswered requests or from this checklist.
-
-Owner defers further full power-off tests until regular functionality is complete.
-Scheduled night mode is installed; interval/wake/migration host checks pass.
-The current UI has an initial home-layout improvement; full visual polish remains
-unfinished. The final combined physical procedure is below; it is not a request
-to perform power-off testing now.
+local-config/clock. Historical entries below retain their original evidence limits;
+any old requirement or blocker conflicts are superseded by the owner direction above.
 
 ## Current evidence refresh (2026-09-24)
 
@@ -151,7 +153,7 @@ dismissal. New-image boot/navigation/audio-transport checks passed; all eight
 alarms remained unchanged. The prior offline scheduler test is historical; this
 change does not repeat it or prove acoustic latency. See audio-cancel-runtime.log.
 
-## Final combined physical procedure (prepared, not executed)
+## Optional physical review procedure (not a completion or development gate)
 
 Run this once integrated functionality and interface work are ready, honoring the
 owner's instruction to batch physical checks. The operator's observations are
@@ -187,33 +189,14 @@ the router or erasing credentials.
    from RTC before any network correction. This is a reset test, not evidence of
    complete power loss. Historical MCU recovery receipts already cover active
    ringing and snooze; repeat on the final image if its recovery path has changed.
-4. **Full interruption, only at the agreed final test.** Document whether any
-   battery or other backup supply is connected. Remove all device power for a
-   measured interval, restore it with Wi-Fi still unavailable, and record startup,
-   alarm configuration and brightness. If the RTC retained valid time, compare
-   elapsed time against the measured interval. If RTC time was lost, the clock
-   must visibly request time instead of scheduling against an invented date.
-   Set local time through Settings, then verify a future alarm works offline.
-   Report lack of RTC retention as a hardware/backup limitation, not a pass for
-   battery-backed timekeeping.
-5. **Active-phase interruption.** With valid retained RTC power established,
-   interrupt device power during a five-minute snooze and restore it before the
-   deadline. The remaining interval must be recovered, followed by audible
-   ringing and working Dismiss. A test without valid retained time cannot prove
-   timed recovery; record that case separately. Abrupt loss during a settings save
-   must leave a valid previous or new configuration after restart, not malformed
-   data; preserve before/after records for that separate fault case.
-
 Finish by restoring the original alarm/display settings and checking all eight
 records exactly, turning Wi-Fi back on if it was originally on, and verifying
 that no test alarm remains armed or snoozed. Leave the verified application
 installed. Never restore the factory demo merely to end this test.
 
-**Still unproven:** final physical editor/control behavior, acoustic stop behavior
-after the latest cancellation fix, full interruption during save, RTC retention
-under the actual power arrangement, and timed active-phase recovery across full
-power loss. These observations are required before claiming the offline goal is
-complete. This procedure itself is preparation, not acceptance evidence.
+Further physical editor/control and acoustic observations may improve product
+qualification but are not prerequisites for continued development. Power-off,
+RTC-backup and interrupted-save tests are not part of this procedure.
 
 September30 persistent-offline image passed a radio-off MCU restart: saved off
 flag loaded, radio boot stayed off, RTC/system agreed, no network activity was

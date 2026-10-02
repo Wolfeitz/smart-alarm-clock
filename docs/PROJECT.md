@@ -1,5 +1,16 @@
 # Product requirements and architecture
 
+## Current owner direction — power-off requirement removed (2026-10-01)
+
+Power-off, full power-loss, battery/RTC-retention and interrupted-power testing
+are not required for this project milestone, goal completion, or continued
+development. Do not request these tests, defer them as future gates, or mark work
+blocked because they are absent. This supersedes historical checklists, blocked
+audits and the original goal wording. Do not claim those unperformed tests passed.
+Keep offline operation, normal processor-restart recovery and settings integrity
+requirements. Continue authorized development independently of optional physical
+qualification; ask for physical action only when necessary to establish feasibility.
+
 Status: approved bootstrap distillation of the supplied brief, not authorization
 to implement all V1 features. Owner: Rob. Date: 2026-09-23.
 [Original brief](reference/PRODUCT-BRIEF.md) is reference-only. Current user scope
@@ -83,7 +94,7 @@ current integration capability and vendor terms when that work starts.
   No Spotify video/Canvas playback. Alarm use inherits FALLBACK acceptance.
 - **CONFIG:** Separate secret and non-secret configuration. Document provisioning;
   no credentials in source, samples or logs. Cover defaults, reload, corrupt/missing
-  values, version migration and reset/power loss during configuration writes.
+  values, version migration, processor restart and injected storage errors.
 - **RELIABILITY:** Bounded retries/backoff; tolerate DNS/NTP/network/auth failures,
   missing/corrupt SD media, invalid RTC, malformed responses and reboots. Redacted
   subsystem logs include firmware version, reset reason and peripheral/time/alarm
@@ -145,7 +156,7 @@ forecast, with timezone derived from the selected location. After functionality,
 polish the bedside interface. Keep provider adapters and presentation separate so
 Home Assistant entities and later spoken weather/schedule summaries can be added
 without coupling them to alarm execution. Weather/location work may proceed while
-the remaining physical power-cycle check is pending; core offline guarantees remain.
+optional physical qualification is incomplete; core offline guarantees remain.
 
 
 ## Portability clarification (2026-09-24)

@@ -6,8 +6,8 @@ LCD 3.5-inch board described in the supplied brief and identified by Rob's recei
 ESP-IDF6.1, with confirmed time/date, advancing seconds and touch brightness.
 Local alarm editing, scheduling, snooze/dismiss, persistence and sound now run on
 the board. Wi-Fi scanning, saved connection, network time and local weather/current
-day forecast are now verified on-device. See WORK for evidence and remaining
-physical power-loss checks.
+day forecast are now verified on-device. See WORK for evidence and continuing development. Power-off testing is not a
+requirement or development gate; see the current owner direction in PROJECT.
 
 Daily controls: [Using the clock](docs/USER-GUIDE.md).
 

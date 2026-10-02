@@ -1,5 +1,16 @@
 # Work, decisions and evidence
 
+## Current owner direction — power-off requirement removed (2026-10-01)
+
+Power-off, full power-loss, battery/RTC-retention and interrupted-power testing
+are not required for this project milestone, goal completion, or continued
+development. Do not request these tests, defer them as future gates, or mark work
+blocked because they are absent. This supersedes historical checklists, blocked
+audits and the original goal wording. Do not claim those unperformed tests passed.
+Keep offline operation, normal processor-restart recovery and settings integrity
+requirements. Continue authorized development independently of optional physical
+qualification; ask for physical action only when necessary to establish feasibility.
+
 Owner: Rob. Updated: 2026-09-23. Working clock/weather example installed.
 Current evidence: local alarm UI/scheduler/persistence tested, quiet sound accepted,
 Wi-Fi scan and saved reconnection, live HTTPS weather and NTP/RTC sync verified.
@@ -2209,3 +2220,43 @@ Receipt: local-config/clock/offline-recovery-1fa9f06-runtime.log; original snaps
 and bounded test script retained privately. Firmware unchanged. This closes the
 current-worker software reset regression, not full power-loss/RTC battery or final
 physical acoustic/touch acceptance. Those remain owner-deferred; goal incomplete.
+
+Post-recovery goal audit1: previous turn was progress (current-image offline
+ringing/snooze/dismiss reset proof). Rechecked acceptance and terminal receipt;
+no running test remains, no new core defect or missing automated check identified.
+Remaining full-goal evidence requires owner-deferred physical/power-loss checks.
+No firmware/device change or repeated physical prompt. First consecutive blocked
+observation after progress; goal remains active/incomplete, not marked complete.
+Post-recovery audit2: previous turn was no progress, not a live test wait. Current
+checkout/acceptance still show the same owner-deferred physical power-loss gap;
+no new evidence, executable change or authorized substitute. Second consecutive
+blocked observation. Leave firmware untouched and goal incomplete/active.
+Post-recovery audit3: third consecutive observation of the same physical/power-loss
+acceptance gap; prior turn was no progress, no test remains running, and no new
+permission/evidence changes the owner deferral. Mark this verification goal blocked,
+not complete. Installed image remains unchanged. This does not prohibit separately
+authorized feature work; it ends repeated automatic audits of this blocked goal.
+
+
+## Owner removes power-off gate entirely (2026-10-01)
+
+Explicit instruction removes the requirement, rather than postponing it. Updated
+AGENTS, PROJECT, TESTING, README and current acceptance; removed power-interruption
+steps from the prospective procedure. All earlier power-loss blockers/deferrals in
+this chronological log are superseded. Retain truthful evidence limits only.
+Core milestone evidence covers installed clock, user-confirmed display/touch and
+audible tone, device alarm scheduling/settings/UI paths, snooze/dismiss, brightness,
+RTC and offline processor recovery. Adequate wake-up loudness remains a product
+improvement (Sonos selected), not a denial that local sound is audible. Do not
+restart the automatic blocked-audit loop. Optional further physical UI/acoustic
+qualification does not halt authorized development. No firmware changed here.
+
+Revised-goal completion audit: the owner removed power-off acceptance; all remaining
+explicit core requirements have evidence in CLOCK-ACCEPTANCE (installed app hash,
+owner display/touch/audible-tone confirmations, device alarm/save/UI checks, real
+snooze interval, brightness and offline RTC/reset recovery). Rechecked installed
+build hash against flash receipt and the just-completed recovery results. Close
+the old core verification goal under this revised scope, not the broader product
+roadmap. No claim of wake-up-volume qualification or unperformed power-loss tests.
+Goal tools cannot edit objective text; the authoritative owner amendment above
+supersedes its historical wording. Bootstrap verifier and diff check passed.

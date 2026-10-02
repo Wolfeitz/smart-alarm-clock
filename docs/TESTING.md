@@ -1,5 +1,16 @@
 # Verification
 
+## Current owner direction — power-off requirement removed (2026-10-01)
+
+Power-off, full power-loss, battery/RTC-retention and interrupted-power testing
+are not required for this project milestone, goal completion, or continued
+development. Do not request these tests, defer them as future gates, or mark work
+blocked because they are absent. This supersedes historical checklists, blocked
+audits and the original goal wording. Do not claim those unperformed tests passed.
+Keep offline operation, normal processor-restart recovery and settings integrity
+requirements. Continue authorized development independently of optional physical
+qualification; ask for physical action only when necessary to establish feasibility.
+
 ## Available now
 
 From the project root:
@@ -53,7 +64,7 @@ error or timeout is unproven execution, not a passing result.
   identity, configuration (redacted), procedure, observed result and date.
 - Demonstrate audible local fallback with Wi-Fi, HA, Spotify and target unavailable;
   remove SD and corrupt selected media; exercise local snooze/dismiss and reboot.
-- Test repeated boots and power loss during settings updates. For long-lived task,
+- Test processor restarts and settings reload/error handling. For long-lived task,
   timer, queue, network and audio resources, verify cleanup and bounded recovery;
   record bounded soak duration, memory behavior and failures when relevant.
 

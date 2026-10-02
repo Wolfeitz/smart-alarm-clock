@@ -11,6 +11,12 @@ settings usable without network services. Keep business logic independent of
 LVGL; network work must not block UI or alarm execution. Follow the accepted
 architecture and phase gates in docs/PROJECT.md.
 
+Owner removed power-off/full-power-loss, battery/RTC-retention and interrupted-power
+testing as requirements entirely. Never use their absence to block development or
+goal completion, or request them as a future gate. This overrides historical goal
+wording and acceptance audits. Preserve truthful evidence limits; continue authorized
+work without repeating blocked audits or requiring per-feature physical checks.
+
 For small changes, use the request and focused checks. For meaningful firmware,
 persistence or integration work, record acceptance and interfaces before coding.
 Record commands, outcomes, limitations and next steps in docs/WORK.md. A build
