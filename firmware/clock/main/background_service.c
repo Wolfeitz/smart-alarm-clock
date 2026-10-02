@@ -17,6 +17,9 @@
 extern const lv_image_dsc_t home_wallpaper;
 static SemaphoreHandle_t lock;
 static QueueHandle_t changes;
+typedef struct {background_config_t config;uint32_t ticket;} change_t;
+static uint32_t next_ticket,save_ticket;
+static bool save_done,save_ok;
 static background_config_t current={.source=BACKGROUND_LOCAL,.count=1,.images={"blue-hour"}};
 static char message[96]="Local wallpaper";
 static bool busy;
@@ -38,11 +41,27 @@ const lv_image_dsc_t *background_service_image(void)
     const lv_image_dsc_t *image=displayed<0?&home_wallpaper:&frames[displayed];
     xSemaphoreGive(lock);return image;
 }
-bool background_service_configure(const background_config_t *config)
+static uint32_t configure(const background_config_t *config,bool tracked)
 {
-    if(!atomic_load(&ready)||!background_config_valid(config))return false;
-    if(config->source==BACKGROUND_LOCAL&&(config->count!=1||strcmp(config->images[0],"blue-hour")))return false;
-    return xQueueSend(changes,config,0)==pdTRUE;
+    if(!atomic_load(&ready)||!background_config_valid(config))return 0;
+    if(config->source==BACKGROUND_LOCAL&&(config->count!=1||strcmp(config->images[0],"blue-hour")))return 0;
+    xSemaphoreTake(lock,portMAX_DELAY);
+    if(tracked&&save_ticket&&!save_done){xSemaphoreGive(lock);return 0;}
+    uint32_t ticket=0;
+    if(tracked){if(++next_ticket==0)++next_ticket;ticket=next_ticket;}
+    static change_t change;change.config=*config;change.ticket=ticket;
+    bool accepted=xQueueSend(changes,&change,0)==pdTRUE;
+    if(accepted&&tracked){save_ticket=ticket;save_done=false;}
+    xSemaphoreGive(lock);return accepted?(tracked?ticket:1):0;
+}
+bool background_service_configure(const background_config_t *config){return configure(config,false)!=0;}
+uint32_t background_service_configure_tracked(const background_config_t *config){return configure(config,true);}
+bool background_service_save_result(uint32_t ticket,bool *success)
+{
+    if(!atomic_load(&ready)||!ticket||!success)return false;
+    xSemaphoreTake(lock,portMAX_DELAY);
+    bool found=save_ticket==ticket&&save_done;if(found)*success=save_ok;
+    xSemaphoreGive(lock);return found;
 }
 bool background_service_next(void){if(!atomic_load(&ready))return false;atomic_store(&next_requested,true);return true;}
 static bool proceed(void *context)
@@ -94,22 +113,26 @@ static void worker(void *arg)
         if(!pixels)memory=false;
     }
     nvs_handle_t storage;bool saved=nvs_open_from_partition("clockcfg","background",NVS_READWRITE,&storage)==ESP_OK;
-    background_config_t config=current,incoming;unsigned cursor=0;char last_id[7]={0};
-    if(saved){size_t size=sizeof(incoming);uint32_t version=0;
-        if(nvs_get_u32(storage,"version",&version)==ESP_OK&&version==1&&nvs_get_blob(storage,"config",&incoming,&size)==ESP_OK&&size==sizeof(incoming)&&background_config_valid(&incoming)&&
-           (incoming.source!=BACKGROUND_LOCAL||(incoming.count==1&&!strcmp(incoming.images[0],"blue-hour"))))config=incoming;
+    background_config_t config=current;change_t incoming;unsigned cursor=0;char last_id[7]={0};
+    if(saved){size_t size=sizeof(incoming.config);uint32_t version=0;
+        if(nvs_get_u32(storage,"version",&version)==ESP_OK&&version==1&&nvs_get_blob(storage,"config",&incoming.config,&size)==ESP_OK&&size==sizeof(incoming.config)&&background_config_valid(&incoming.config)&&
+           (incoming.config.source!=BACKGROUND_LOCAL||(incoming.config.count==1&&!strcmp(incoming.config.images[0],"blue-hour"))))config=incoming.config;
     }
     xSemaphoreTake(lock,portMAX_DELAY);current=config;xSemaphoreGive(lock);
     int64_t due=0;bool waiting_for_network=false;
     for(;;){
         if(xQueueReceive(changes,&incoming,pdMS_TO_TICKS(250))==pdTRUE){
-            esp_err_t err=saved?nvs_set_blob(storage,"config",&incoming,sizeof(incoming)):ESP_ERR_INVALID_STATE;
+            esp_err_t err=saved?nvs_set_blob(storage,"config",&incoming.config,sizeof(incoming.config)):ESP_ERR_INVALID_STATE;
             if(err==ESP_OK)err=nvs_set_u32(storage,"version",1);
             if(err==ESP_OK)err=nvs_commit(storage);
-            if(err==ESP_OK){config=incoming;cursor=0;last_id[0]=0;due=0;
+            if(err==ESP_OK){config=incoming.config;cursor=0;last_id[0]=0;due=0;
                 xSemaphoreTake(lock,portMAX_DELAY);current=config;xSemaphoreGive(lock);
                 status("Background settings saved");if(config.source==BACKGROUND_LOCAL)local_image();
             }else status("Save failed; previous background retained");
+            if(incoming.ticket){
+                xSemaphoreTake(lock,portMAX_DELAY);save_ok=err==ESP_OK;save_done=true;xSemaphoreGive(lock);
+                diagnostics_printf("BACKGROUND_SAVE ticket=%lu success=%u\n",(unsigned long)incoming.ticket,err==ESP_OK);
+            }
         }
         if(atomic_exchange(&next_requested,false))due=0;
         if(config.source==BACKGROUND_LOCAL)continue;
@@ -128,7 +151,7 @@ static void worker(void *arg)
 }
 void background_service_init(void)
 {
-    lock=xSemaphoreCreateMutex();changes=xQueueCreate(1,sizeof(background_config_t));
+    lock=xSemaphoreCreateMutex();changes=xQueueCreate(1,sizeof(change_t));
     if(!lock||!changes)return;
     atomic_store(&ready,true);
     if(xTaskCreate(worker,"background",16384,NULL,1,NULL)!=pdPASS)atomic_store(&ready,false);

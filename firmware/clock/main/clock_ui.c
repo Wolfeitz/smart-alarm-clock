@@ -17,6 +17,7 @@
 #include <string.h>
 extern const lv_image_dsc_t home_wallpaper;
 static bool scenic_home,background_editing,background_error;
+static uint32_t background_save_ticket;
 static lv_obj_t *home_image,*background_source,*background_interval,*background_input,*background_status;
 static background_config_t background_draft;
 static void show_backgrounds(lv_event_t *e);
@@ -78,7 +79,7 @@ static void show_editor(void);
 static void show_time_editor(lv_event_t *e);
 static void reset_screen(void)
 {
-    scenic_home=false;background_editing=false;calendar_view=false;weather_art=NULL;artwork_code=-999;alarm_list_view=false;settings_view=false;display_editing=false;display_pending=false;ha_view=false;ha_editing=false;ha_error=false;media_view=false;media_editing=false;media_error=false;
+    scenic_home=false;background_editing=false;background_save_ticket=0;calendar_view=false;weather_art=NULL;artwork_code=-999;alarm_list_view=false;settings_view=false;display_editing=false;display_pending=false;ha_view=false;ha_editing=false;ha_error=false;media_view=false;media_editing=false;media_error=false;
     weather_view=false;network_editing=false;location_editing=false;wifi_listing=false;network_connecting=false;
     lv_obj_clean(root);lv_obj_set_style_bg_color(root,lv_color_hex(0x0c141b),0);
     lv_obj_remove_flag(root,LV_OBJ_FLAG_SCROLLABLE);
@@ -507,7 +508,7 @@ static void background_source_changed(lv_event_t *e)
 }
 static void background_save(lv_event_t *e)
 {
-    (void)e;background_error=true;memset(&background_draft,0,sizeof(background_draft));
+    (void)e;if(background_save_ticket)return;background_error=true;memset(&background_draft,0,sizeof(background_draft));
     background_draft.source=lv_dropdown_get_selected(background_source);
     const unsigned seconds[]={0,300,900,3600};background_draft.interval_seconds=seconds[lv_dropdown_get_selected(background_interval)];
     const char *text=lv_textarea_get_text(background_input);
@@ -523,7 +524,8 @@ static void background_save(lv_event_t *e)
             text=end+1;
         }
     }
-    bool ok=background_service_configure(&background_draft);
+    background_save_ticket=background_service_configure_tracked(&background_draft);
+    bool ok=background_save_ticket!=0;
     lv_label_set_text(background_status,ok?"Saving...":"Invalid source or busy; check entries");
     if(ok){background_error=false;lv_obj_add_flag(keyboard,LV_OBJ_FLAG_HIDDEN);lv_keyboard_set_textarea(keyboard,NULL);}
 }
@@ -869,7 +871,16 @@ void clock_ui_update(void)
         if(w.restart_for_zone)lv_obj_remove_flag(zone_button,LV_OBJ_FLAG_HIDDEN);else lv_obj_add_flag(zone_button,LV_OBJ_FLAG_HIDDEN);
         return;
     }
-    if(background_editing){if(background_error)return;char text[96];bool busy; background_service_snapshot(NULL,text,&busy);lv_label_set_text(background_status,text);return;}
+    if(background_editing){
+        if(background_save_ticket){
+            bool success;if(!background_service_save_result(background_save_ticket,&success))return;
+            background_save_ticket=0;
+            if(success){home();return;}
+            background_error=true;lv_label_set_text(background_status,"Save failed; please retry");return;
+        }
+        if(background_error)return;
+        char text[96];bool busy; background_service_snapshot(NULL,text,&busy);lv_label_set_text(background_status,text);return;
+    }
     if(calendar_view)return;
     if(time_editing)return;
     if(editing){

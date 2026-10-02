@@ -124,7 +124,10 @@ Under **Settings → Backgrounds**, choose the bundled **Local: Blue hour** imag
 line, up to eight), or **Wallhaven search** (public SFW search, no API key).
 Leave the Wallhaven search blank for random SFW General-category images; enter
 a search to narrow the random selection.
-Choose Keep fixed, 5 minutes, 15 minutes, or an hour; tap Save. Next image requests
+Choose Keep fixed, 5 minutes, 15 minutes, or an hour; tap Save. The screen shows
+Saving, then returns to the clock after settings are stored. A failed save stays
+on the settings screen with your entries intact. Image downloading happens in the
+background and does not hold you on that screen. Next image requests
 another image using the saved settings. A failed download keeps the visible image.
 Wallhaven thumbnails are center-cropped to fill the display; some images suit this
 small screen better than others. Direct links currently require baseline JPEG,

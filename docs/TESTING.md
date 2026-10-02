@@ -304,8 +304,9 @@ coverage, RGB565 color, guard words, cancellation, truncated and invalid data.
 LeakSanitizer is disabled because it cannot run under the sandbox's ptrace.
 The consolidated host runner includes background-source/query validation and
 Wallhaven array/single-image response parsing. Actual-LVGL `background-test`
-checks source/list/interval/Next controls and preserving configuration after an
-invalid URL. These synthetic checks do not prove real Wallhaven availability.
+checks source/list/interval/Next controls, delayed save receipts, duplicate-tap
+suppression, return to home only after confirmed persistence, failure/retry with
+retained entries, and preserving configuration after an invalid URL. These synthetic checks do not prove real Wallhaven availability.
 
 The JPEG host check compiles the private background_jpeg wrapper used on target.
 After a firmware build, confirm background_jd_prepare/background_jd_decomp resolve

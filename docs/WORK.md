@@ -2260,3 +2260,43 @@ the old core verification goal under this revised scope, not the broader product
 roadmap. No claim of wake-up-volume qualification or unperformed power-loss tests.
 Goal tools cannot edit objective text; the authoritative owner amendment above
 supersedes its historical wording. Bootstrap verifier and diff check passed.
+
+## Background save navigation (2026-10-02)
+
+Owner reports Save leaves settings apparently idle. Acceptance: show Saving while
+queued, return to the clock only after that request's NVS commit succeeds, keep
+validation/save errors and entered values visible, reject duplicate pending saves.
+Image downloading continues independently; no wait for Wallhaven/Internet to exit.
+Use a tracked worker receipt distinct from transient download status. Verify delayed
+success, failure/retry and validation in actual LVGL, then build/install and check
+the saved-config navigation without changing personal settings or alarms.
+
+
+Outstanding product work reviewed2026-10-02: direct Sonos playback/playlist trigger
+and verified stop/volume/fallback; named multi-stage wake-up sequences (currently
+independent alarms); external calendar/schedule/exception import; personal local
+wallpaper importing and durable downloaded-image caching; continued screen/setup
+polish. Spoken briefings/AI and Libre remain later exploration; companion website
+stays parked. Power-off testing is not on this list and cannot gate development.
+
+Tactile output exploration requested: prefer direct BLE custom vibration puck or
+wearable as an optional local output, with a documented control service, bounded
+patterns and start/stop acknowledgement. Adafruit BLE Buzzy Box demonstrates BLE
+plus haptic driver/motor, but its ANCS code needs adaptation for direct clock control:
+https://learn.adafruit.com/ble-buzzy-box?view=all
+No off-the-shelf puck protocol or wake-up strength has been qualified. A full bed
+shaker needs its own suitable actuator/driver/power. Zigbee vibration sensors are
+inputs, not tactile outputs; Zigbee sirens usually provide audible stored tones.
+No new radio stack, hardware purchase or haptic implementation authorized here.
+
+Background save fix installed SHA256:
+28ec2ff026f9cbfc2da977b8fb75190d53ad6ecbe9316641e74d84fc96dea11e.
+IDF6.1 build and application-only flash/hash verification passed. Initial build
+caught misleading indentation in the updated UI branch; formatting corrected and
+rebuilt. Actual-LVGL background test passed delayed success, duplicate suppression,
+validation, save failure/retry and retained entries; navigation25cycles passed.
+On-device two save cycles confirmed matching success receipts and automatic return
+home; no edits to existing background form, all eight alarms unchanged. Receipts:
+background-save-{build,flash,runtime,preview}.log under local-config/clock.
+Failure injection is host-preview evidence only, not physical storage corruption.
+No alarm engine, settings schema, radio config or power-off test changed.

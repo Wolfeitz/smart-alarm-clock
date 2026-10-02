@@ -19,9 +19,9 @@ volume is unresolved and requires external playback and/or a louder local output
 
 Owner expanded scope to weather/location and continued integration development.
 Home Assistant light setup/control is installed; authenticated operation is pending. Last audit2026-10-01. Installed application with selectable backgrounds and live Wallhaven rotation, SHA256:
-`8247c382d40ce3eee83051c91ecbe7f8534f13600b1ad5cca24899994dd43dd7`.
+`28ec2ff026f9cbfc2da977b8fb75190d53ad6ecbe9316641e74d84fc96dea11e`.
 Application-only flash verification and subsequent navigation receipts
-are `background-worker-flash.log` and `background-worker-live.log` under
+are `background-save-flash.log` and `background-save-runtime.log` under
 `local-config/clock`. These do not repeat historical offline alarm recovery tests.
 
 | Requirement | Evidence | Status |
