@@ -1,3 +1,4 @@
+#include "sensor_service.h"
 #include "diagnostics.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -106,6 +107,7 @@ static void serial_poll(void)
             if(!overflow && (!strcmp(line,"NETWORK OFF")||!strcmp(line,"NETWORK ON")))
                 diagnostics_printf("NETWORK_REQUEST accepted=%u\n",weather_service_radio(!strcmp(line,"NETWORK ON")));
             if(!overflow && strcmp(line,"STATE")==0){
+                sensor_service_diagnostics();
                 alarm_snapshot_t a;alarm_service_snapshot(&a);
                 diagnostics_printf("ALARM_STATE ringing=%u snoozed=%u brightness=%u storage=%s revision=%u\n",a.ringing,a.snoozed,a.settings.brightness,esp_err_to_name(a.storage_status),a.revision);
                 for(unsigned j=0;j<ALARM_COUNT;j++){
@@ -122,7 +124,7 @@ void app_main(void)
     /* UI/RTC owner stays above HTTPS work; alarm owner remains higher still. */
     vTaskPrioritySet(NULL,3);json_memory_init();network_http_init();diagnostics_init();
     diagnostics_printf("IMAGE_MEMORY psram=%u external_free=%lu internal_free=%lu\n",esp_psram_is_initialized(),(unsigned long)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),(unsigned long)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
-    board_init();clock_init(board_bus());audio_init(board_bus());weather_service_init();alarm_service_init();background_service_init();
+    board_init();clock_init(board_bus());audio_init(board_bus());weather_service_init();alarm_service_init();background_service_init();sensor_service_init();
     lv_init();lv_tick_set_cb(tick);
     lv_display_t *d=lv_display_create(480,320);lv_display_set_color_format(d,LV_COLOR_FORMAT_RGB565);
     void *buf=heap_caps_malloc(480*20*2,MALLOC_CAP_DMA);if(!buf)abort();

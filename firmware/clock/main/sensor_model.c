@@ -1,0 +1,46 @@
+#include "sensor_model.h"
+#include <string.h>
+uint8_t sensor_crc(const uint8_t *data,unsigned size)
+{
+    uint8_t crc=0xff;
+    for(unsigned i=0;i<size;i++){
+        crc^=data[i];for(unsigned b=0;b<8;b++)crc=(crc&0x80)?(crc<<1)^0x31:crc<<1;
+    }
+    return crc;
+}
+bool sensor_environment(const uint8_t raw[6],float *celsius,float *humidity)
+{
+    if(sensor_crc(raw,2)!=raw[2]||sensor_crc(raw+3,2)!=raw[5])return false;
+    *celsius=-45.f+175.f*((raw[0]<<8)|raw[1])/65535.f;
+    *humidity=100.f*((raw[3]<<8)|raw[4])/65535.f;return true;
+}
+void sensor_acceleration(const uint8_t raw[6],int mg[3])
+{
+    for(unsigned i=0;i<3;i++){
+        unsigned word=raw[2*i]|((unsigned)raw[2*i+1]<<8);
+        int value=word>=32768?(int)word-65536:(int)word;
+        mg[i]=value*1000/4096; /* QMI8658 +/-8g, 4096 LSB/g. */
+    }
+}
+bool sensor_shake(shake_detector_t *s,int64_t now,bool enabled,bool ringing,const int mg[3])
+{
+    if(!enabled||!ringing){memset(s,0,sizeof(*s));return false;}
+    if(!s->started||now<=s->last||now-s->last>250){
+        int64_t cooldown=s->cooldown;memset(s,0,sizeof(*s));s->cooldown=cooldown;
+        s->started=true;s->armed=now+1000;memcpy(s->gravity,mg,sizeof(s->gravity));
+    }
+    s->last=now;int64_t motion=0;
+    for(unsigned i=0;i<3;i++){
+        int d=mg[i]-s->gravity[i];motion+=(int64_t)d*d;s->gravity[i]+=d/8;
+    }
+    if(now<s->armed||now<s->cooldown)return false;
+    if(s->pulses&&now-s->first>1600)s->pulses=0;
+    if(motion<450*450)s->high=false;
+    if(motion<900*900||s->high)return false;
+    s->high=true;
+    if(s->pulses&&now-s->pulse<120)return false;
+    if(!s->pulses)s->first=now;
+    s->pulse=now;
+    if(++s->pulses<3)return false;
+    s->pulses=0;s->cooldown=now+5000;return true;
+}

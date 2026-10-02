@@ -2351,3 +2351,50 @@ alarm records preserved. Receipts: local-config/clock/background-advanced-{build
 flash,runtime,host,preview-build}.log. API-key/filter combinations were tested with
 synthetic data only; no real key was supplied or private-content download claimed.
 Sensor, shake and direct Sonos implementations remain active goal work.
+
+## Onboard sensors and motion controls (2026-10-02)
+
+Verified official exact-board repository is now public/accessible, superseding
+older source-unavailable notes. Pinned reference tree:
+04e6134cf3e37309b2bec9915189efeace1161bc at
+https://github.com/waveshareteam/ESP32-C5-Touch-LCD-3.5
+Arduino05_shtc3 confirms GPIO27 SDA/26 SCL, address0x70, wake3517,
+no-stretch temperature-first7866, sleepB098, CRC polynomial31/initFF, conversions.
+Arduino02_I2C_qmi8658 and IDF04_qmi8658 confirm addresses6a/6b,
+WHO_AM_I05, Ctrl1/2/5/7, little-endian acceleration at35, +/-8g4096LSB/g.
+Our small IDF adapter uses bounded20ms transactions, checks errors/CRC and sleeps
+between measurements; does not copy the vendor's unchecked/blocking sensor reads.
+References preserved under ignored local-config/sensor-reference.
+
+Acceptance before installation: indoor temperature/humidity shown on home and
+sensor settings; freshness expires after30seconds; missing devices cannot block
+clock/alarms. Shake disabled by default, separately persisted in clockcfg sensors,
+three distinct dynamic pulses within1.6seconds after1second arming,5second cooldown,
+ringing-only, sample gaps reset detector, existing snooze command owns alarm change.
+No new gesture path mutates alarm settings. Synthetic model and actual-LVGL checks
+cover corruption, conversion, bumps, disabled state, cooldown, stale readings,
+saved opt-in and alarm overlay priority. Physical gesture threshold remains untuned;
+not claimed proven by simulation or used as a development gate.
+
+Additional owner direction: auto-rotation must hold last orientation when flat or
+nearly flat. Implement only with sufficient upright gravity projection, hysteresis
+and sustained opposite orientation; shaking must not cause a flip.180degree landscape
+rotation can reuse current layout;90degree portrait needs distinct layout. This
+rotation feature is not yet implemented by the sensor adapter.
+Battery connector location: internal PCB BAT2pin MX1.25, item7 in owner diagram;
+not exposed GPIO. Passive acoustic dock fit/gain unverified, exact Amazon listing
+B0FF473SWY unavailable through web retrieval; do not claim purchase compatibility.
+
+Installed sensor image SHA256:
+45548a26542ef2c6dccd455393fedb85614520536e65a188910dd1befb420e75.
+Build/application-only flash hash verification passed. Live readings:
+33.41C/37.90% RH, fresh CRC-accepted data; QMI ready with165 samples and
+acceleration28,988,96mg, subsequent sample count increasing. This confirms actual
+sensor access, not room-temperature calibration. Case heat is material: about92F.
+Live settings save kept shake disabled and returned to settings/home; all eight
+alarm records exactly preserved. No simulated shake injected on target, no alarm
+armed, no physical-motion or acoustic acceptance claimed. Host model and UI tests
+passed, including foreground alarm overlay while sensor screen open. Receipts:
+local-config/clock/sensors-{build,flash,runtime,host,preview-build}.log.
+Next work remains auto-rotation with flat-position hold, direct Sonos simulator
+adapter and consolidated feasibility notes. No physical-test gate.

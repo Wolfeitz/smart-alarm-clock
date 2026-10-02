@@ -148,3 +148,19 @@ RAM only: during an outage the current image stays, but after a restart the bund
 local image appears until a download succeeds. Importing personal local files and
 persistent downloaded-image caching are still being built; the current Local
 choice is the bundled image only. Background rotation never requires HA/a server.
+
+## Indoor readings and shake-to-snooze
+
+The weather card includes the onboard temperature and relative humidity. These
+come from the SHTC3 inside the case, not the weather provider, and work offline.
+The electronics can warm the sensor considerably; this is not yet a calibrated
+room-temperature measurement. Readings older than30seconds are marked stale.
+
+**Settings → Sensors & gestures** shows the readings and motion-sensor status.
+**Shake to snooze** is off by default. Enable it and tap Save to persist the choice.
+When an alarm rings, a deliberate series of shakes sends the same five-minute
+snooze request as the touchscreen. It does not dismiss alarms. Gestures are ignored
+when disabled or no alarm is ringing, with a startup delay and cooldown to avoid
+single bumps/repeated triggers. Detection thresholds are host-tested and live
+accelerometer sampling is verified; real hand-motion sensitivity is not yet tuned.
+Automatic screen rotation is separate and is not yet installed.

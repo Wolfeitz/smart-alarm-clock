@@ -1,3 +1,4 @@
+#include "sensor_service.h"
 #include "clock_ui.h"
 #include "diagnostics.h"
 #include "alarm_service.h"
@@ -26,6 +27,9 @@ static bool bg_advanced;
 
 static void show_backgrounds(lv_event_t *e);
 static lv_obj_t *root,*time_text,*date_text,*detail,*next_text,*status;
+static bool sensors_view,sensor_save_pending;
+static lv_obj_t *sensor_readings,*sensor_status,*sensor_shake_toggle,*home_indoor;
+static void show_sensors(lv_event_t *e);
 static lv_obj_t *home_place,*home_temperature,*home_forecast,*alarm_caption;
 static bool snooze_collapsed,calendar_view;
 static lv_obj_t *calendar,*calendar_heading,*weather_art;
@@ -83,7 +87,7 @@ static void show_editor(void);
 static void show_time_editor(lv_event_t *e);
 static void reset_screen(void)
 {
-    scenic_home=false;background_editing=false;background_save_ticket=0;bg_panel=NULL;bg_toast=NULL;bg_advanced=false;calendar_view=false;weather_art=NULL;artwork_code=-999;alarm_list_view=false;settings_view=false;display_editing=false;display_pending=false;ha_view=false;ha_editing=false;ha_error=false;media_view=false;media_editing=false;media_error=false;
+    sensors_view=false;sensor_save_pending=false;scenic_home=false;background_editing=false;background_save_ticket=0;bg_panel=NULL;bg_toast=NULL;bg_advanced=false;calendar_view=false;weather_art=NULL;artwork_code=-999;alarm_list_view=false;settings_view=false;display_editing=false;display_pending=false;ha_view=false;ha_editing=false;ha_error=false;media_view=false;media_editing=false;media_error=false;
     weather_view=false;network_editing=false;location_editing=false;wifi_listing=false;network_connecting=false;
     lv_obj_clean(root);lv_obj_set_style_bg_color(root,lv_color_hex(0x0c141b),0);
     lv_obj_remove_flag(root,LV_OBJ_FLAG_SCROLLABLE);
@@ -224,8 +228,28 @@ static void show_settings(lv_event_t *e)
     button(root,"Location",247,102,218,show_location,NULL);
     button(root,"Home Assistant",15,152,218,show_ha,NULL);
     button(root,"Media",247,152,218,show_media,NULL);
-    button(root,"Backgrounds",15,202,450,show_backgrounds,NULL);
+    button(root,"Backgrounds",15,202,218,show_backgrounds,NULL);
+    button(root,"Sensors & gestures",247,202,218,show_sensors,NULL);
     navigation(3);
+}
+static void save_sensors(lv_event_t *e)
+{
+    (void)e;if(sensor_save_pending)return;
+    sensor_save_pending=sensor_service_set_shake(lv_obj_has_state(sensor_shake_toggle,LV_STATE_CHECKED));
+    lv_label_set_text(sensor_status,sensor_save_pending?"Saving...":"Sensor service busy or unavailable");
+}
+static void show_sensors(lv_event_t *e)
+{
+    (void)e;editing=false;time_editing=false;reset_screen();sensors_view=true;
+    sensor_snapshot_t s;sensor_service_snapshot(&s);
+    label(root,"Room & motion",15,12,450,&lv_font_montserrat_20);
+    sensor_readings=label(root,"Reading sensors...",15,52,450,&lv_font_montserrat_20);
+    label(root,"Onboard temperature can read warm from the case.\nShake deliberately while ringing to snooze.",15,128,450,&lv_font_montserrat_16);
+    sensor_shake_toggle=lv_checkbox_create(root);lv_checkbox_set_text(sensor_shake_toggle,"Shake to snooze");
+    lv_obj_set_pos(sensor_shake_toggle,30,185);lv_obj_set_style_min_height(sensor_shake_toggle,40,0);
+    if(s.shake_enabled)lv_obj_add_state(sensor_shake_toggle,LV_STATE_CHECKED);
+    sensor_status=label(root,"Optional; works without Wi-Fi",15,232,450,&lv_font_montserrat_16);
+    button(root,"Back",30,267,190,show_settings,NULL);button(root,"Save",260,267,190,save_sensors,NULL);
 }
 static void save_display(lv_event_t *e)
 {
@@ -471,7 +495,7 @@ static void home(void)
     status=label(root,"",15,242,450,&lv_font_montserrat_16);
     lv_obj_set_style_text_color(status,lv_color_hex(0xcbd8e5),0);
     lv_obj_t *card=button(root,"",310,64,155,show_weather,NULL);
-    lv_obj_set_height(card,112);lv_obj_set_style_pad_all(card,0,0);
+    lv_obj_set_height(card,122);lv_obj_set_style_pad_all(card,0,0);
     lv_obj_set_style_bg_color(card,lv_color_hex(0x102038),0);
     lv_obj_set_style_bg_opa(card,LV_OPA_60,0);lv_obj_set_style_border_color(card,lv_color_hex(0xbdcadb),0);
     lv_obj_set_style_border_opa(card,LV_OPA_30,0);lv_obj_remove_flag(card,LV_OBJ_FLAG_SCROLLABLE);
@@ -484,6 +508,7 @@ static void home(void)
     lv_obj_set_style_text_color(home_temperature,lv_color_hex(0xb4d8e9),0);
     home_forecast=label(card,"Set up Wi-Fi",4,81,147,&lv_font_montserrat_16);
     lv_obj_set_height(home_forecast,22);lv_label_set_long_mode(home_forecast,LV_LABEL_LONG_DOT);
+    home_indoor=label(card,"Indoor --",4,102,147,&lv_font_montserrat_16);
     navigation(0);
 }
 static void keyboard_event(lv_event_t *e)
@@ -842,6 +867,17 @@ void clock_ui_init(void)
 }
 void clock_ui_update(void)
 {
+    if(sensors_view){
+        sensor_snapshot_t sensor;sensor_service_snapshot(&sensor);char text[160];
+        if(sensor.available)snprintf(text,sizeof(text),"Indoor %.1f F / %.0f%% humidity%s\nMotion sensor: %s",sensor.celsius*1.8f+32,sensor.humidity,sensor.fresh?"":" (stale)",sensor.imu_ready?"Ready":"Unavailable");
+        else snprintf(text,sizeof(text),"Indoor readings unavailable\nMotion sensor: %s",sensor.imu_ready?"Ready":"Unavailable");
+        lv_label_set_text(sensor_readings,text);
+        if(sensor_save_pending&&!sensor.pending){
+            sensor_save_pending=false;
+            if(sensor.save_failed)lv_label_set_text(sensor_status,"Save failed; previous setting retained");
+            else {show_settings(NULL);return;}
+        }
+    }
     alarm_snapshot_t s;alarm_service_snapshot(&s);
     time_t wall=time(NULL);struct tm local_now;localtime_r(&wall,&local_now);
     bool dimmed=display_should_dim(&s.settings.display,clock_valid(),local_now.tm_hour*60+local_now.tm_min,
@@ -912,7 +948,7 @@ void clock_ui_update(void)
         else lv_obj_add_state(ha_toggle,LV_STATE_DISABLED);
         return;
     }
-    if(settings_view)return;
+    if(settings_view||sensors_view)return;
     if(weather_view||network_editing||location_editing){
         weather_snapshot_t w;weather_service_snapshot(&w);
         if(network_editing||location_editing){
@@ -1014,6 +1050,10 @@ void clock_ui_update(void)
         else snprintf(b,sizeof(b),LV_SYMBOL_OK "  Internet checked %u min ago",(unsigned)(weather.internet_age_seconds/60));
     }else snprintf(b,sizeof(b),LV_SYMBOL_WARNING "  Internet not verified");
     lv_label_set_text(status,audio_status()!=ESP_OK?"Local audio unavailable":s.load_failed?"Saved alarms unavailable - review Alarms":s.storage_status!=ESP_OK?"Settings storage error":!clock_valid()?"Set time to enable alarms":b);
+    sensor_snapshot_t indoor;sensor_service_snapshot(&indoor);
+    if(indoor.fresh)snprintf(b,sizeof(b),"In %.0f° / %.0f%%",indoor.celsius*1.8f+32,indoor.humidity);
+    else snprintf(b,sizeof(b),indoor.available?"Indoor stale":"Indoor --");
+    lv_label_set_text(home_indoor,b);
     lv_label_set_text(home_place,weather.location.name[0]?weather.location.name:"Local weather");
     update_weather_art(weather.has_data?weather.data.code:-1,weather.has_data&&weather_fresh(&weather.data,time(NULL)));
     if(weather.has_data){
