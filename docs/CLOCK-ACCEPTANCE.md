@@ -26,7 +26,7 @@ are `background-worker-flash.log` and `background-worker-live.log` under
 | Restart recovery | Ringing, snooze, dismissal and brightness survive MCU resets | Demonstrated |
 | Saved brightness | Owner confirmed Dim/Brighten; brightness25 survived reset, restored160 | Demonstrated |
 | Power-return startup | Owner reports powered back on and current application looks good; prior battery state disconnected | Display/application recovery observed by owner; offline RTC retention without backup power is not established |
-| Independence from Wi-Fi | RTC, engine, NVS, UI and audio remain local; HTTPS in separate lower-priority worker | Earlier offline-check image: radio stopped via SDK, RTC deadline triggered alarm, audio writes succeeded, snooze/dismiss passed; exact alarm restoration and network reconnection verified |
+| Independence from Wi-Fi | RTC, engine, NVS, UI and audio remain local; HTTPS in separate lower-priority worker | Current1fa9f06 image: SDK radio-off RTC deadline triggered persisted alarm, local audio writes succeeded, snooze/dismiss passed; all eight alarm records restored exactly and network reconnection verified (offline-background-1fa9f06-runtime.log) |
 | Factory recovery preserved | Private32MB factory backup and prior whole-image restoration/hash proof; factory partitions retained | Demonstrated; no further factory rewrite needed |
 
 Build/host tests cannot prove sound, physical controls or a complete power cycle.

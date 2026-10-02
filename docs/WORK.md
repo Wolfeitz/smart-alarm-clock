@@ -2168,3 +2168,25 @@ Decoder ASan/UBSan, consolidated host logic, actual-LVGL background controls,
 documentation verifier and diff check passed. No physical power-off test performed.
 Blank query uses random SFW General-category results; documented in USER-GUIDE.
 Downloaded image cache remains RAM-only, local importing/persistent cache unfinished.
+
+
+## Core regression with installed background worker (2026-10-01)
+
+Previous turn made progress: installed/verified live rotation with corrected JPEG
+ABI and serialized TLS. Run a fresh core offline regression on1fa9f06 because the
+new worker and memory allocations change runtime conditions. Save all eight alarm
+records; proceed only if all disabled and a slot has no consumption history. Stop
+Wi-Fi, schedule one real RTC deadline, observe persisted trigger/audio transmission,
+snooze/dismiss, restore exact alarm records and radio. No clock-time manipulation,
+full power-off, partition changes or physical-test prompt. Digital audio transfer
+is not an acoustic acceptance claim. Current wallpaper settings remain unchanged.
+
+Core regression PASS on installed1fa9f06/8247c382 image: radio stopped via SDK;
+RTC deadline triggered slot0, consumption checkpoint ESP_OK, repeated177152-byte
+local audio transfers ESP_OK, snooze then dismiss returned idle. All eight alarm
+records restored exactly, Wi-Fi restored and weather HTTPS200 observed. RTC/system
+heartbeats remained within one second; no background/weather requests during the
+offline deadline. Receipt: offline-background-1fa9f06-runtime.log and original.json
+under local-config/clock. No firmware update, clock adjustment or full power-off.
+Audio transfer is measured; acoustic loudness and final physical/power acceptance
+remain as previously recorded and owner-deferred. Goal remains incomplete.
