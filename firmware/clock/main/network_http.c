@@ -2,10 +2,16 @@
 #include "esp_http_client.h"
 #include "esp_crt_bundle.h"
 #include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
 typedef struct {char *data;size_t size,capacity;bool overflow;int64_t deadline;} response_t;
+/* Concurrent TLS handshakes exhaust the C5 internal heap. Only network workers
+ * take this mutex; UI, alarm scheduling and local fallback never wait on it. */
+static SemaphoreHandle_t request_lock;
+void network_http_init(void){request_lock=xSemaphoreCreateMutex();}
 static esp_err_t http_event(esp_http_client_event_t *event)
 {
     response_t *r=event->user_data;
@@ -19,10 +25,12 @@ static esp_err_t http_event(esp_http_client_event_t *event)
 int network_http_request(const char *url,const char *token,const char *post_body,char *buffer,size_t capacity,size_t *size)
 {
     *size=0;if(!buffer||capacity<2)return -1;
+    if(!request_lock||xSemaphoreTake(request_lock,pdMS_TO_TICKS(8000))!=pdTRUE)return -1;
     response_t response={.data=buffer,.capacity=capacity,.deadline=esp_timer_get_time()+20000000};
     esp_http_client_config_t config={.url=url,.crt_bundle_attach=esp_crt_bundle_attach,.timeout_ms=8000,
         .event_handler=http_event,.user_data=&response,.disable_auto_redirect=true,.buffer_size=1024};
-    esp_http_client_handle_t client=esp_http_client_init(&config);if(!client)return -1;
+    esp_http_client_handle_t client=esp_http_client_init(&config);
+    if(!client){xSemaphoreGive(request_lock);return -1;}
     char authorization[520]={0};esp_err_t err=ESP_OK;
     if(token){snprintf(authorization,sizeof(authorization),"Bearer %s",token);err=esp_http_client_set_header(client,"Authorization",authorization);}
     if(post_body&&err==ESP_OK){
@@ -32,5 +40,6 @@ int network_http_request(const char *url,const char *token,const char *post_body
     }
     if(err==ESP_OK)err=esp_http_client_perform(client);
     int result=err==ESP_OK&&!response.overflow?esp_http_client_get_status_code(client):-1;
-    *size=response.size;esp_http_client_cleanup(client);memset(authorization,0,sizeof(authorization));return result;
+    *size=response.size;esp_http_client_cleanup(client);memset(authorization,0,sizeof(authorization));
+    xSemaphoreGive(request_lock);return result;
 }

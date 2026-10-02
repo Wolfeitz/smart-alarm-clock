@@ -2104,3 +2104,67 @@ invalid input. ASan+UBSan PASS; LeakSanitizer unsupported under sandbox ptrace a
 explicitly disabled, not claimed. Command: python scripts/test-background-decode.py.
 Firmware remains0310e14; new decoder is not installed/wired yet. Next implementation:
 network worker, safe frame ownership, source settings and persistent image cache.
+
+## Runtime background source integration (2026-10-01)
+
+Acceptance before installing: independent low-priority worker; bounded HTTPS and
+JPEG allocations in verified PSRAM; three immutable-frame slots with displayed
+and published ownership; never overwrite a visible image while preparing another.
+Network failure/invalid JPEG keeps current image. Background settings use their
+own NVS namespace/version, not alarm schema; failed saves retain running config.
+Device settings support bundled local image, up to8 selected HTTPS JPEG/Wallhaven
+page links, anonymous public-SFW Wallhaven search, fixed/5min/15min/hour and Next.
+Downloaded images are RAM-only at this stage; persistent image cache and local
+image importing remain explicit unfinished work. Saved source settings do persist.
+No new partition or shared server is introduced. Background downloading is held
+while already ringing/snoozed; existing local alarm task remains independent.
+
+First installed network attempt failed TLS before receiving bytes. Receipt
+background-worker-live.log: bundle reported no matching trusted root. Inspected
+server chain with openssl: valid wallhaven.cc→WE1→GTS Root R4 cross-signed by old
+GlobalSign Root CA. Current full SDK bundle contains GTS Root R4 but not that old
+GlobalSign root; cross-signed verification config was disabled. Enable the SDK's
+MBEDTLS_CERTIFICATE_BUNDLE_CROSS_SIGNED_VERIFY (documented700-byte overhead) to
+terminate at existing trusted GTS root. No custom downloaded trust root, hostname
+bypass, insecure HTTP fallback or certificate-validation disablement. Clock/RTC
+remained responsive during failed requests. Earlier claim of live completion
+withheld pending successful request/decode evidence.
+Cross-signed support fixed TLS: board received HTTP200/15624bytes. No image yet;
+full response parsing exceeded remaining internal memory (~46KiB). Host allocation
+instrumentation on actual public response measured55856bytes peak (host ABI, not
+exact target size), zero residual allocations. Configure cJSON hooks once in
+app_main before workers: prefer MALLOC_CAP_SPIRAM, internal fallback, matching
+heap_caps_free. No per-request/global hook switching or concurrent hook mutation;
+alarm/UI/settings allocations remain unchanged. This covers temporary JSON for
+existing consumers too. Real-image success still pending.
+
+JPEG target correction: live image loading crashed in read_jpeg. The target link map
+binds jd_prepare/jd_decomp to ROM addresses0x4000010c/0x40000110, while the caller
+uses LVGL9.4 JDEC layout. Namespace all five exported decoder functions and compile
+the pinned vendor implementation privately; host tests use this same wrapper.
+Acceptance: map confirms private flash implementations, installed downloads and
+Next succeed without reset, offline mode retains visible image, alarms unchanged.
+Crash receipt preserved as background-worker-decoder-crash.log.
+
+Three decoded Wallhaven images and offline-image retention passed on target after
+private JPEG namespacing. Reconnect test exposed simultaneous weather/background
+TLS allocation failures (4437bytes and mbedtls_ssl_setup); both can contend for
+internal RAM. Serialize network_http requests with one startup-initialized mutex,
+8-second bounded acquisition and cleanup on every exit. Only network workers use
+it; UI, scheduler, local sound/fallback never acquire it. Acceptance: successful
+startup/reconnect weather and image requests without allocation failures, unchanged
+alarm state and RTC heartbeats. Prior contention log preserved separately.
+
+Final installed image SHA256:
+8247c382d40ce3eee83051c91ecbe7f8534f13600b1ad5cca24899994dd43dd7.
+Application-only flash hash verified; bootloader/partition/settings preserved.
+Live check PASS: startup image, three requested image changes, settings navigation,
+Wi-Fi-off image retention and reconnect download; successful weather requests,
+no TLS allocation failures or crashes, RTC heartbeats and all eight alarm records
+unchanged. Background worker immediately retries when Wi-Fi returns; status now
+specifically says Wi-Fi offline. Owner also reports the wallpaper looks good.
+Receipts: background-worker-{build,flash,live,host}.log in local-config/clock.
+Decoder ASan/UBSan, consolidated host logic, actual-LVGL background controls,
+documentation verifier and diff check passed. No physical power-off test performed.
+Blank query uses random SFW General-category results; documented in USER-GUIDE.
+Downloaded image cache remains RAM-only, local importing/persistent cache unfinished.

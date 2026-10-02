@@ -18,6 +18,9 @@ int main(void)
     assert(!background_selected_url("https://wallhaven.cc/w/pomle9?apikey=x",url,sizeof(url)));
     const char *fixture="{\"data\":[{\"id\":\"pomle9\",\"purity\":\"sfw\",\"thumbs\":{\"large\":\"https://th.wallhaven.cc/lg/po/pomle9.jpg\"}},{\"id\":\"vpewrl\",\"purity\":\"nsfw\",\"thumbs\":{\"large\":\"https://th.wallhaven.cc/lg/vp/vpewrl.jpg\"}}]}";
     background_candidate_t candidates[8];assert(background_parse_search(fixture,strlen(fixture),candidates,8)==1);
+    assert(!strcmp(candidates[0].id,"pomle9"));
+    const char *selected="{\"data\":{\"id\":\"pomle9\",\"purity\":\"sfw\",\"thumbs\":{\"large\":\"https://th.wallhaven.cc/lg/po/pomle9.jpg\"}}}";
+    assert(background_parse_search(selected,strlen(selected),candidates,8)==1);
     assert(!strcmp(candidates[0].id,"pomle9"));assert(!background_parse_search(fixture,strlen(fixture)-1,candidates,8));
     assert(!background_parse_search("{\"data\":[]}garbage",18,candidates,8));
     puts("PASS background sources, URL bounds, query encoding and SFW candidate parsing");

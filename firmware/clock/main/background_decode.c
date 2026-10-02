@@ -1,5 +1,5 @@
 #include "background_decode.h"
-#include "src/libs/tjpgd/tjpgd.h"
+#include "background_jpeg.h"
 #include <string.h>
 typedef struct {
     const uint8_t *data;size_t size,position;

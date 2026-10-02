@@ -64,7 +64,7 @@ unsigned background_parse_search(const char *json,size_t size,background_candida
     while(end<json+size&&isspace((unsigned char)*end))end++;
     if(end!=json+size){cJSON_Delete(root);return 0;}
     unsigned count=0;cJSON *data=cJSON_GetObjectItemCaseSensitive(root,"data"),*item=NULL;
-    if(cJSON_IsArray(data))cJSON_ArrayForEach(item,data){
+    for(item=cJSON_IsArray(data)?data->child:cJSON_IsObject(data)?data:NULL;item;item=cJSON_IsArray(data)?item->next:NULL){
         cJSON *id=cJSON_GetObjectItemCaseSensitive(item,"id"),*purity=cJSON_GetObjectItemCaseSensitive(item,"purity");
         cJSON *thumbs=cJSON_GetObjectItemCaseSensitive(item,"thumbs"),*url=cJSON_GetObjectItemCaseSensitive(thumbs,"large");
         if(!cJSON_IsString(id)||!image_id(id->valuestring)||!cJSON_IsString(purity)||strcmp(purity->valuestring,"sfw")||!cJSON_IsString(url))continue;

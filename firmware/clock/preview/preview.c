@@ -3,6 +3,7 @@
 #include "clock_ui.h"
 #include "alarm_service.h"
 #include "weather_service.h"
+#include "background_service.h"
 #include "ha_service.h"
 #include "media_service.h"
 #include "clock_service.h"
@@ -11,6 +12,15 @@
 #include <string.h>
 #include <stdarg.h>
 #include <assert.h>
+extern const lv_image_dsc_t home_wallpaper;
+static background_config_t preview_background={.source=BACKGROUND_LOCAL,.count=1,.images={"blue-hour"}};
+static unsigned background_next_count;
+void background_service_init(void){}
+void background_service_diagnostics(void){}
+const lv_image_dsc_t *background_service_image(void){return &home_wallpaper;}
+void background_service_snapshot(background_config_t *config,char text[96],bool *busy){if(config)*config=preview_background;if(text)strcpy(text,"Background settings saved");if(busy)*busy=false;}
+bool background_service_configure(const background_config_t *config){if(!background_config_valid(config))return false;preview_background=*config;return true;}
+bool background_service_next(void){background_next_count++;return true;}
 static ha_snapshot_t ha_state={.endpoint="http://192.168.1.232:8123",.status="Set up Home Assistant"};
 void ha_service_snapshot(ha_snapshot_t *s){*s=ha_state;}
 bool ha_service_configure(const char *url,const char *token,const char *entity){
@@ -345,6 +355,30 @@ int main(int argc,char **argv)
         }
         assert(!memcmp(before,alarm_state.settings.alarms,sizeof(before)));
         puts("PASS main navigation: 25 cycles, setup returns to origin, no alarm changes");
+    }
+    if(argc>3&&!strcmp(argv[3],"background-test")){
+        click_text(lv_screen_active(),"Clock");advance();click_text(lv_screen_active(),"Settings");advance();
+        click_text(lv_screen_active(),"Backgrounds");advance();
+        lv_obj_t *source=NULL,*period=NULL,*input=NULL;
+        for(unsigned i=0;i<lv_obj_get_child_count(lv_screen_active());i++){
+            lv_obj_t *o=lv_obj_get_child(lv_screen_active(),i);
+            if(lv_obj_check_type(o,&lv_dropdown_class)){if(!source)source=o;else period=o;}
+            if(lv_obj_check_type(o,&lv_textarea_class))input=o;
+        }
+        assert(source&&period&&input);assert(lv_obj_has_flag(input,LV_OBJ_FLAG_HIDDEN));
+        lv_dropdown_set_selected(source,2);lv_obj_send_event(source,LV_EVENT_VALUE_CHANGED,NULL);advance();
+        assert(!lv_obj_has_flag(input,LV_OBJ_FLAG_HIDDEN));lv_textarea_set_text(input,"forest lake");lv_dropdown_set_selected(period,2);
+        click_text(lv_screen_active(),"Save");advance();assert(preview_background.source==BACKGROUND_WALLHAVEN&&preview_background.interval_seconds==900);
+        assert(!strcmp(preview_background.query,"forest lake"));
+        click_text(lv_screen_active(),"Next image");advance();assert(background_next_count==1);
+        lv_dropdown_set_selected(source,1);lv_obj_send_event(source,LV_EVENT_VALUE_CHANGED,NULL);
+        lv_textarea_set_text(input,"https://example.test/a.jpg\nhttps://wallhaven.cc/w/pomle9");
+        click_text(lv_screen_active(),"Save");advance();assert(preview_background.source==BACKGROUND_SELECTED&&preview_background.count==2);
+        lv_textarea_set_text(input,"http://bad.example/a");click_text(lv_screen_active(),"Save");advance();
+        assert(has_text(lv_screen_active(),"Invalid source or busy; check entries"));assert(preview_background.count==2);
+        lv_dropdown_set_selected(source,0);lv_obj_send_event(source,LV_EVENT_VALUE_CHANGED,NULL);
+        click_text(lv_screen_active(),"Save");advance();assert(preview_background.source==BACKGROUND_LOCAL);
+        puts("PASS background sources, list, interval, next and invalid-input retention");
     }
     if(argc>3&&!strcmp(argv[3],"calendar-test")){
         click_text(lv_screen_active(),"Clock");advance();

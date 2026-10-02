@@ -7,10 +7,10 @@ not loud enough to wake someone. Audibility is demonstrated; acceptable wake-up
 volume is unresolved and requires external playback and/or a louder local output.
 
 Owner expanded scope to weather/location and continued integration development.
-Home Assistant light setup/control is installed; authenticated operation is pending. Last audit2026-10-01. Installed application with local scenic home and external image memory, SHA256:
-`8dda6ea0116104e6528bd05678fb47ad6a059eb08793e2d27fe1bd438aaeb783`.
+Home Assistant light setup/control is installed; authenticated operation is pending. Last audit2026-10-01. Installed application with selectable backgrounds and live Wallhaven rotation, SHA256:
+`8247c382d40ce3eee83051c91ecbe7f8534f13600b1ad5cca24899994dd43dd7`.
 Application-only flash verification and subsequent navigation receipts
-are `scenic-memory-flash.log` and `scenic-memory-after.log` under
+are `background-worker-flash.log` and `background-worker-live.log` under
 `local-config/clock`. These do not repeat historical offline alarm recovery tests.
 
 | Requirement | Evidence | Status |

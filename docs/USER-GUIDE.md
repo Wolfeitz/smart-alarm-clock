@@ -116,3 +116,22 @@ strongest scanned access point for each network name, which may be a different
 radio or access point. Both use Strong at -60 dBm or better, Good from -75 dBm,
 and Weak below -75 dBm. Connection/reconnection now scans all channels and sorts
 compatible access points by signal. This does not implement continuous roaming.
+
+## Background sources
+
+Under **Settings → Backgrounds**, choose the bundled **Local: Blue hour** image,
+**Selected image links** (one HTTPS JPEG URL or Wallhaven wallpaper-page link per
+line, up to eight), or **Wallhaven search** (public SFW search, no API key).
+Leave the Wallhaven search blank for random SFW General-category images; enter
+a search to narrow the random selection.
+Choose Keep fixed, 5 minutes, 15 minutes, or an hour; tap Save. Next image requests
+another image using the saved settings. A failed download keeps the visible image.
+Wallhaven thumbnails are center-cropped to fill the display; some images suit this
+small screen better than others. Direct links currently require baseline JPEG,
+up to2MiB and4096pixels per axis; unsupported images leave the previous one visible.
+
+Source settings survive restart. Downloaded image pixels are currently cached in
+RAM only: during an outage the current image stays, but after a restart the bundled
+local image appears until a download succeeds. Importing personal local files and
+persistent downloaded-image caching are still being built; the current Local
+choice is the bundled image only. Background rotation never requires HA/a server.

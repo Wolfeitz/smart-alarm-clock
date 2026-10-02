@@ -6,6 +6,7 @@
 #include "board.h"
 #include "audio.h"
 #include "weather_service.h"
+#include "background_service.h"
 #include "ha_service.h"
 #include "media_service.h"
 #include "esp_system.h"
@@ -15,7 +16,10 @@
 #include <stdlib.h>
 #include <string.h>
 extern const lv_image_dsc_t home_wallpaper;
-static bool scenic_home;
+static bool scenic_home,background_editing,background_error;
+static lv_obj_t *home_image,*background_source,*background_interval,*background_input,*background_status;
+static background_config_t background_draft;
+static void show_backgrounds(lv_event_t *e);
 static lv_obj_t *root,*time_text,*date_text,*detail,*next_text,*status;
 static lv_obj_t *home_place,*home_temperature,*home_forecast,*alarm_caption;
 static bool snooze_collapsed,calendar_view;
@@ -74,7 +78,7 @@ static void show_editor(void);
 static void show_time_editor(lv_event_t *e);
 static void reset_screen(void)
 {
-    scenic_home=false;calendar_view=false;weather_art=NULL;artwork_code=-999;alarm_list_view=false;settings_view=false;display_editing=false;display_pending=false;ha_view=false;ha_editing=false;ha_error=false;media_view=false;media_editing=false;media_error=false;
+    scenic_home=false;background_editing=false;calendar_view=false;weather_art=NULL;artwork_code=-999;alarm_list_view=false;settings_view=false;display_editing=false;display_pending=false;ha_view=false;ha_editing=false;ha_error=false;media_view=false;media_editing=false;media_error=false;
     weather_view=false;network_editing=false;location_editing=false;wifi_listing=false;network_connecting=false;
     lv_obj_clean(root);lv_obj_set_style_bg_color(root,lv_color_hex(0x0c141b),0);
     lv_obj_remove_flag(root,LV_OBJ_FLAG_SCROLLABLE);
@@ -209,13 +213,13 @@ static void show_settings(lv_event_t *e)
 {
     (void)e;editing=false;time_editing=false;reset_screen();settings_view=true;
     label(root,"Make it yours",20,16,440,&lv_font_montserrat_20);
-    button(root,"Time & date",15,65,218,show_time_editor,NULL);
-    button(root,"Display & night mode",247,65,218,show_display,NULL);
-    button(root,"Wi-Fi",15,123,218,show_network,NULL);
-    button(root,"Location",247,123,218,show_location,NULL);
-    button(root,"Home Assistant",15,181,218,show_ha,NULL);
-    button(root,"Media",247,181,218,show_media,NULL);
-    label(root,"Optional integrations: Home Assistant / Media",15,237,450,&lv_font_montserrat_16);
+    button(root,"Time & date",15,52,218,show_time_editor,NULL);
+    button(root,"Display & night mode",247,52,218,show_display,NULL);
+    button(root,"Wi-Fi",15,102,218,show_network,NULL);
+    button(root,"Location",247,102,218,show_location,NULL);
+    button(root,"Home Assistant",15,152,218,show_ha,NULL);
+    button(root,"Media",247,152,218,show_media,NULL);
+    button(root,"Backgrounds",15,202,450,show_backgrounds,NULL);
     navigation(3);
 }
 static void save_display(lv_event_t *e)
@@ -408,7 +412,7 @@ static void update_weather_art(int code,bool fresh)
 static void home(void)
 {
     editing=false;time_editing=false;pending=false;reset_screen();scenic_home=true;
-    lv_obj_t *wallpaper=lv_image_create(root);lv_image_set_src(wallpaper,&home_wallpaper);
+    lv_obj_t *wallpaper=lv_image_create(root);home_image=wallpaper;lv_image_set_src(wallpaper,background_service_image());
     lv_obj_set_pos(wallpaper,0,0);lv_obj_remove_flag(wallpaper,LV_OBJ_FLAG_CLICKABLE);
     /* Native image data is read from flash; scrim protects contrast without blur. */
     lv_obj_t *scrim=lv_obj_create(root);lv_obj_remove_style_all(scrim);
@@ -488,6 +492,64 @@ static void field_focus(lv_event_t *e)
     network_error=false;lv_obj_t *target=lv_event_get_target(e);lv_keyboard_set_textarea(keyboard,target);
     lv_keyboard_set_mode(keyboard,location_editing?LV_KEYBOARD_MODE_NUMBER:LV_KEYBOARD_MODE_TEXT_LOWER);
     lv_obj_remove_flag(keyboard,LV_OBJ_FLAG_HIDDEN);lv_obj_move_foreground(keyboard);
+}
+static void background_focus(lv_event_t *e)
+{
+    lv_keyboard_set_textarea(keyboard,lv_event_get_target(e));lv_obj_remove_flag(keyboard,LV_OBJ_FLAG_HIDDEN);lv_obj_move_foreground(keyboard);
+}
+static void background_source_changed(lv_event_t *e)
+{
+    (void)e;unsigned source=lv_dropdown_get_selected(background_source);
+    lv_textarea_set_placeholder_text(background_input,source==BACKGROUND_WALLHAVEN?"Search: mountains, forest, space...":"One HTTPS image or Wallhaven link per line");
+    if(source==BACKGROUND_LOCAL)lv_obj_add_flag(background_input,LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_remove_flag(background_input,LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(keyboard,LV_OBJ_FLAG_HIDDEN);lv_keyboard_set_textarea(keyboard,NULL);
+}
+static void background_save(lv_event_t *e)
+{
+    (void)e;background_error=true;memset(&background_draft,0,sizeof(background_draft));
+    background_draft.source=lv_dropdown_get_selected(background_source);
+    const unsigned seconds[]={0,300,900,3600};background_draft.interval_seconds=seconds[lv_dropdown_get_selected(background_interval)];
+    const char *text=lv_textarea_get_text(background_input);
+    if(background_draft.source==BACKGROUND_LOCAL){background_draft.count=1;strcpy(background_draft.images[0],"blue-hour");}
+    else if(background_draft.source==BACKGROUND_WALLHAVEN){
+        if(strlen(text)>=sizeof(background_draft.query)){lv_label_set_text(background_status,"Search is too long");return;}strcpy(background_draft.query,text);
+    }else{
+        while(*text){
+            const char *end=strchr(text,'\n');size_t n=end?(size_t)(end-text):strlen(text);
+            if(n){if(n>=BACKGROUND_URL_SIZE||background_draft.count==BACKGROUND_MAX_IMAGES){lv_label_set_text(background_status,"Up to 8 links; each under 384 characters");return;}
+                memcpy(background_draft.images[background_draft.count++],text,n);}
+            if(!end)break;
+            text=end+1;
+        }
+    }
+    bool ok=background_service_configure(&background_draft);
+    lv_label_set_text(background_status,ok?"Saving...":"Invalid source or busy; check entries");
+    if(ok){background_error=false;lv_obj_add_flag(keyboard,LV_OBJ_FLAG_HIDDEN);lv_keyboard_set_textarea(keyboard,NULL);}
+}
+static void background_next(lv_event_t *e){(void)e;background_service_next();}
+static void show_backgrounds(lv_event_t *e)
+{
+    (void)e;editing=false;time_editing=false;reset_screen();background_editing=true;background_error=false;
+    char message[96];bool busy;background_service_snapshot(&background_draft,message,&busy);
+    label(root,"Backgrounds",12,10,456,&lv_font_montserrat_20);
+    background_source=dropdown("Local: Blue hour\nSelected image links\nWallhaven search",12,45,270);
+    lv_dropdown_set_selected(background_source,background_draft.source);
+    background_interval=dropdown("Keep fixed\nEvery 5 min\nEvery 15 min\nEvery hour",294,45,174);
+    unsigned interval=background_draft.interval_seconds;lv_dropdown_set_selected(background_interval,interval==300?1:interval==900?2:interval?3:0);
+    background_input=lv_textarea_create(root);lv_obj_set_pos(background_input,12,96);lv_obj_set_size(background_input,456,96);
+    lv_textarea_set_max_length(background_input,BACKGROUND_MAX_IMAGES*BACKGROUND_URL_SIZE);
+    if(background_draft.source==BACKGROUND_WALLHAVEN)lv_textarea_set_text(background_input,background_draft.query);
+    else{lv_textarea_set_text(background_input,"");if(background_draft.source==BACKGROUND_SELECTED)for(unsigned i=0;i<background_draft.count;i++){
+        if(i)lv_textarea_add_text(background_input,"\n");
+        lv_textarea_add_text(background_input,background_draft.images[i]);}}
+    lv_obj_add_event_cb(background_input,background_focus,LV_EVENT_CLICKED,NULL);
+    background_status=label(root,message,12,202,456,&lv_font_montserrat_16);
+    label(root,"JPEG links / Wallhaven public SFW",12,235,456,&lv_font_montserrat_16);
+    button(root,"Back",12,267,144,show_settings,NULL);button(root,"Next image",168,267,144,background_next,NULL);button(root,"Save",324,267,144,background_save,NULL);
+    keyboard=lv_keyboard_create(root);lv_obj_set_size(keyboard,480,150);lv_obj_align(keyboard,LV_ALIGN_BOTTOM_MID,0,0);
+    lv_obj_add_flag(keyboard,LV_OBJ_FLAG_HIDDEN);lv_obj_add_event_cb(keyboard,keyboard_event,LV_EVENT_ALL,NULL);
+    lv_obj_add_event_cb(background_source,background_source_changed,LV_EVENT_VALUE_CHANGED,NULL);background_source_changed(NULL);
 }
 static lv_obj_t *network_field(const char *caption,const char *text,int y,unsigned max,bool secret)
 {
@@ -807,6 +869,7 @@ void clock_ui_update(void)
         if(w.restart_for_zone)lv_obj_remove_flag(zone_button,LV_OBJ_FLAG_HIDDEN);else lv_obj_add_flag(zone_button,LV_OBJ_FLAG_HIDDEN);
         return;
     }
+    if(background_editing){if(background_error)return;char text[96];bool busy; background_service_snapshot(NULL,text,&busy);lv_label_set_text(background_status,text);return;}
     if(calendar_view)return;
     if(time_editing)return;
     if(editing){
@@ -820,6 +883,8 @@ void clock_ui_update(void)
         }
         return;
     }
+    const lv_image_dsc_t *image=background_service_image();
+    if(lv_image_get_src(home_image)!=image)lv_image_set_src(home_image,image);
     char b[80];
     if(clock_valid()){
         time_t now=time(NULL);struct tm local;localtime_r(&now,&local);
@@ -867,13 +932,14 @@ static void dropdown_diagnostics(const char *name,lv_obj_t *o)
 }
 void clock_ui_diagnostics(void)
 {
-    diagnostics_printf("UI_SCREEN name=%s overlay=%u pending=%u\n",calendar_view?"calendar":media_editing?"media_setup":media_view?"media":alarm_list_view?"alarms":ha_editing?"ha_setup":ha_view?"ha":display_editing?"display":settings_view?"settings":location_editing?"location":network_editing?"network":weather_view?"weather":time_editing?"time":editing?"alarm":"home",overlay!=NULL&&!lv_obj_has_flag(overlay,LV_OBJ_FLAG_HIDDEN),pending);
+    diagnostics_printf("UI_SCREEN name=%s overlay=%u pending=%u\n",background_editing?"backgrounds":calendar_view?"calendar":media_editing?"media_setup":media_view?"media":alarm_list_view?"alarms":ha_editing?"ha_setup":ha_view?"ha":display_editing?"display":settings_view?"settings":location_editing?"location":network_editing?"network":weather_view?"weather":time_editing?"time":editing?"alarm":"home",overlay!=NULL&&!lv_obj_has_flag(overlay,LV_OBJ_FLAG_HIDDEN),pending);
     if(weather_view||network_editing||location_editing){weather_snapshot_t w;weather_service_snapshot(&w);
         diagnostics_printf("WEATHER_STATE online=%u valid=%u fresh=%u zip=%s zone=%s status=%s\n",w.connected,w.has_data,w.has_data&&weather_fresh(&w.data,time(NULL)),w.zip,w.location.timezone,w.status);
     }
     weather_snapshot_t link;weather_service_snapshot(&link);
     diagnostics_printf("UI_CONNECTIVITY wifi=%u signal_known=%u dbm=%d internet_verified=%u age=%lu channel=%u\n",
         link.connected,link.signal_known,link.signal_dbm,link.internet_verified,(unsigned long)link.internet_age_seconds,link.signal_channel);
+    background_service_diagnostics();
     alarm_snapshot_t state;alarm_service_snapshot(&state);
     diagnostics_printf("AUDIO_STATE status=%d\n",(int)audio_status());
     diagnostics_printf("DISPLAY_STATE auto=%u start=%u end=%u level=%u\n",state.settings.display.enabled,state.settings.display.start_minute,state.settings.display.end_minute,applied_brightness);

@@ -286,3 +286,18 @@ foreground priority. `signal-test` checks exact -60/-75 dBm boundaries, separate
 connected/nearby readings and live connected-signal updates without rescanning.
 These use synthetic snapshots; installed `WIFI_SCAN_LINK` records associated RSSI,
 channel, matching-BSSID scan RSSI and best same-SSID RSSI without network identifiers.
+
+`python scripts/test-background-decode.py` compiles the production JPEG adapter and
+pinned LVGL TJpgDec with ASan/UBSan; fixtures exercise landscape/portrait/tiny
+coverage, RGB565 color, guard words, cancellation, truncated and invalid data.
+LeakSanitizer is disabled because it cannot run under the sandbox's ptrace.
+The consolidated host runner includes background-source/query validation and
+Wallhaven array/single-image response parsing. Actual-LVGL `background-test`
+checks source/list/interval/Next controls and preserving configuration after an
+invalid URL. These synthetic checks do not prove real Wallhaven availability.
+
+The JPEG host check compiles the private background_jpeg wrapper used on target.
+After a firmware build, confirm background_jd_prepare/background_jd_decomp resolve
+to flash implementations in esp_link_clock.map; generic jd_prepare/jd_decomp are
+ESP32-C5 ROM symbols with an incompatible JDEC layout. Live acceptance also checks
+weather plus wallpaper startup/reconnection for TLS allocation failures.

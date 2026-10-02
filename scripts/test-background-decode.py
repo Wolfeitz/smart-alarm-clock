@@ -14,7 +14,7 @@ with tempfile.TemporaryDirectory(prefix='esp-link-background-') as d:
         '-DLV_CONF_PATH="' + str(root / 'firmware/clock/preview/lv_conf.h') + '"',
         '-I' + str(main), '-I' + str(lvgl),
         str(root / 'firmware/clock/tests/background_decode_test.c'),
-        str(main / 'background_decode.c'), str(lvgl / 'src/libs/tjpgd/tjpgd.c'),
+        str(main / 'background_decode.c'), str(main / 'background_jpeg.c'),
         '-o', binary], check=True, timeout=60)
     # LeakSanitizer cannot run under the sandbox's ptrace; ASan/UBSan stay enabled.
     env = dict(os.environ, ASAN_OPTIONS='detect_leaks=0')

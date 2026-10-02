@@ -18,6 +18,9 @@
 #include "alarm_service.h"
 #include "clock_ui.h"
 #include "weather_service.h"
+#include "background_service.h"
+#include "json_memory.h"
+#include "network_http.h"
 #include "ha_service.h"
 #include "media_service.h"
 #include "setup_model.h"
@@ -61,6 +64,15 @@ static void serial_poll(void)
                 else diagnostics_printf("SETUP_ERROR invalid_request\n");
             }
             if(overflow)diagnostics_printf("SETUP_ERROR line_too_long\n");
+            if(!overflow&&!strncmp(line,"BACKGROUND ",11)){
+                static background_config_t config;memset(&config,0,sizeof(config));bool accepted=false;
+                if(!strcmp(line+11,"NEXT"))accepted=background_service_next();
+                else if(!strcmp(line+11,"LOCAL")){config.source=BACKGROUND_LOCAL;config.count=1;strcpy(config.images[0],"blue-hour");accepted=background_service_configure(&config);}
+                else if(!strncmp(line+11,"WALLHAVEN ",10)&&strlen(line+21)<BACKGROUND_QUERY_SIZE){
+                    config.source=BACKGROUND_WALLHAVEN;config.interval_seconds=900;strcpy(config.query,line+21);accepted=background_service_configure(&config);
+                }
+                diagnostics_printf("BACKGROUND_REQUEST accepted=%u\n",accepted);
+            }
             if(!overflow && strcmp(line,"UI")==0)clock_ui_diagnostics();
             if(!overflow && strncmp(line,"TAP ",4)==0){
                 int x,y;char extra;bool ok=!test_touch && sscanf(line+4,"%d %d %c",&x,&y,&extra)==2 && x>=0 && x<480 && y>=0 && y<320;
@@ -108,9 +120,9 @@ static void serial_poll(void)
 void app_main(void)
 {
     /* UI/RTC owner stays above HTTPS work; alarm owner remains higher still. */
-    vTaskPrioritySet(NULL,3);diagnostics_init();
+    vTaskPrioritySet(NULL,3);json_memory_init();network_http_init();diagnostics_init();
     diagnostics_printf("IMAGE_MEMORY psram=%u external_free=%lu internal_free=%lu\n",esp_psram_is_initialized(),(unsigned long)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),(unsigned long)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
-    board_init();clock_init(board_bus());audio_init(board_bus());weather_service_init();alarm_service_init();
+    board_init();clock_init(board_bus());audio_init(board_bus());weather_service_init();alarm_service_init();background_service_init();
     lv_init();lv_tick_set_cb(tick);
     lv_display_t *d=lv_display_create(480,320);lv_display_set_color_format(d,LV_COLOR_FORMAT_RGB565);
     void *buf=heap_caps_malloc(480*20*2,MALLOC_CAP_DMA);if(!buf)abort();
