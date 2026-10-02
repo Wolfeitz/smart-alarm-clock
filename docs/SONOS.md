@@ -50,3 +50,34 @@ Its coordinator-only methods highlight why group targeting needs explicit handli
 [Sonos Control API](https://docs.sonos.com/docs/control) is a different cloud API;
 do not mistake its HTTP endpoints for the local UPnP protocol or silently require
 cloud credentials/HA for this standalone device.
+
+## Core protocol progress
+
+Production `sonos_client.c` now probes/pins UDN, checks standalone topology, reads
+transport/volume/mute/current URI and issues play/pause/stop/previous/next/volume
+and explicit-URI selection. Calls have a cancellation callback between network
+operations. Each control operation rechecks identity/topology. Grouped and bonded
+multi-member targets are rejected in this first implementation, not regrouped.
+Identity pinning prevents accidental IP reuse; unencrypted local UPnP is not
+cryptographic device authentication.
+
+`sonos_xml.c` uses Expat with bounded input/depth/output fields, rejects DTDs,
+SOAP faults and duplicate selected fields, and decodes nested/escaped XML safely.
+Target dependency pinned to Espressif Expat2.8.1. Host tests currently use the
+installed Expat development library (2.8.5 on this host), not the target library
+binary. No new host package installed. ESP-IDF target build checks the pinned
+component separately. Target parser allocations prefer external RAM.
+
+Run `python scripts/test-sonos-protocol.py` for actual localhost HTTP traffic into
+a simulator using the production C shared library. It compiles with the host C
+compiler and `-lexpat`; localhost bind may require sandbox approval. The temporary
+HTTP server terminates at test exit; no service is installed and no real speaker
+or HA endpoint is contacted. Tests cover identity/target formatting, transport,
+volume, XML escaping, grouped/changed-device refusal, faults, malformed/oversized
+responses, cancelled selection before Play and late playback followed by Stop.
+
+Not yet connected to firmware network transport or setup UI. Favorites/discovery,
+backend routing, alarm-adapter integration and device-to-simulator acceptance are
+still unfinished. Current installed clock does not gain Sonos support from these
+host results. SoCo reference revision:
+18effdc21312fa6e9a3c87e01741632275c3b481.

@@ -2452,3 +2452,35 @@ reports known=1 present=0 charging=0 level_known=0, matching no installed batter
 Fresh environmental and IMU samples continue. Read-only battery queries neither
 change charging policy nor interpret absent-battery percent0 as a real level.
 Receipts: local-config/clock/battery-{build,flash,runtime,host,preview-build}.log.
+
+## Direct Sonos core and HTTP simulator (2026-10-02)
+
+Previous goal turn made progress: installed conditional battery indicator and
+flat-aware rotation. No physical gate or active external wait. Began direct Sonos
+implementation against the accepted SONOS.md contract. Verified/pinned SoCo source
+18effdc21312fa6e9a3c87e01741632275c3b481; downloaded only reference files. Added exact
+Espressif Expat2.8.1 project dependency (registry resolved and lock recorded), not
+host packages. Host Expat2.8.5 already installed; distinction documented.
+
+Production C XML/controller added: complete bounded parse, DTD/Fault/duplicate
+field rejection, escaping, private IPv4 endpoint/identity encoding, UDN verification,
+standalone-group restriction, read transport/volume/mute/URI, explicit URI start,
+play/pause/stop/previous/next/volume, callback cancellation before each request.
+Requires a finite-deadline HTTP transport; network/UI adapter not implemented yet.
+
+`python scripts/test-sonos-protocol.py` PASS with ephemeral localhost HTTP simulator
+and production C shared library. Verified real serialized SOAP paths/actions/XML,
+selected URI with ampersands, observed playing state, pause/stop/volume, changed
+UUID and multi-member group rejection before Play, SOAP500/malformed/oversized
+response rejection, cancellation after SetURI preventing Play, timeout where server
+later plays and subsequent explicit Stop returns it to stopped. No HA, real Sonos,
+acoustic output or Spotify success claimed. Compile warnings corrected before test.
+Target build and consolidated host tests recorded below. No firmware installed in
+this step: existing battery/rotation clock remains running. Goal stays active for
+favorites, setup/backend integration, alarm cancellation/fallback and board simulator
+traffic; do not mistake the isolated core proof for the completed integration.
+
+ESP-IDF6.1 target build with pinned Expat passed; consolidated host suite including
+XML regressions passed. Logs: local-config/clock/sonos-{dependencies,core-build,
+core-host}.log. Documentation verifier/diff check passed. Simulator test output
+reported PASS directly; rerunnable script carries the actual HTTP assertions.

@@ -28,6 +28,11 @@ with tempfile.TemporaryDirectory(prefix="esp-link-host-") as directory:
             str(tests / (name + "_test.c")), "-o", binary,
         ], check=True, timeout=60)
         subprocess.run([binary], check=True, timeout=10)
+    binary = str(Path(directory) / "sonos_xml")
+    subprocess.run(["cc", "-std=c11", "-Wall", "-Wextra", "-Werror",
+        "-I" + str(main), str(main / "sonos_xml.c"), str(tests / "sonos_xml_test.c"),
+        "-lexpat", "-o", binary], check=True, timeout=60)
+    subprocess.run([binary], check=True, timeout=10)
     binary = str(Path(directory) / "radio_preferences")
     subprocess.run(["cc", "-std=c11", "-Wall", "-Wextra", "-Werror",
         "-I" + str(tests / "storage_stubs"), "-I" + str(main),
