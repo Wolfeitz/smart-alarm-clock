@@ -2812,3 +2812,7 @@ configured description/topics/issues/discussions.
 
 Initial GitHub Actions run37071746455 PASS: documentation integrity and standalone
 Sonos protocol suite on the clean Ubuntu runner. Local full host suite also passed.
+
+Owner supplied the direct Waveshare purchase URL. Added it to the public README
+hardware section with the exact ESP32-C5-Touch-LCD-3.5-C model and SKU35419.
+Documentation-only change; documentation verifier and whitespace check pass.

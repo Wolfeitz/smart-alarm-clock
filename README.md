@@ -82,7 +82,10 @@ must allow device-to-device traffic; a shared SSID alone is not enough.
 
 ## Hardware
 
-Developed on the **Waveshare ESP32-C5-Touch-LCD-3.5-C**:
+Developed on the **Waveshare ESP32-C5-Touch-LCD-3.5-C**. We purchased ours
+directly from Waveshare: [the exact device used for this project (SKU 35419)](https://www.waveshare.com/esp32-c5-touch-lcd-3.5.htm?sku=35419).
+
+Hardware highlights:
 
 - ESP32-C5-WROOM-1U, 32 MB physical flash and 8 MB PSRAM.
 - 3.5-inch 320 × 480 IPS touchscreen, used in 480 × 320 landscape.
