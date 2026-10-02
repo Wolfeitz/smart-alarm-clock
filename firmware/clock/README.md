@@ -57,6 +57,53 @@ python -m esptool --chip esp32c5 --port /dev/ttyACM0 --baud 460800 \
 Check the written hash verification. Serial permissions can disappear on USB
 re-enumeration; use your OS's normal serial access mechanism.
 
+## Linux USB permissions: finding your user and port
+
+If flashing or monitoring reports **Permission denied**, grant your login user
+read/write access to the board's serial device. On the original development machine:
+
+```sh
+sudo setfacl -m u:rob:rw /dev/ttyACM0
+```
+
+`rob` is the Linux username; `/dev/ttyACM0` is the device node. Neither is universal.
+Find yours with:
+
+```sh
+whoami
+ls -l /dev/serial/by-id/
+ls -l /dev/ttyACM* /dev/ttyUSB* 2>/dev/null
+```
+
+Look for the **Espressif USB JTAG/serial debug unit** in the by-id list. Its symlink
+points to the current device node (for example, `../../ttyACM0`). With more than
+one board connected, use the serial number to distinguish them. Resolve the exact
+entry you selected, replacing the example name with your actual entry:
+
+```sh
+readlink -f /dev/serial/by-id/usb-Espressif_YOUR_DEVICE_SERIAL-if00
+```
+
+Then grant access to that device. For example, if your board is `/dev/ttyACM0`:
+
+```sh
+sudo setfacl -m "u:$(id -un):rw" /dev/ttyACM0
+getfacl /dev/ttyACM0
+```
+
+The ACL should show your username with `rw-` access. Use that same device path (or
+its stable by-id link) for `--port` / `-p` in the flash and provisioning commands.
+Only grant access to the board you identified. If no serial device appears, check
+that the USB cable supports data and the board is connected; changing permissions
+cannot create a missing port. `setfacl` and `getfacl` are supplied by the Linux
+`acl` package if they are missing from your system.
+
+**This permission is temporary.** USB disconnect/reconnect or re-enumeration after
+a reset can recreate the device node and remove the ACL. Recheck the port and rerun
+the command when needed. This is a Linux host-access step, not a firmware setting;
+it is unnecessary if your account already has read/write access. It is not a
+request to power-cycle the clock as a development test.
+
 ## Time and settings
 
 Configure Wi-Fi and US ZIP location on the device. Resolved location selects a

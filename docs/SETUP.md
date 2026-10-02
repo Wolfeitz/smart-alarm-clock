@@ -1,5 +1,9 @@
 # Connection, inspection and recovery
 
+For portable instructions, including finding your username and serial device, see
+[Linux USB permissions](../firmware/clock/README.md#linux-usb-permissions-finding-your-user-and-port).
+The commands below record the original development host.
+
 ## Connect the existing factory firmware
 
 Use a data-capable USB-C cable. On this host, the running kernel and its modules

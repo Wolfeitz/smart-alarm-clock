@@ -2802,3 +2802,13 @@ staged tree for gitleaks scan: same single prose false positive, no additional
 findings. No claim that automated scanning proves absence of every possible secret.
 GitHub description/topics/issues/discussions configured successfully. This release
 includes the previously installed Sonos, gesture and time/date contrast changes.
+
+Owner requested explicit Linux ACL setup in public documentation. Added original
+rob/ttyACM0 command, whoami/id/by-id/readlink discovery, getfacl verification and
+re-enumeration caveat to portable firmware guide, linked from README and SETUP.
+No host group, udev or permission changes performed by this documentation update.
+Initial publication verified origin/main matched7e29f51; GitHub recognizes MIT and
+configured description/topics/issues/discussions.
+
+Initial GitHub Actions run37071746455 PASS: documentation integrity and standalone
+Sonos protocol suite on the clean Ubuntu runner. Local full host suite also passed.

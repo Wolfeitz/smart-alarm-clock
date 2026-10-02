@@ -126,6 +126,10 @@ board needs the matching bootloader and partition table too. Do not blindly copy
 an app offset onto an unrelated firmware layout. The current image configures
 16 MB flash addressing despite the board's 32 MB physical flash.
 
+On Linux, a **Permission denied** error may need a serial-device ACL. See
+[USB permissions: find your username and port](firmware/clock/README.md#linux-usb-permissions-finding-your-user-and-port)
+for `sudo setfacl -m u:rob:rw /dev/ttyACM0` and how to adapt it to your machine.
+
 After installation, select Wi-Fi on the touchscreen and set your location. Alarms
 and manual time setup remain usable offline. Keep credentials and factory backups
 inside ignored `local-config/`; never upload flash dumps.
