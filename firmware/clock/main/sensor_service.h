@@ -1,8 +1,10 @@
 #pragma once
 #include <stdbool.h>
+#include "sensor_model.h"
 #include <stdint.h>
 typedef struct {
     bool available,fresh,imu_ready,shake_enabled,auto_rotate,flipped,pending,save_failed;
+    battery_status_t battery;
     float celsius,humidity;
     int acceleration[3];
     int64_t updated_ms;

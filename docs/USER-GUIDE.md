@@ -170,3 +170,11 @@ orientation. It waits for a touch to finish before flipping. Portrait layout is
 not included. Disabling the option locks the current orientation until restart.
 The case reading was removed from the home weather card because device heat makes
 it unsuitable as an uncalibrated room thermometer; it is labeled Inside case here.
+
+## Battery indicator
+
+A compact battery/charging indicator appears on the home screen only when the
+AXP2101 detects a connected battery. It shows the reported percentage, or `?` if
+level data is unavailable. No battery means no indicator. No charger configuration
+is changed. Percentage/charging behavior is simulated until a battery is installed;
+its actual accuracy and usable runtime have not been qualified.

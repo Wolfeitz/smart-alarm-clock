@@ -63,3 +63,14 @@ bool sensor_orientation(orientation_detector_t *s,int64_t now,bool enabled,const
 }
 void sensor_rotate_touch(bool flipped,int *x,int *y)
 {if(flipped){*x=479-*x;*y=319-*y;}}
+
+battery_status_t sensor_battery(bool ok,uint8_t status1,uint8_t status2,bool detection,bool gauge,int percent)
+{
+    battery_status_t s={0};s.known=ok&&detection;
+    if(!s.known)return s;
+    s.present=(status1&8)!=0;if(!s.present)return s;
+    s.charging=(status2>>5)==1;
+    s.level_known=gauge&&percent>=0&&percent<=100;
+    if(s.level_known)s.percent=percent;
+    return s;
+}

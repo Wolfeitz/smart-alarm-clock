@@ -3,6 +3,14 @@
 #include <stdio.h>
 int main(void)
 {
+    battery_status_t battery=sensor_battery(true,0,0,true,true,100);assert(battery.known&&!battery.present&&!battery.level_known);
+    battery=sensor_battery(true,8,0x20,true,true,73);assert(battery.present&&battery.charging&&battery.level_known&&battery.percent==73);
+    battery=sensor_battery(true,8,0x40,true,true,0);assert(battery.present&&!battery.charging&&battery.level_known&&!battery.percent);
+    battery=sensor_battery(true,8,0,true,true,255);assert(battery.present&&!battery.level_known);
+    battery=sensor_battery(true,8,0,true,false,40);assert(!battery.level_known);
+    battery=sensor_battery(false,8,0,true,true,40);assert(!battery.known);
+    battery=sensor_battery(true,8,0,false,true,40);assert(!battery.known);
+    puts("PASS battery absent, charging, empty, invalid level and disabled/read-error states");
     uint8_t known[]={0xbe,0xef};assert(sensor_crc(known,2)==0x92);
     uint8_t raw[]={0x66,0x66,0,0x80,0,0};raw[2]=sensor_crc(raw,2);raw[5]=sensor_crc(raw+3,2);
     float t=-999,h=-999;assert(sensor_environment(raw,&t,&h));assert(t>24.9&&t<25.1&&h>49.9&&h<50.1);

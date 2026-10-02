@@ -13,7 +13,7 @@
 static SemaphoreHandle_t lock;
 static QueueHandle_t changes;
 static sensor_snapshot_t state;
-static i2c_master_dev_handle_t environment,imu;
+static i2c_master_dev_handle_t environment,imu,pmu;
 static bool running;
 void sensor_service_snapshot(sensor_snapshot_t *out)
 {
@@ -44,6 +44,16 @@ static bool environment_read(float *t,float *h)
     if(ok){vTaskDelay(pdMS_TO_TICKS(20));ok=i2c_master_receive(environment,bytes,6,20)==ESP_OK;}
     command(0xb098);
     return ok&&sensor_environment(bytes,t,h);
+}
+static void battery_read(void)
+{
+    uint8_t status[2]={0},detection=0,gauge=0,percent=0;
+    bool ok=pmu&&read_reg(pmu,0,status,2)&&read_reg(pmu,0x68,&detection,1);
+    bool level=ok&&(status[0]&8)&&read_reg(pmu,0x18,&gauge,1)&&read_reg(pmu,0xa4,&percent,1);
+    battery_status_t battery=sensor_battery(ok,status[0],status[1],detection&1,level&&(gauge&8),level?percent:-1);
+    xSemaphoreTake(lock,portMAX_DELAY);
+    if(!battery.known)battery.present=state.battery.present; /* Retain a visible unknown indication after a read error. */
+    state.battery=battery;xSemaphoreGive(lock);
 }
 static bool imu_start(void)
 {
@@ -78,6 +88,7 @@ static void worker(void *arg)
         }
         int64_t now=esp_timer_get_time()/1000;
         if(now>=due){
+            battery_read();
             float t,h;bool ok=environment_read(&t,&h);
             xSemaphoreTake(lock,portMAX_DELAY);
             if(ok){state.celsius=t;state.humidity=h;state.updated_ms=esp_timer_get_time()/1000;state.available=true;}
@@ -110,6 +121,8 @@ void sensor_service_init(void)
     lock=xSemaphoreCreateMutex();changes=xQueueCreate(1,sizeof(uint8_t));if(!lock||!changes)return;
     i2c_device_config_t cfg={.dev_addr_length=I2C_ADDR_BIT_LEN_7,.scl_speed_hz=100000,.device_address=0x70};
     if(i2c_master_bus_add_device(board_bus(),&cfg,&environment)!=ESP_OK)environment=NULL;
+    cfg.device_address=0x34;
+    if(i2c_master_bus_add_device(board_bus(),&cfg,&pmu)!=ESP_OK)pmu=NULL;
     for(unsigned addr=0x6a;addr<=0x6b;addr++){
         if(i2c_master_probe(board_bus(),addr,20)!=ESP_OK)continue;
         cfg.device_address=addr;
@@ -120,5 +133,6 @@ void sensor_service_init(void)
 void sensor_service_diagnostics(void)
 {
     sensor_snapshot_t s;sensor_service_snapshot(&s);
+    diagnostics_printf("BATTERY_STATE known=%u present=%u charging=%u level_known=%u percent=%u\n",s.battery.known,s.battery.present,s.battery.charging,s.battery.level_known,s.battery.percent);
     diagnostics_printf("SENSOR_STATE available=%u fresh=%u temperature_c=%.2f humidity=%.2f imu=%u samples=%u mg=%d,%d,%d shake=%u gestures=%u pending=%u save_failed=%u auto_rotate=%u flipped=%u\n",s.available,s.fresh,s.celsius,s.humidity,s.imu_ready,s.samples,s.acceleration[0],s.acceleration[1],s.acceleration[2],s.shake_enabled,s.gestures,s.pending,s.save_failed,s.auto_rotate,s.flipped);
 }

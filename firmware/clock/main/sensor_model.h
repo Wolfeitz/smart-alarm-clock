@@ -21,3 +21,7 @@ typedef struct {
 /* QMI +Y is the verified current upright mounting; Z is board-normal. */
 bool sensor_orientation(orientation_detector_t *s,int64_t now_ms,bool enabled,const int mg[3]);
 void sensor_rotate_touch(bool flipped,int *x,int *y);
+
+typedef struct {bool known,present,charging,level_known;uint8_t percent;} battery_status_t;
+battery_status_t sensor_battery(bool status_ok,uint8_t status1,uint8_t status2,
+    bool detection_enabled,bool gauge_enabled,int percent);

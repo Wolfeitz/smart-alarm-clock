@@ -55,6 +55,7 @@ static void show_settings(lv_event_t *e);
 static bool weather_view,network_editing,network_error,location_editing,wifi_listing,network_connecting;
 static unsigned shown_scan;
 static unsigned setup_origin; /* 0 weather, 1 settings, 2 clock */
+static lv_obj_t *battery_indicator,*date_card;
 static lv_obj_t *wifi_indicator,*wifi_dot,*wifi_strength[3];
 static lv_obj_t *network_list,*network_link;
 static weather_network_t shown_networks[WEATHER_NETWORK_COUNT],chosen_network;
@@ -452,7 +453,7 @@ static void home(void)
     lv_obj_set_size(scrim,480,320);lv_obj_set_style_bg_color(scrim,lv_color_hex(0x07101f),0);
     lv_obj_set_style_bg_opa(scrim,LV_OPA_20,0);
     lv_obj_remove_flag(scrim,LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_t *date_button=button(root,"",15,8,335,show_calendar,NULL);
+    lv_obj_t *date_button=button(root,"",15,8,335,show_calendar,NULL);date_card=date_button;
     lv_obj_set_user_data(date_button,"Calendar");lv_obj_set_height(date_button,48);
     lv_obj_set_style_pad_all(date_button,0,0);lv_obj_set_style_bg_opa(date_button,LV_OPA_TRANSP,0);
     lv_obj_set_style_border_width(date_button,0,0);
@@ -460,6 +461,7 @@ static void home(void)
     lv_obj_set_style_text_color(date_text,lv_color_hex(0xe6e9f2),0);
     lv_obj_set_style_text_align(date_text,LV_TEXT_ALIGN_LEFT,0);
     lv_obj_set_height(date_text,22);lv_label_set_long_mode(date_text,LV_LABEL_LONG_DOT);
+    battery_indicator=label(root,"",268,22,85,&lv_font_montserrat_16);lv_obj_set_user_data(battery_indicator,"Battery status");lv_obj_add_flag(battery_indicator,LV_OBJ_FLAG_HIDDEN);
     wifi_indicator=button(root,"",358,10,48,home_network,NULL);
     lv_obj_set_user_data(wifi_indicator,"Wi-Fi shortcut");
     lv_obj_set_style_bg_opa(wifi_indicator,LV_OPA_50,0);lv_obj_set_style_border_opa(wifi_indicator,LV_OPA_20,0);
@@ -1057,6 +1059,16 @@ void clock_ui_update(void)
         else snprintf(b,sizeof(b),LV_SYMBOL_OK "  Internet checked %u min ago",(unsigned)(weather.internet_age_seconds/60));
     }else snprintf(b,sizeof(b),LV_SYMBOL_WARNING "  Internet not verified");
     lv_label_set_text(status,audio_status()!=ESP_OK?"Local audio unavailable":s.load_failed?"Saved alarms unavailable - review Alarms":s.storage_status!=ESP_OK?"Settings storage error":!clock_valid()?"Set time to enable alarms":b);
+    battery_status_t battery=motion.battery;
+    if(battery.present){
+        const char *icon=battery.charging?LV_SYMBOL_CHARGE:!battery.level_known?LV_SYMBOL_BATTERY_EMPTY:battery.percent>75?LV_SYMBOL_BATTERY_FULL:battery.percent>45?LV_SYMBOL_BATTERY_3:battery.percent>15?LV_SYMBOL_BATTERY_2:battery.percent?LV_SYMBOL_BATTERY_1:LV_SYMBOL_BATTERY_EMPTY;
+        if(battery.known&&battery.level_known)snprintf(b,sizeof(b),"%s %u%%",icon,battery.percent);
+        else snprintf(b,sizeof(b),LV_SYMBOL_BATTERY_EMPTY " ?");
+        lv_label_set_text(battery_indicator,b);lv_obj_remove_flag(battery_indicator,LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_width(date_card,245);lv_obj_set_width(date_text,235);
+    }else{
+        lv_obj_add_flag(battery_indicator,LV_OBJ_FLAG_HIDDEN);lv_obj_set_width(date_card,335);lv_obj_set_width(date_text,325);
+    }
     lv_label_set_text(home_place,weather.location.name[0]?weather.location.name:"Local weather");
     update_weather_art(weather.has_data?weather.data.code:-1,weather.has_data&&weather_fresh(&weather.data,time(NULL)));
     if(weather.has_data){

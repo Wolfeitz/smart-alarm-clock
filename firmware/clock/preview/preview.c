@@ -429,6 +429,16 @@ int main(int argc,char **argv)
         }
         puts("PASS background confirmed-save return, delayed receipt, duplicate suppression, failure/retry, validation and Next");
     }
+    if(argc>3&&!strcmp(argv[3],"battery-test")){
+        click_text(lv_screen_active(),"Clock");advance();
+        lv_obj_t *indicator=named(lv_screen_active(),"Battery status");assert(indicator&&lv_obj_has_flag(indicator,LV_OBJ_FLAG_HIDDEN));
+        sensor_mock.battery=(battery_status_t){.known=true,.present=true,.level_known=true,.percent=73,.charging=true};advance();
+        assert(!lv_obj_has_flag(indicator,LV_OBJ_FLAG_HIDDEN));assert(has_text(lv_screen_active(),LV_SYMBOL_CHARGE " 73%"));
+        sensor_mock.battery.level_known=false;advance();assert(has_text(lv_screen_active(),LV_SYMBOL_BATTERY_EMPTY " ?"));
+        sensor_mock.battery.present=false;advance();assert(lv_obj_has_flag(indicator,LV_OBJ_FLAG_HIDDEN));
+        sensor_mock.battery=(battery_status_t){.known=true,.present=true,.level_known=true,.percent=73,.charging=true};advance();
+        puts("PASS battery hidden when absent, charging percent, unknown and removal");
+    }
     if(argc>3&&!strcmp(argv[3],"rotation-test")){
         click_text(lv_screen_active(),"Clock");advance();
         sensor_mock.auto_rotate=true;sensor_mock.flipped=true;

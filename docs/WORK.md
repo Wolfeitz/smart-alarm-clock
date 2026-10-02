@@ -2432,3 +2432,23 @@ unknown from0percent, leave indicator hidden with no battery connected. Battery
 is not installed yet; register parsing/UI can be tested synthetically and absent
 battery behavior verified now. Real battery accuracy remains unverified, not a
 reason to halt development. Do not change charger configuration.
+
+Battery indicator implementation uses pinned vendor XPowersAXP2101 definitions:
+STATUS1(00)bit3 presence, STATUS2(01)bits7:5 charging value1,
+BAT_DET_CTRL(68)bit0 enabled, CHARGE_GAUGE_WDT_CTRL(18)bit3 gauge enabled,
+BAT_PERCENT_DATA(A4)0..100. Read-only from existing bus/address34. No charger,
+fuel-gauge or battery-detection register writes. Missing/disabled data is unknown,
+not0percent; confirmed absent hides indicator. Read failure retains prior presence
+but clears known state, showing? instead of stale percentage. Home date width
+adapts only when indicator visible. Synthetic policy and actual-LVGL tests cover
+absent, charging,0percent, invalid percentage, read failure, detection/gauge disabled
+and removal. Preview visually inspected. Real battery accuracy remains unverified.
+Sonos implementation contract recorded in SONOS.md before affected coding.
+
+Installed battery image SHA256:
+233a81f2e9a22ace801385fe5d1e53a71a407770517a96f073b46ea2ad1a7542.
+ESP-IDF6.1 build and application-only flash/hash verification passed. Live PMIC
+reports known=1 present=0 charging=0 level_known=0, matching no installed battery.
+Fresh environmental and IMU samples continue. Read-only battery queries neither
+change charging policy nor interpret absent-battery percent0 as a real level.
+Receipts: local-config/clock/battery-{build,flash,runtime,host,preview-build}.log.
